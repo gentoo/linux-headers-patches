@@ -1,0 +1,28 @@
+ ================
+ === W[hat]TF ===
+ ================
+
+Gentoo patchsets that have grown too large to keep on the rsync mirrors have 
+been moved to our cvs tree.  From there, we bundle up all the whee little 
+patches into a tarball and distribute it via our public mirroring system.
+
+If you want specific info about a patch (like wtf it does or whose great idea 
+it was to change the code), read the patch !  We try to fill out the top of 
+them with useful info such as what it does, why it's needed, bug reports, 
+original creators, etc...  For simple patches, we reserve the right to assume 
+your IQ is greater than absolute 0 and figure out what it does w/out an 
+explanation.  If, by some miracle of science, it falls below the absolute 0 
+mark, you should help mankind by finding some scientists and letting them 
+probe you with their ... erm ... probes.
+
+ =================
+ === W[here]TF ===
+ =================
+
+For those with CVS access, you want the 'src/patchsets' dir inside of the 
+'gentoo' cvs module.
+
+For those w/out CVS access, this URL should help you:
+http://www.gentoo.org/cgi-bin/viewcvs.cgi/src/patchsets/?root=gentoo
+
+It should be pretty easy to find your way around, you're a big boy after all.
