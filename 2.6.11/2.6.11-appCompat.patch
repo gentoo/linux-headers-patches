@@ -1852,6 +1852,22 @@ diff -ur linux-2.6.8.1/include/asm-ppc/bitops.h linux-2.6.8.1-gentoo/include/asm
  
  #include <linux/config.h>
  #include <linux/compiler.h>
+@@ -241,6 +240,7 @@
+ 	return __ilog2(x & -x);
+ }
+ 
++#ifdef __KERNEL__
+ /*
+  * ffs: find first bit set. This is defined the same way as
+  * the libc and compiler builtin ffs routines, therefore
+@@ -250,6 +250,7 @@
+ {
+ 	return __ilog2(x & -x) + 1;
+ }
++#endif __KERNEL__
+ 
+ /*
+  * fls: find last (most-significant) bit set.
 @@ -263,6 +265,8 @@
  	return 32 - lz;
  }
@@ -2879,3 +2895,66 @@ diff -ur linux-2.6.11.orig/include/asm-ia64/signal.h linux-2.6.11/include/asm-ia
 +#endif /* __KERNEL__ */
 +
  #endif /* _ASMPPC64_SIGNAL_H */
+--- linux-2.6.11/include/linux/joystick.h	2005-10-18 01:02:08.000000000 +0100
++++ linux-2.6.14/include/linux/joystick.h	2005-10-18 01:02:08.000000000 +0100
+@@ -66,10 +66,10 @@
+ #define JSIOCSCORR		_IOW('j', 0x21, struct js_corr)			/* set correction values */
+ #define JSIOCGCORR		_IOR('j', 0x22, struct js_corr)			/* get correction values */
+ 
+-#define JSIOCSAXMAP		_IOW('j', 0x31, __u8[ABS_MAX])			/* set axis mapping */
+-#define JSIOCGAXMAP		_IOR('j', 0x32, __u8[ABS_MAX])			/* get axis mapping */
+-#define JSIOCSBTNMAP		_IOW('j', 0x33, __u16[KEY_MAX - BTN_MISC])	/* set button mapping */
+-#define JSIOCGBTNMAP		_IOR('j', 0x34, __u16[KEY_MAX - BTN_MISC])	/* get button mapping */
++#define JSIOCSAXMAP		_IOW('j', 0x31, __u8[ABS_MAX + 1])		/* set axis mapping */
++#define JSIOCGAXMAP		_IOR('j', 0x32, __u8[ABS_MAX + 1])		/* get axis mapping */
++#define JSIOCSBTNMAP		_IOW('j', 0x33, __u16[KEY_MAX - BTN_MISC + 1])	/* set button mapping */
++#define JSIOCGBTNMAP		_IOR('j', 0x34, __u16[KEY_MAX - BTN_MISC + 1])	/* get button mapping */
+ 
+ /*
+  * Types and constants for get/set correction
+@@ -111,18 +111,37 @@
+ #define JS_SET_ALL		8
+ 
+ struct JS_DATA_TYPE {
+-	int buttons;
+-	int x;
+-	int y;
++	int32_t buttons;
++	int32_t x;
++	int32_t y;
+ };
+ 
+-struct JS_DATA_SAVE_TYPE {
+-	int JS_TIMEOUT;
+-	int BUSY;
+-	long JS_EXPIRETIME;
+-	long JS_TIMELIMIT;
++struct JS_DATA_SAVE_TYPE_32 {
++	int32_t JS_TIMEOUT;
++	int32_t BUSY;
++	int32_t JS_EXPIRETIME;
++	int32_t JS_TIMELIMIT;
+ 	struct JS_DATA_TYPE JS_SAVE;
+ 	struct JS_DATA_TYPE JS_CORR;
+ };
+ 
++struct JS_DATA_SAVE_TYPE_64 {
++	int32_t JS_TIMEOUT;
++	int32_t BUSY;
++	int64_t JS_EXPIRETIME;
++	int64_t JS_TIMELIMIT;
++	struct JS_DATA_TYPE JS_SAVE;
++	struct JS_DATA_TYPE JS_CORR;
++};
++
++#ifdef __KERNEL__
++#if BITS_PER_LONG == 64
++#define JS_DATA_SAVE_TYPE JS_DATA_SAVE_TYPE_64
++#elif BITS_PER_LONG == 32
++#define JS_DATA_SAVE_TYPE JS_DATA_SAVE_TYPE_32
++#else
++#error Unexpected BITS_PER_LONG
++#endif
++#endif
++
+ #endif /* _LINUX_JOYSTICK_H */
