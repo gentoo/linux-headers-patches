@@ -2958,3 +2958,67 @@ diff -ur linux-2.6.11.orig/include/asm-ia64/signal.h linux-2.6.11/include/asm-ia
 +#endif
 +
  #endif /* _LINUX_JOYSTICK_H */
+--- linux-2.6.11/include/asm-sparc/signal.h	2005-03-02 07:38:10.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-sparc/signal.h	2005-12-22 13:35:16.000000000 +0000
+@@ -108,10 +108,12 @@
+ 
+ typedef unsigned long __old_sigset_t;
+ 
++#ifndef __sigset_t_defined
++#define __sigset_t_defined
+ typedef struct {
+ 	unsigned long	sig[_NSIG_WORDS];
+ } __new_sigset_t;
+-
++#endif
+ 
+ #ifdef __KERNEL__
+ /* A SunOS sigstack */
+--- linux-2.6.11/include/asm-sparc/processor.h	2005-12-22 23:01:10.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-sparc/processor.h	2005-12-22 23:01:03.000000000 +0000
+@@ -108,7 +108,7 @@
+ 
+ /* Free all resources held by a thread. */
+ #define release_thread(tsk)		do { } while(0)
+-extern pid_t kernel_thread(int (*fn)(void *), void * arg, unsigned long flags);
++extern __kernel_pid_t kernel_thread(int (*fn)(void *), void * arg, unsigned long flags);
+ 
+ /* Prepare to copy thread state - unlazy all lazy status */
+ #define prepare_to_copy(tsk)	do { } while (0)
+--- linux-2.6.11/include/asm-ppc64/bitops.h	2005-03-02 07:38:38.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-ppc64/bitops.h	2005-12-22 13:25:21.000000000 +0000
+@@ -40,8 +40,6 @@
+ #ifndef _PPC64_BITOPS_H
+ #define _PPC64_BITOPS_H
+ 
+-#ifdef __KERNEL__
+-
+ #include <asm/memory.h>
+ 
+ /*
+@@ -271,6 +269,8 @@
+ 	return __ilog2(x & -x);
+ }
+ 
++#ifdef __KERNEL__
++
+ /*
+  * ffs: find first bit set. This is defined the same way as
+  * the libc and compiler builtin ffs routines, therefore
+@@ -282,12 +282,16 @@
+ 	return __ilog2(i & -i) + 1;
+ }
+ 
++#endif
++
+ /*
+  * fls: find last (most-significant) bit set.
+  * Note fls(0) = 0, fls(1) = 1, fls(0x80000000) = 32.
+  */
+ #define fls(x) generic_fls(x)
+ 
++#ifdef __KERNEL__
++
+ /*
+  * hweightN: returns the hamming weight (i.e. the number
+  * of bits set) of a N-bit word
