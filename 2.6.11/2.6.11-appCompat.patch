@@ -866,11 +866,11 @@ diff -ur linux-2.6.7/include/asm-x86_64/sigcontext.h linux-2.6.7-gentoo/include/
  /* Note: reserved1/2 may someday contain valuable data. Always save/restore
     them when you change signal frames. */
 +
-+#if ! defined(__KERNEL__) && ! defined(__UCLIBC__)
++#if ! defined(__KERNEL__)
 +#include <signal.h> /* Pulls in <bits/sigcontext.h> which contains both /*
-+                    /* of these structures ... except on uClibc ... */
++                    /* of these structures */
 +#else
-+#if ! defined(_SIGNAL_H) || defined(__UCLIBC__)
++#if ! defined(_SIGNAL_H)
  struct _fpstate {
  	__u16	cwd;
  	__u16	swd;
