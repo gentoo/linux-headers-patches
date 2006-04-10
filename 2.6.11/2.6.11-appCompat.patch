@@ -1024,11 +1024,12 @@ diff -ur linux-2.6.8.1/include/linux/wait.h linux-2.6.8.1-gentoo/include/linux/w
 diff -ur linux-2.6.8.1/include/linux/compiler.h linux-2.6.8.1-gentoo/include/linux/compiler.h
 --- linux-2.6.8.1/include/linux/compiler.h	2004-06-12 12:11:54.000000000 +0100
 +++ linux-2.6.8.1-gentoo/include/linux/compiler.h	2004-06-24 09:48:32.478502752 +0100
-@@ -15,8 +15,19 @@
+@@ -15,8 +15,20 @@
  # define __chk_user_ptr(x) (void)0
  #endif
  
 -#ifdef __KERNEL__
++#ifndef __KERNEL__
 +#if (__GNUC__ > 3) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1)
 +#define inline          __inline__
 +#define __inline__      __inline__
@@ -1041,7 +1042,7 @@ diff -ur linux-2.6.8.1/include/linux/compiler.h linux-2.6.8.1-gentoo/include/lin
 +#endif
 +#endif
  
-+#ifdef __KERNEL__
++#else
  #if __GNUC__ > 3
  # include <linux/compiler-gcc+.h>	/* catch-all for GCC 4, 5, etc. */
  #elif __GNUC__ == 3
