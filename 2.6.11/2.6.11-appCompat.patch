@@ -951,16 +951,16 @@ diff -ur linux-2.6.7/include/linux/pid.h linux-2.6.7-gentoo/include/linux/pid.h
 diff -ur linux-2.6.8.1/include/linux/wait.h linux-2.6.8.1-gentoo/include/linux/wait.h
 --- linux-2.6.8.1/include/linux/wait.h	2004-06-16 06:19:31.000000000 +0100
 +++ linux-2.6.8.1-gentoo/wait.h	2004-06-18 18:35:03.760315216 +0100
-@@ -8,8 +8,6 @@
- #define __WALL		0x40000000	/* Wait on all children, regardless of type */
- #define __WCLONE	0x80000000	/* Wait only on non-SIGCHLD children */
+@@ -17,8 +17,6 @@
+ #define P_PID		1
+ #define P_PGID		2
  
 -#ifdef __KERNEL__
 -
  #include <linux/config.h>
  #include <linux/list.h>
  #include <linux/stddef.h>
-@@ -53,6 +52,7 @@ struct __wait_queue_head {
+@@ -54,6 +52,7 @@
  };
  typedef struct __wait_queue_head wait_queue_head_t;
  
@@ -968,7 +968,7 @@ diff -ur linux-2.6.8.1/include/linux/wait.h linux-2.6.8.1-gentoo/include/linux/w
  
  /*
   * Macros for declaration and initialisaton of the datatypes
-@@ -84,6 +83,8 @@
+@@ -116,6 +115,8 @@
  extern void FASTCALL(add_wait_queue_exclusive(wait_queue_head_t *q, wait_queue_t * wait));
  extern void FASTCALL(remove_wait_queue(wait_queue_head_t *q, wait_queue_t * wait));
  
@@ -977,7 +977,7 @@ diff -ur linux-2.6.8.1/include/linux/wait.h linux-2.6.8.1-gentoo/include/linux/w
  static inline void __add_wait_queue(wait_queue_head_t *head, wait_queue_t *new)
  {
  	list_add(&new->task_list, &head->task_list);
-@@ -104,6 +105,8 @@
+@@ -136,6 +137,8 @@
  	list_del(&old->task_list);
  }
  
@@ -986,7 +986,7 @@ diff -ur linux-2.6.8.1/include/linux/wait.h linux-2.6.8.1-gentoo/include/linux/w
  void FASTCALL(__wake_up(wait_queue_head_t *q, unsigned int mode, int nr, void *key));
  extern void FASTCALL(__wake_up_locked(wait_queue_head_t *q, unsigned int mode));
  extern void FASTCALL(__wake_up_sync(wait_queue_head_t *q, unsigned int mode, int nr));
-@@ -219,6 +222,8 @@
+@@ -280,6 +283,8 @@
  	__ret;								\
  })
  
@@ -995,7 +995,7 @@ diff -ur linux-2.6.8.1/include/linux/wait.h linux-2.6.8.1-gentoo/include/linux/w
  /*
   * Must be called with the spinlock in the wait_queue_head_t held.
   */
-@@ -220,6 +225,8 @@
+@@ -299,6 +304,8 @@
  	__remove_wait_queue(q,  wait);
  }
  
@@ -1004,12 +1004,22 @@ diff -ur linux-2.6.8.1/include/linux/wait.h linux-2.6.8.1-gentoo/include/linux/w
  /*
   * These are the old interfaces to sleep waiting for an event.
   * They are racy.  DO NOT use them, use the wait_event* interfaces above.  
-@@ -258,6 +265,4 @@
- 		INIT_LIST_HEAD(&wait->task_list);			\
+@@ -349,6 +356,7 @@
+ 		INIT_LIST_HEAD(&(wait)->task_list);			\
  	} while (0)
- 	
+ 
++#ifndef __cplusplus
+ /**
+  * wait_on_bit - wait for a bit to be cleared
+  * @word: the word being waited on, a kernel virtual address
+@@ -394,7 +402,6 @@
+ 		return 0;
+ 	return out_of_line_wait_on_bit_lock(word, bit, action, mode);
+ }
+-	
 -#endif /* __KERNEL__ */
--
+ 
++#endif	
  #endif
 diff -ur linux-2.6.8.1/include/linux/compiler.h linux-2.6.8.1-gentoo/include/linux/compiler.h
 --- linux-2.6.8.1/include/linux/compiler.h	2004-06-12 12:11:54.000000000 +0100
