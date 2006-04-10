@@ -1,0 +1,13 @@
+newer versions of gcc are retarded with superh targets
+
+--- linux/arch/sh/Makefile
++++ linux/arch/sh/Makefile
+@@ -20,7 +20,7 @@
+ cflags-$(CONFIG_CPU_SH2)		+= -m2
+ cflags-$(CONFIG_CPU_SH3)		+= -m3
+ cflags-$(CONFIG_CPU_SH4)		+= -m4 \
+-	$(call cc-option,-mno-implicit-fp,-m4-nofpu)
++	$(call cc-option,-mno-implicit-fp,$(call cc-option,-m4-nofpu))
+ 
+ cflags-$(CONFIG_SH_DSP)			+= -Wa,-dsp
+ cflags-$(CONFIG_SH_KGDB)		+= -g
