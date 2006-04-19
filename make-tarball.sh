@@ -14,6 +14,6 @@ fi
 
 tar=gentoo-headers-${kver}-${pver}.tar.bz2
 rm -f gentoo-headers-${kver}-*.tar.bz2
-tar jcf ${tar} ${kver} --exclude CVS
+tar -jcf ${tar} --exclude="$kver/CVS" ${kver}
 
 du -b *.bz2

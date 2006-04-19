@@ -1273,6 +1273,19 @@ diff -urp linux-2.6.7/include/asm-parisc/bitops.h linux-2.6.7-gentoo/include/asm
  /**
   * __ffs - find first bit in word. returns 0 to "BITS_PER_LONG-1".
   * @word: The word to search
+@@ -261,10 +261,12 @@
+  * This is defined the same way as the libc and compiler builtin
+  * ffs routines, therefore differs in spirit from the above ffz (man ffs).
+  */
++#ifndef _STRING_H
+ static __inline__ int ffs(int x)
+ {
+ 	return x ? (__ffs((unsigned long)x) + 1) : 0;
+ }
++#endif
+ 
+ /*
+  * fls: find last (most significant) bit set.
 @@ -345,8 +345,6 @@ static inline int sched_find_first_bit(c
  #endif
  }
@@ -3033,3 +3046,37 @@ diff -ur linux-2.6.11.orig/include/asm-ia64/signal.h linux-2.6.11/include/asm-ia
  /*
   * hweightN: returns the hamming weight (i.e. the number
   * of bits set) of a N-bit word
+--- linux-2.6.11/include/asm-ppc64/types.h	2006-04-18 16:43:24.000000000 +0100
++++ linux-2.6.11-gentoo/include/asm-ppc64/types.h	2006-04-19 22:58:27.000000000 +0100
+@@ -16,6 +16,10 @@
+  * 2 of the License, or (at your option) any later version.
+  */
+ 
++#ifdef umode_t /* Fix userspace definitions, we do it properly here... */
++#undef umode_t
++#endif
++
+ typedef unsigned int umode_t;
+ 
+ /*
+--- linux-2.6.11/include/asm-alpha/bitops.h	2005-03-02 07:38:09.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-alpha/bitops.h	2006-02-21 01:05:38.000000000 +0000
+@@ -310,6 +310,8 @@
+ 	return word ? result : 0;
+ }
+ 
++#endif __KERNEL__
++
+ /*
+  * fls: find last bit set.
+  */
+@@ -322,6 +324,8 @@
+ #define fls	generic_fls
+ #endif
+ 
++#ifdef __KERNEL__
++
+ /* Compute powers of two for the given integer.  */
+ static inline long floor_log2(unsigned long word)
+ {
+
