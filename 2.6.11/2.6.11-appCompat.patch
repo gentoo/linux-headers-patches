@@ -3065,7 +3065,7 @@ diff -ur linux-2.6.11.orig/include/asm-ia64/signal.h linux-2.6.11/include/asm-ia
  	return word ? result : 0;
  }
  
-+#endif __KERNEL__
++#endif /* __KERNEL__ */
 +
  /*
   * fls: find last bit set.
