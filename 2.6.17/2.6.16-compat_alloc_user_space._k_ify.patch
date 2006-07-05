@@ -1,0 +1,60 @@
+--- linux-2.6.16/include/asm-x86_64/compat.h	2006-03-25 13:24:33.000000000 -0500
++++ linux-2.6.16.gentoo/include/asm-x86_64/compat.h	2006-03-25 13:41:26.000000000 -0500
+@@ -193,14 +193,16 @@
+ 
+ static inline compat_uptr_t ptr_to_compat(void __user *uptr)
+ {
+-	return (u32)(unsigned long)uptr;
++	return (__u32)(unsigned long)uptr;
+ }
+ 
++#ifdef __KERNEL__
+ static __inline__ void __user *compat_alloc_user_space(long len)
+ {
+ 	struct pt_regs *regs = task_pt_regs(current);
+ 	return (void __user *)regs->rsp - len; 
+ }
++#endif
+ 
+ static inline int is_compat_task(void)
+ {
+--- linux-2.6.16/include/asm-ia64/compat.h	2006-03-25 13:24:33.000000000 -0500
++++ linux-2.6.16.gentoo/include/asm-ia64/compat.h	2006-03-25 13:41:26.000000000 -0500
+@@ -189,11 +189,13 @@
+ 	return (void __user *) (unsigned long) uptr;
+ }
+ 
++#ifdef __KERNEL__
+ static __inline__ void __user *
+ compat_alloc_user_space (long len)
+ {
+ 	struct pt_regs *regs = task_pt_regs(current);
+ 	return (void __user *) (((regs->r12 & 0xffffffff) & -16) - len);
+ }
++#endif
+ 
+ #endif /* _ASM_IA64_COMPAT_H */
+--- linux-2.6.16/include/linux/compat.h	2006-03-25 21:02:49.000000000 +0000
++++ linux-2.6.16/include/linux/compat.h	2006-03-25 20:54:26.000000000 +0000
+@@ -12,6 +12,12 @@
+ #include <linux/param.h>	/* for HZ */
+ #include <linux/sem.h>
+ 
++#ifdef __USE_MISC
++#undef st_atime
++#undef st_mtime
++#undef st_ctime
++#endif
++
+ #include <asm/compat.h>
+ #include <asm/siginfo.h>
+ 
+@@ -132,7 +138,7 @@
+ long compat_sys_shmctl(int first, int second, void __user *uptr);
+ long compat_sys_semtimedop(int semid, struct sembuf __user *tsems,
+ 		unsigned nsems, const struct compat_timespec __user *timeout);
+-asmlinkage long compat_sys_keyctl(u32 option,
++asmlinkage long compat_sys_keyctl(__u32 option,
+ 			      u32 arg2, u32 arg3, u32 arg4, u32 arg5);
+ 
+ asmlinkage ssize_t compat_sys_readv(unsigned long fd,

@@ -1,0 +1,13 @@
+# Gentoo Bug 136941
+
+--- a/Makefile.orig	2006-06-16 14:29:09 +0000
++++ b/Makefile	2006-06-16 14:30:57 +0000
+@@ -185,7 +185,7 @@
+ 
+ HOSTCC  	= gcc
+ HOSTCXX  	= g++
+-HOSTCFLAGS	= -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer
++HOSTCFLAGS	= -Wall -Wstrict-prototypes -O2 -fomit-frame-pointer -DKBUILD_NO_NLS
+ HOSTCXXFLAGS	= -O2
+ 
+ # 	Decide whether to build built-in, modular, or both.

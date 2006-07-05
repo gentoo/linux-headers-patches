@@ -1,0 +1,19 @@
+--- linux-2.6.16/include/linux/byteoder/swab.h	2006-03-25 13:24:33.000000000 -0500
++++ linux-2.6.16.gentoo/include/linux/byteorder/swab.h	2006-03-25 13:41:26.000000000 -0500
+@@ -130,7 +130,7 @@
+ #  define __swab64(x) __fswab64(x)
+ #endif /* OPTIMIZE */
+ 
+-
++#ifndef SWAB_H /* xfsprogs */
+ static __inline__ __attribute_const__ __u16 __fswab16(__u16 x)
+ {
+ 	return __arch__swab16(x);
+@@ -177,6 +177,7 @@
+ 	__arch__swab64s(addr);
+ }
+ #endif /* __BYTEORDER_HAS_U64__ */
++#endif /* SWAB_H */
+ 
+ #if defined(__KERNEL__)
+ #define swab16 __swab16

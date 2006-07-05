@@ -1,0 +1,77 @@
+--- linux-2.6.16/include/asm-powerpc/signal.h	2006-05-26 10:15:26.000000000 +1000
++++ linux-2.6.16-gentoo/include/asm-powerpc/signal.h	2006-05-26 10:20:54.000000000 +1000
+@@ -13,10 +13,14 @@
+ 
+ typedef unsigned long old_sigset_t;		/* at least 32 bits */
+ 
++#ifndef __sigset_t_defined
++
+ typedef struct {
+ 	unsigned long sig[_NSIG_WORDS];
+ } sigset_t;
+ 
++#endif
++
+ #define SIGHUP		 1
+ #define SIGINT		 2
+ #define SIGQUIT		 3
+--- linux-2.6.16/include/asm-generic/div64.h	2006-05-26 10:15:25.000000000 +1000
++++ linux-2.6.16-gentoo/include/asm-generic/div64.h	2006-05-26 10:20:54.000000000 +1000
+@@ -23,27 +23,27 @@
+ #if BITS_PER_LONG == 64
+ 
+ # define do_div(n,base) ({					\
+-	uint32_t __base = (base);				\
+-	uint32_t __rem;						\
+-	__rem = ((uint64_t)(n)) % __base;			\
+-	(n) = ((uint64_t)(n)) / __base;				\
++	__u32 __base = (base);				\
++	__u32 __rem;						\
++	__rem = ((__u64)(n)) % __base;			\
++	(n) = ((__u64)(n)) / __base;				\
+ 	__rem;							\
+  })
+ 
+ #elif BITS_PER_LONG == 32
+ 
+-extern uint32_t __div64_32(uint64_t *dividend, uint32_t divisor);
++extern __u32 __div64_32(__u64 *dividend, __u32 divisor);
+ 
+ /* The unnecessary pointer compare is there
+  * to check for type safety (n must be 64bit)
+  */
+ # define do_div(n,base) ({				\
+-	uint32_t __base = (base);			\
+-	uint32_t __rem;					\
+-	(void)(((typeof((n)) *)0) == ((uint64_t *)0));	\
++	__u32 __base = (base);			\
++	__u32 __rem;					\
++	(void)(((typeof((n)) *)0) == ((__u64 *)0));	\
+ 	if (likely(((n) >> 32) == 0)) {			\
+-		__rem = (uint32_t)(n) % __base;		\
+-		(n) = (uint32_t)(n) / __base;		\
++		__rem = (__u32)(n) % __base;		\
++		(n) = (__u32)(n) / __base;		\
+ 	} else 						\
+ 		__rem = __div64_32(&(n), __base);	\
+ 	__rem;						\
+--- linux-2.6.16/include/linux/percpu.h	2006-05-26 10:15:26.000000000 +1000
++++ linux-2.6.16-gentoo/include/linux/percpu.h	2006-05-26 10:20:54.000000000 +1000
+@@ -40,6 +40,8 @@
+ 
+ #define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+ 
++#ifdef __KERNEL__
++
+ static inline void *__alloc_percpu(size_t size)
+ {
+ 	void *ret = kmalloc(size, GFP_KERNEL);
+@@ -52,6 +54,8 @@
+ 	kfree(ptr);
+ }
+ 
++#endif
++
+ #endif /* CONFIG_SMP */
+ 
+ /* Simple wrapper for the common case: zeros memory. */

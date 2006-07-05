@@ -1,0 +1,21 @@
+# Gentoo Bug #136107
+
+--- linux-2.6.16/include/asm-powerpc/system.h	2006-03-20 05:53:29.000000000 +0000
++++ linux-2.6.16/include/asm-powerpc/system.h	2006-07-02 19:00:26.000000000 +0100
+@@ -41,7 +41,6 @@
+ #define set_mb(var, value)	do { var = value; mb(); } while (0)
+ #define set_wmb(var, value)	do { var = value; wmb(); } while (0)
+ 
+-#ifdef __KERNEL__
+ #ifdef CONFIG_SMP
+ #define smp_mb()	mb()
+ #define smp_rmb()	rmb()
+@@ -54,6 +53,8 @@
+ #define smp_read_barrier_depends()	do { } while(0)
+ #endif /* CONFIG_SMP */
+ 
++#ifdef __KERNEL__
++
+ struct task_struct;
+ struct pt_regs;
+ 

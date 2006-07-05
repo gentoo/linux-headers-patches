@@ -1,0 +1,2908 @@
+Authors: Tim Yamin <plasmaroo@gentoo.org>
+         Mike Frysinger <vapier@gentoo.org>
+         Martin Schlemmer <azarah@gentoo.org>
+         Jeremy Huddleston <eradicator@gentoo.org>
+
+This patch neatens up the 2.6 headers for user-space usage and allows backward
+compatibility on a variety of applications which are designed for 2.4 headers.
+
+diff -ur linux-2.6.0/include/linux/bitmap.h linux-2.6.0/include/linux.gentoo/bitmap.h
+--- linux-2.6.0/include/linux/bitmap.h	2003-12-27 19:22:38.000000000 +0000
++++ linux-2.6.0/include/linux.gentoo/bitmap.h	2003-12-27 19:19:31.000000000 +0000
+@@ -1,6 +1,7 @@
+ #ifndef __LINUX_BITMAP_H
+ #define __LINUX_BITMAP_H
+ 
++#ifdef __KERNEL__
+ #ifndef __ASSEMBLY__
+ 
+ #include <linux/config.h>
+@@ -155,5 +156,5 @@
+ #endif
+ 
+ #endif /* __ASSEMBLY__ */
+-
++#endif /* __KERNEL__ */
+ #endif /* __LINUX_BITMAP_H */
+diff -ur linux-2.6.0/include/linux/buffer_head.h linux-2.6.0/include/linux.gentoo/buffer_head.h
+--- linux-2.6.0/include/linux/buffer_head.h	2003-12-27 19:22:38.000000000 +0000
++++ linux-2.6.0/include/linux.gentoo/buffer_head.h	2003-12-27 19:19:31.000000000 +0000
+@@ -34,6 +34,8 @@
+ 
+ #define MAX_BUF_PER_PAGE (PAGE_CACHE_SIZE / 512)
+ 
++#ifdef __KERNEL__
++
+ struct page;
+ struct buffer_head;
+ struct address_space;
+@@ -283,6 +285,8 @@
+ 		__wait_on_buffer(bh);
+ }
+ 
++#endif /* __KERNEL__ */
++
+ static inline void lock_buffer(struct buffer_head *bh)
+ {
+ 	while (test_set_buffer_locked(bh))
+diff -ur linux-2.6.1/include/linux/cpumask.h linux-2.6.1/include/linux.gentoo/cpumask.h
+--- linux-2.6.1/include/linux/cpumask.h	2003-12-27 19:22:38.000000000 +0000
++++ linux-2.6.1/include/linux.gentoo/cpumask.h	2003-12-27 19:19:31.000000000 +0000
+@@ -1,6 +1,8 @@
+ #ifndef __LINUX_CPUMASK_H
+ #define __LINUX_CPUMASK_H
+ 
++#ifdef __KERNEL__
++
+ /*
+  * Cpumasks provide a bitmap suitable for representing the
+  * set of CPU's in a system, one bit position per CPU number.
+@@ -68,4 +70,5 @@
+ 		cpu < NR_CPUS;						\
+ 		cpu = next_online_cpu(cpu,map))
+ 
++#endif /* __KERNEL__ */
+ #endif /* __LINUX_CPUMASK_H */
+diff -ur linux-2.6.7/include/linux/mod_devicetable.h linux-2.6.7/include/linux.gentoo/mod_devicetable.h
+--- linux-2.6.7/include/linux/mod_devicetable.h.orig	2004-06-16 01:20:19.000000000 -0400
++++ linux-2.6.7/include/linux/mod_devicetable.h	2004-07-22 14:12:34.707621864 -0400
+@@ -8,6 +8,7 @@
+ #define LINUX_MOD_DEVICETABLE_H
+ 
+ #ifdef __KERNEL__
++#ifndef __KERNEL_ULONG_T__
+ #include <linux/types.h>
+ typedef unsigned long kernel_ulong_t;
+ #endif
+@@ -244,4 +244,5 @@
+ #define PCMCIA_DEV_ID_MATCH_FAKE_CIS	0x0200
+ #define PCMCIA_DEV_ID_MATCH_ANONYMOUS	0x0400
+ 
++#endif /* __KERNEL__ */
+ #endif /* LINUX_MOD_DEVICETABLE_H */
+diff -ur linux-2.6.6/include/linux/radix-tree.h linux-2.6.6/include/linux.gentoo/radix-tree.h
+--- linux-2.6.6/include/linux/radix-tree.h	2003-12-27 19:22:38.000000000 +0000
++++ linux-2.6.6/include/linux.gentoo/radix-tree.h	2003-12-27 19:19:31.000000000 +0000
+@@ -44,6 +44,8 @@
+ 	(root)->rnode = NULL;						\
+ } while (0)
+ 
++#ifdef __KERNEL__
++
+ int radix_tree_insert(struct radix_tree_root *, unsigned long, void *);
+ void *radix_tree_lookup(struct radix_tree_root *, unsigned long);
+ void *radix_tree_delete(struct radix_tree_root *, unsigned long);
+@@ -68,4 +70,5 @@
+ 	preempt_enable();
+ }
+ 
++#endif /* __KERNEL__ */
+ #endif /* _LINUX_RADIX_TREE_H */
+diff -ur linux-2.6.0/include/linux/smp.h linux-2.6.0/include/linux.gentoo/smp.h
+--- linux-2.6.0/include/linux/smp.h	2003-12-27 19:22:38.000000000 +0000
++++ linux-2.6.0/include/linux.gentoo/smp.h	2003-12-27 19:19:31.000000000 +0000
+@@ -6,6 +6,8 @@
+  *		Alan Cox. <alan@redhat.com>
+  */
+ 
++
++#ifdef __KERNEL__
+ #include <linux/config.h>
+ 
+ #ifdef CONFIG_SMP
+@@ -112,4 +114,5 @@
+ #define put_cpu()		preempt_enable()
+ #define put_cpu_no_resched()	preempt_enable_no_resched()
+ 
++#endif /* __KERNEL__ */
+ #endif /* __LINUX_SMP_H */
+diff -ur linux-2.6.16/include/linux/time.h linux-2.6.16/include/linux.gentoo/time.h
+--- linux-2.6.16/include/linux/time.h	2003-12-27 19:22:38.000000000 +0000
++++ linux-2.6.16/include/linux.gentoo/time.h	2003-12-27 19:19:31.000000000 +0000
+@@ -7,25 +7,31 @@
+ # include <linux/seqlock.h>
+ #endif
+ 
++#ifndef _SYS_TIME_H
++
+ #ifndef _STRUCT_TIMESPEC
++#ifndef __timespec_defined
+ #define _STRUCT_TIMESPEC
+ struct timespec {
+ 	time_t	tv_sec;		/* seconds */
+ 	long	tv_nsec;	/* nanoseconds */
+ };
+-#endif
++#endif /* __timespec_defined */
++#endif /* _STRUCT_TIMESPEC */
+ 
++#ifndef _STRUCT_TIMEVAL
+ struct timeval {
+ 	time_t		tv_sec;		/* seconds */
+ 	suseconds_t	tv_usec;	/* microseconds */
+ };
++#endif /* _STRUCT_TIMEVAL */
+ 
+ struct timezone {
+ 	int	tz_minuteswest;	/* minutes west of Greenwich */
+ 	int	tz_dsttime;	/* type of dst correction */
+ };
+ 
+-#ifdef __KERNEL__
++#endif /* _SYS_TIME_H */
+ 
+ /* Parameters used to convert the timespec values: */
+ #define MSEC_PER_SEC		1000L
+@@ -33,6 +39,8 @@
+ #define NSEC_PER_SEC		1000000000L
+ #define NSEC_PER_USEC		1000L
+ 
++#ifdef __KERNEL__
++
+ static inline int timespec_equal(struct timespec *a, struct timespec *b)
+ {
+ 	return (a->tv_sec == b->tv_sec) && (a->tv_nsec == b->tv_nsec);
+@@ -61,9 +68,11 @@
+ 	return lhs->tv_usec - rhs->tv_usec;
+ }
+ 
++#ifndef _TIME_H
+ extern unsigned long mktime(const unsigned int year, const unsigned int mon,
+ 			    const unsigned int day, const unsigned int hour,
+ 			    const unsigned int min, const unsigned int sec);
++#endif
+ 
+ extern void set_normalized_timespec(struct timespec *ts, time_t sec, long nsec);
+ 
+@@ -165,15 +174,19 @@
+ #define	ITIMER_VIRTUAL		1
+ #define	ITIMER_PROF		2
+ 
++#ifndef _TIME_H
+ struct itimerspec {
+ 	struct timespec it_interval;	/* timer period */
+ 	struct timespec it_value;	/* timer expiration */
+ };
++#endif
+ 
++#ifndef _SYS_TIME_H
+ struct itimerval {
+ 	struct timeval it_interval;	/* timer interval */
+ 	struct timeval it_value;	/* current value */
+ };
++#endif
+ 
+ /*
+  * The IDs of the various system clocks (for POSIX.1b interval timers):
+diff -ur linux-2.6.0/include/linux/workqueue.h linux-2.6.0/include/linux.gentoo/workqueue.h
+--- linux-2.6.0/include/linux/workqueue.h	2003-12-27 19:22:38.000000000 +0000
++++ linux-2.6.0/include/linux.gentoo/workqueue.h	2003-12-27 19:19:31.000000000 +0000
+@@ -5,6 +5,8 @@
+ #ifndef _LINUX_WORKQUEUE_H
+ #define _LINUX_WORKQUEUE_H
+ 
++#ifdef __KERNEL__
++
+ #include <linux/timer.h>
+ #include <linux/linkage.h>
+ 
+@@ -73,5 +75,7 @@
+ 	return del_timer_sync(&work->timer);
+ }
+ 
++#endif /* __KERNEL__ */
++
+ #endif
+ 
+diff -ur linux-2.6.0/include/asm-i386/mpspec.h linux-2.6.0/include/asm-i386/mpspec.h
+--- linux-2.6.0/include/asm-i386/mpspec.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.0/include/asm-i386/mpspec.h	2004-01-19 20:01:11.000000000 +0000
+@@ -3,7 +3,7 @@
+ 
+ #include <linux/cpumask.h>
+ #include <asm/mpspec_def.h>
+-#include <mach_mpspec.h>
++#include <asm/mach-generic/mach_mpspec.h>
+ 
+ extern int mp_bus_id_to_type [MAX_MP_BUSSES];
+ extern int mp_bus_id_to_node [MAX_MP_BUSSES];
+diff -ur linux-2.6.0/include/asm-i386/processor.h linux-2.6.0/include/asm-i386/processor.h
+--- linux-2.6.0/include/asm-i386/processor.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.0/include/asm-i386/processor.h	2004-01-19 20:01:11.000000000 +0000
+@@ -8,7 +8,9 @@
+ #define __ASM_I386_PROCESSOR_H
+ 
+ #include <asm/vm86.h>
++#ifdef __KERNEL__
+ #include <asm/math_emu.h>
++#endif
+ #include <asm/segment.h>
+ #include <asm/page.h>
+ #include <asm/types.h>
+diff -ur linux-2.6.0/include/asm-i386/semaphore.h linux-2.6.0/include/asm-i386/semaphore.h
+--- linux-2.6.0/include/asm-i386/semaphore.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.0/include/asm-i386/semaphore.h	2004-01-19 20:01:11.000000000 +0000
+@@ -3,8 +3,6 @@
+ 
+ #include <linux/linkage.h>
+ 
+-#ifdef __KERNEL__
+-
+ /*
+  * SMP- and interrupt-safe semaphores..
+  *
+@@ -214,4 +212,3 @@
+ }
+ 
+ #endif
+-#endif
+diff -ur linux-2.6.8.1/include/asm-i386/signal.h linux-2.6.8.1/include/asm-i386/signal.h
+--- linux-2.6.8.1/include/asm-i386/signal.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.8.1/include/asm-i386/signal.h	2004-01-19 20:01:11.000000000 +0000
+@@ -26,7 +26,9 @@
+ /* Here we must cater to libcs that poke about in kernel headers.  */
+ 
+ #define NSIG		32
++#ifndef __sigset_t_defined
+ typedef unsigned long sigset_t;
++#endif
+ 
+ #endif /* __KERNEL__ */
+ 
+@@ -155,6 +157,7 @@
+ #else
+ /* Here we must cater to libcs that poke about in kernel headers.  */
+ 
++#ifndef _SIGNAL_H
+ struct sigaction {
+ 	union {
+ 	  __sighandler_t _sa_handler;
+@@ -164,13 +167,16 @@
+ #define sa_handler	_u._sa_handler
+ #define sa_sigaction	_u._sa_sigaction
+ 
++#endif
+ #endif /* __KERNEL__ */
+ 
++#ifndef _SIGNAL_H
+ typedef struct sigaltstack {
+ 	void __user *ss_sp;
+ 	int ss_flags;
+ 	size_t ss_size;
+ } stack_t;
++#endif
+ 
+ #ifdef __KERNEL__
+ #include <asm/sigcontext.h>
+diff -ur linux-2.6.0/include/asm-i386/smp.h linux-2.6.0/include/asm-i386/smp.h
+--- linux-2.6.0/include/asm-i386/smp.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.0/include/asm-i386/smp.h	2004-01-19 20:01:11.000000000 +0000
+@@ -70,7 +70,7 @@
+ #ifdef APIC_DEFINITION
+ extern int hard_smp_processor_id(void);
+ #else
+-#include <mach_apicdef.h>
++#include <asm/mach-generic/mach_apicdef.h>
+ static inline int hard_smp_processor_id(void)
+ {
+ 	/* we don't want to mark this access volatile - bad code generation */
+diff -ur linux-2.6.0/include/linux/types.h linux-2.6.0/include/linux.gentoo/types.h
+--- linux-2.6.0/include/linux/types.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.0/include/linux.gentoo/types.h	2004-01-19 20:01:11.000000000 +0000
+@@ -19,12 +19,24 @@
+ 
+ typedef __u32 __kernel_dev_t;
+ 
++#ifndef _SYS_SELECT_H
+ typedef __kernel_fd_set		fd_set;
++#endif
++#ifndef __dev_t_defined
+ typedef __kernel_dev_t		dev_t;
++#endif
++#ifndef __ino_t_defined
+ typedef __kernel_ino_t		ino_t;
++#endif
++#ifndef __mode_t_defined
+ typedef __kernel_mode_t		mode_t;
++#endif
++#ifndef __nlink_t_defined
+ typedef __kernel_nlink_t	nlink_t;
++#endif
++#ifndef __off_t_defined
+ typedef __kernel_off_t		off_t;
++#endif
+ typedef __kernel_pid_t		pid_t;
+ typedef __kernel_daddr_t	daddr_t;
+ typedef __kernel_key_t		key_t;
+@@ -34,7 +46,9 @@
+ 
+ #ifdef __KERNEL__
+ typedef __kernel_uid32_t	uid_t;
++#define __uid_t_defined
+ typedef __kernel_gid32_t	gid_t;
++#define __gid_t_defined
+ typedef __kernel_uid16_t        uid16_t;
+ typedef __kernel_gid16_t        gid16_t;
+ 
+@@ -49,7 +63,9 @@
+  */
+ #else
+ typedef __kernel_uid_t		uid_t;
++#define __uid_t_defined
+ typedef __kernel_gid_t		gid_t;
++#define __gid_t_defined
+ #endif /* __KERNEL__ */
+ 
+ #if defined(__GNUC__) && !defined(__STRICT_ANSI__)
+@@ -165,20 +165,26 @@
+ typedef __u16 __bitwise __be16;
+ typedef __u32 __bitwise __le32;
+ typedef __u32 __bitwise __be32;
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
+ typedef __u64 __bitwise __le64;
+ typedef __u64 __bitwise __be64;
+-#endif
+ 
+ #ifdef __KERNEL__
+ typedef unsigned __bitwise__ gfp_t;
+ #endif
+ 
++#ifndef _SYS_TYPES_H
+ struct ustat {
+ 	__kernel_daddr_t	f_tfree;
+ 	__kernel_ino_t		f_tinode;
+ 	char			f_fname[6];
+ 	char			f_fpack[6];
+ };
++#endif
++
++/* Fix bad upstream jojo in XEmacs; bug #82690. Temporary fix only warning until upstream fixes
++   things... */
++#ifdef register
++#undef register
++#endif
+ 
+ #endif /* _LINUX_TYPES_H */
+diff -ur linux-2.6.8.1/include/asm-generic/siginfo.h linux-2.6.8.1-gentoo/include/asm-generic/siginfo.h
+--- linux-2.6.8.1/include/asm-generic/siginfo.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.8.1-gentoo/include/asm-generic/siginfo.h	2004-01-19 20:01:11.000000000 +0000
+@@ -4,10 +4,12 @@
+ #include <linux/compiler.h>
+ #include <linux/types.h>
+ 
++#ifndef _SIGNAL_H
+ typedef union sigval {
+ 	int sival_int;
+ 	void __user *sival_ptr;
+ } sigval_t;
++#endif
+ 
+ /*
+  * This is the size (including padding) of the part of the
+@@ -31,7 +33,7 @@
+ #endif
+ 
+ #ifndef HAVE_ARCH_SIGINFO_T
+-
++#ifndef _SIGNAL_H
+ typedef struct siginfo {
+ 	int si_signo;
+ 	int si_errno;
+@@ -86,7 +88,7 @@
+ 		} _sigpoll;
+ 	} _sifields;
+ } siginfo_t;
+-
++#endif
+ #endif
+ 
+ /*
+@@ -242,6 +244,7 @@
+ #define SIGEV_PAD_SIZE	((SIGEV_MAX_SIZE/sizeof(int)) - 3)
+ #endif
+ 
++#ifndef _SIGNAL_H
+ typedef struct sigevent {
+ 	sigval_t sigev_value;
+ 	int sigev_signo;
+@@ -256,7 +259,7 @@
+ 		} _sigev_thread;
+ 	} _sigev_un;
+ } sigevent_t;
+-
++#endif
+ #define sigev_notify_function	_sigev_un._sigev_thread._function
+ #define sigev_notify_attributes	_sigev_un._sigev_thread._attribute
+ #define sigev_notify_thread_id	 _sigev_un._tid
+diff -ur linux-2.6.11/include/linux/jiffies.h linux-2.6.11/include/linux.gentoo/jiffies.h
+--- linux-2.6.11/include/linux/jiffies.h	2004-01-19 20:18:36.000000000 +0000
++++ linux-2.6.11/include/linux.gentoo/jiffies.h	2004-01-19 20:01:11.000000000 +0000
+@@ -13,15 +13,15 @@
+  * without holding read_lock_irq(&xtime_lock).
+  * get_jiffies_64() will do this for you as appropriate.
+  */
+-extern u64 __jiffy_data jiffies_64;
++extern __u64 __jiffy_data jiffies_64;
+ extern unsigned long volatile __jiffy_data jiffies;
+ 
+ #if (BITS_PER_LONG < 64)
+-u64 get_jiffies_64(void);
++__u64 get_jiffies_64(void);
+ #else
+-static inline u64 get_jiffies_64(void)
++static inline __u64 get_jiffies_64(void)
+ {
+-	return (u64)jiffies;
++	return (__u64)jiffies;
+ }
+ #endif
+ 
+diff -ur linux-2.6.15/include/linux/i2c.h linux-2.6.15-gentoo/include/linux/i2c.h
+--- linux-2.6.15/include/linux/i2c.h	2004-02-07 13:29:15.099504640 -0500
++++ linux-2.6.15-gentoo/include/linux/i2c.h	2004-02-07 13:35:53.956869104 -0500
+@@ -26,13 +26,21 @@
+ #ifndef _LINUX_I2C_H
+ #define _LINUX_I2C_H
+ 
+-#include <linux/module.h>
+-#include <linux/types.h>
++#ifdef __KERNEL__
++#	include <linux/module.h>
++#	include <linux/types.h>
++#else
++#	define __KERNEL__
++#	include <linux/types.h>
++#	undef __KERNEL__
++#endif
+ #include <linux/i2c-id.h>
++#ifdef __KERNEL__
+ #include <linux/mod_devicetable.h>
+ #include <linux/device.h>	/* for struct device */
+ #include <linux/sched.h>	/* for completion */
+ #include <linux/mutex.h>
++#endif
+ 
+ /* --- For i2c-isa ---------------------------------------------------- */
+ 
+@@ -109,6 +117,7 @@
+  * events.
+  */
+ 
++#ifdef __KERNEL__
+ struct i2c_driver {
+ 	struct module *owner;
+ 	char name[32];
+@@ -268,6 +277,7 @@
+ {
+ 	dev_set_drvdata (&dev->dev, data);
+ }
++#endif
+ 
+ /*flags for the driver struct: */
+ #define I2C_DF_NOTIFY	0x01		/* notify on bus (de/a)ttaches 	*/
+diff -ur linux-2.6.3/include/linux/usbdevice_fs.h linux-2.6.3/include/linux/usbdevice_fs.h
+--- linux-2.6.3/include/linux/usbdevice_fs.h	2004-02-22 16:52:07.000000000 +0000
++++ linux-2.6.3/include/linux/usbdevice_fs.h	2004-02-22 22:10:45.000000000 +0000
+@@ -31,6 +31,7 @@
+ #ifndef _LINUX_USBDEVICE_FS_H
+ #define _LINUX_USBDEVICE_FS_H
+ 
++#include <linux/compiler.h>
+ #include <linux/types.h>
+ 
+ /* --------------------------------------------------------------------- */
+diff -ur linux-2.6.4/include/linux/mroute.h linux-2.6.4-gentoo/include/linux/mroute.h
+--- linux-2.6.4/include/linux/mroute.h	2004-03-13 13:04:54.084534200 +0000
++++ linux-2.6.4-gentoo/include/linux/mroute.h	2004-03-13 13:14:04.356880088 +0000
+@@ -1,6 +1,7 @@
+ #ifndef __LINUX_MROUTE_H
+ #define __LINUX_MROUTE_H
+ 
++#include <linux/types.h>
+ #include <linux/sockios.h>
+ #include <linux/in.h>
+ 
+diff -u linux-2.6.15-gentoo/include/asm-powerpc/signal.h linux-2.6.15/include/asm-powerpc/signal.h
+--- linux-2.6.15-gentoo/include/asm-powerpc/signal.h	2004-06-02 18:35:04.093477880 +0100
++++ linux-2.6.15/include/asm-powerpc/signal.h	2006-01-08 02:30:39.000000000 +0000
+@@ -84,6 +95,8 @@
+ 
+ #define SA_RESTORER	0x04000000U
+ 
++#ifdef __KERNEL__
++
+ /*
+  * sigaltstack controls
+  */
+@@ -93,6 +106,8 @@
+ #define MINSIGSTKSZ	2048
+ #define SIGSTKSZ	8192
+ 
++#endif /* __KERNEL__ */
++
+ #include <asm-generic/signal.h>
+ 
+ struct old_sigaction {
+@@ -116,28 +131,51 @@
+ #define SIG_ERR	((__sighandler_t)-1)	/* error return from signal */
+ 
+ struct old_sigaction {
++#ifdef __USE_POSIX199309
++#	ifdef sa_handler
++#		undef sa_handler
++#	endif
++#	ifdef sa_sigaction
++#		undef sa_sigaction
++#	endif
++	union
++	{
++		/* Used if SA_SIGINFO is not set.  */
++			__sighandler_t sa_handler;
++		/* Used if SA_SIGINFO is set.  */
++			void (*sa_sigaction) (int, siginfo_t *, void *);
++	}
++	__sigaction_handler;
++#	define sa_handler	__sigaction_handler.sa_handler
++#	define sa_sigaction	__sigaction_handler.sa_sigaction
++#else
+ 	__sighandler_t sa_handler;
++#endif
+ 	old_sigset_t sa_mask;
+ 	unsigned long sa_flags;
+ 	__sigrestore_t sa_restorer;
+ };
+ 
++#ifndef _SIGNAL_H
+ struct sigaction {
+ 	__sighandler_t sa_handler;
+ 	unsigned long sa_flags;
+ 	__sigrestore_t sa_restorer;
+ 	sigset_t sa_mask;		/* mask last for extensibility */
+ };
++#endif
+ 
+ struct k_sigaction {
+ 	struct sigaction sa;
+ };
+ 
++#ifndef _SIGNAL_H
+ typedef struct sigaltstack {
+ 	void __user *ss_sp;
+ 	int ss_flags;
+ 	size_t ss_size;
+ } stack_t;
++#endif
+ 
+ #ifdef __KERNEL__
+ struct pt_regs;
+diff -ur linux-2.6.6/include/asm-x86_64/processor.h linux-2.6.6-gentoo/include/asm-x86_64/processor.h
+--- linux-2.6.6/include/asm-x86_64/processor.h	2004-06-02 19:25:24.000000000 +0100
++++ linux-2.6.6-gentoo/include/asm-x86_64/processor.h	2004-06-02 19:24:31.000000000 +0100
+@@ -136,7 +136,11 @@
+  * enable), so that any CPU's that boot up
+  * after us can get the correct flags.
+  */
++#ifndef __BOUNDS_CHECKING_ON
+ extern unsigned long mmu_cr4_features;
++#else
++unsigned long mmu_cr4_features;
++#endif
+ 
+ static inline void set_in_cr4 (unsigned long mask)
+ {
+diff -ur linux-2.6.15/include/asm-x86_64/system.h linux-2.6.15-gentoo/include/asm-x86_64/system.h
+--- linux-2.6.15/include/asm-x86_64/system.h	2004-06-02 19:25:27.000000000 +0100
++++ linux-2.6.15-gentoo/include/asm-x86_64/system.h	2004-06-02 19:25:17.000000000 +0100
+@@ -4,6 +4,31 @@
+ #include <linux/config.h>
+ #include <linux/kernel.h>
+ #include <asm/segment.h>
++#include <linux/bitops.h> /* for LOCK_PREFIX... */
++
++/*
++ * Alternative inline assembly with input.
++ * 
++ * Peculiarities:
++ * No memory clobber here. 
++ * Argument numbers start with 1.
++ * Best is to use constraints that are fixed size (like (%1) ... "r")
++ * If you use variable sized constraints like "m" or "g" in the 
++ * replacement make sure to pad to the worst case length.
++ */
++#define alternative_input(oldinstr, newinstr, feature, input...)	\
++	asm volatile ("661:\n\t" oldinstr "\n662:\n"			\
++		      ".section .altinstructions,\"a\"\n"		\
++		      "  .align 8\n"					\
++		      "  .quad 661b\n"            /* label */		\
++		      "  .quad 663f\n"		  /* new instruction */	\
++		      "  .byte %c0\n"             /* feature bit */	\
++		      "  .byte 662b-661b\n"       /* sourcelen */	\
++		      "  .byte 664f-663f\n"       /* replacementlen */	\
++		      ".previous\n"					\
++		      ".section .altinstr_replacement,\"ax\"\n"		\
++		      "663:\n\t" newinstr "\n664:\n"   /* replacement */ \
++		      ".previous" :: "i" (feature), ##input)
+ 
+ #ifdef __KERNEL__
+ 
+@@ -113,30 +138,6 @@
+ 		      "663:\n\t" newinstr "\n664:\n"   /* replacement */ \
+ 		      ".previous" :: "i" (feature) : "memory")  
+ 
+-/*
+- * Alternative inline assembly with input.
+- * 
+- * Peculiarities:
+- * No memory clobber here. 
+- * Argument numbers start with 1.
+- * Best is to use constraints that are fixed size (like (%1) ... "r")
+- * If you use variable sized constraints like "m" or "g" in the 
+- * replacement make sure to pad to the worst case length.
+- */
+-#define alternative_input(oldinstr, newinstr, feature, input...)	\
+-	asm volatile ("661:\n\t" oldinstr "\n662:\n"			\
+-		      ".section .altinstructions,\"a\"\n"		\
+-		      "  .align 8\n"					\
+-		      "  .quad 661b\n"            /* label */		\
+-		      "  .quad 663f\n"		  /* new instruction */	\
+-		      "  .byte %c0\n"             /* feature bit */	\
+-		      "  .byte 662b-661b\n"       /* sourcelen */	\
+-		      "  .byte 664f-663f\n"       /* replacementlen */	\
+-		      ".previous\n"					\
+-		      ".section .altinstr_replacement,\"ax\"\n"		\
+-		      "663:\n\t" newinstr "\n664:\n"   /* replacement */ \
+-		      ".previous" :: "i" (feature), ##input)
+-
+ /* Like alternative_input, but with a single output argument */
+ #define alternative_io(oldinstr, newinstr, feature, output, input...) \
+ 	asm volatile ("661:\n\t" oldinstr "\n662:\n"			\
+@@ -240,32 +241,32 @@
+ #define __HAVE_ARCH_CMPXCHG 1
+ 
+ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
+-				      unsigned long new, int size)
++				      unsigned long __new, int size)
+ {
+ 	unsigned long prev;
+ 	switch (size) {
+ 	case 1:
+ 		__asm__ __volatile__(LOCK_PREFIX "cmpxchgb %b1,%2"
+ 				     : "=a"(prev)
+-				     : "q"(new), "m"(*__xg(ptr)), "0"(old)
++				     : "q"(__new), "m"(*__xg(ptr)), "0"(old)
+ 				     : "memory");
+ 		return prev;
+ 	case 2:
+ 		__asm__ __volatile__(LOCK_PREFIX "cmpxchgw %w1,%2"
+ 				     : "=a"(prev)
+-				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
++				     : "r"(__new), "m"(*__xg(ptr)), "0"(old)
+ 				     : "memory");
+ 		return prev;
+ 	case 4:
+ 		__asm__ __volatile__(LOCK_PREFIX "cmpxchgl %k1,%2"
+ 				     : "=a"(prev)
+-				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
++				     : "r"(__new), "m"(*__xg(ptr)), "0"(old)
+ 				     : "memory");
+ 		return prev;
+ 	case 8:
+ 		__asm__ __volatile__(LOCK_PREFIX "cmpxchgq %1,%2"
+ 				     : "=a"(prev)
+-				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
++				     : "r"(__new), "m"(*__xg(ptr)), "0"(old)
+ 				     : "memory");
+ 		return prev;
+ 	}
+diff -ur linux-2.6.6/include/linux/socket.h linux-2.6.6-gentoo/include/linux/socket.h
+--- linux-2.6.6/include/linux/socket.h	2004-05-25 17:47:07.000000000 +0100
++++ linux-2.6.6-gentoo/include/linux/socket.h	2004-06-02 21:19:49.000000000 +0100
+@@ -16,6 +16,10 @@
+ 				/* _SS_MAXSIZE value minus size of ss_family */
+ } __attribute__ ((aligned(_K_SS_ALIGNSIZE)));	/* force desired alignment */
+ 
++#ifndef _SYS_SOCKET_H
++typedef unsigned short	sa_family_t;
++#endif
++
+ #if defined(__KERNEL__) || !defined(__GLIBC__) || (__GLIBC__ < 2)
+ 
+ #include <linux/config.h>		/* for CONFIG_COMPAT */
+@@ -26,8 +30,6 @@
+ #include <linux/types.h>		/* pid_t			*/
+ #include <linux/compiler.h>		/* __user			*/
+ 
+-typedef unsigned short	sa_family_t;
+-
+ /*
+  *	1003.1g requires sa_family_t and that sa_data is char.
+  */
+diff -ur linux-2.6.7/include/asm-x86_64/sigcontext.h linux-2.6.7-gentoo/include/asm-x86_64/sigcontext.h
+--- linux-2.6.7/include/asm-x86_64/sigcontext.h	2004-05-25 17:47:07.000000000 +0100
++++ linux-2.6.7-gentoo/include/asm-x86_64/sigcontext.h	2004-06-02 22:04:52.000000000 +0100
+@@ -7,6 +7,12 @@
+ /* FXSAVE frame */
+ /* Note: reserved1/2 may someday contain valuable data. Always save/restore
+    them when you change signal frames. */
++
++#if ! defined(__KERNEL__) && ! defined(__UCLIBC__)
++#include <signal.h> /* Pulls in <bits/sigcontext.h> which contains both */
++                    /* of these structures ... except on uClibc ... */
++#else
++#if ! defined(_SIGNAL_H) || defined(__UCLIBC__)
+ struct _fpstate {
+ 	__u16	cwd;
+ 	__u16	swd;
+@@ -53,3 +59,5 @@
+ };
+ 
+ #endif
++#endif
++#endif
+diff -ur linux-2.6.6/include/linux/gfp.h linux-2.6.6-gentoo/include/linux/gfp.h
+--- linux-2.6.6/include/linux/gfp.h	2004-04-04 04:36:52.000000000 +0100
++++ linux-2.6.6-gentoo/include/linux/gfp.h	2004-05-11 19:51:06.412779200 +0100
+@@ -48,6 +48,7 @@
+ 
+ #define GFP_DMA		__GFP_DMA
+ 
++#ifdef __KERNEL__
+ 
+ /*
+  * There is only one page-allocator function, and two main namespaces to
+@@ -96,4 +97,5 @@
+ 
+ void page_alloc_init(void);
+ 
++#endif /* __KERNEL__ */
+ #endif /* __LINUX_GFP_H */
+diff -ur linux-2.6.6/include/linux/percpu.h linux-2.6.6-gentoo/include/linux/percpu.h
+--- linux-2.6.6/include/linux/percpu.h	2004-04-04 04:38:14.000000000 +0100
++++ linux-2.6.6-gentoo/include/linux/percpu.h	2004-05-11 19:33:00.987788880 +0100
+@@ -1,5 +1,6 @@
+ #ifndef __LINUX_PERCPU_H
+ #define __LINUX_PERCPU_H
++#include <linux/gfp.h>
+ #include <linux/spinlock.h> /* For preempt_disable() */
+ #include <linux/slab.h> /* For kmalloc() */
+ #include <linux/smp.h>
+diff -ur linux-2.6.6/include/linux/percpu_counter.h linux-2.6.6-gentoo/include/linux/percpu_counter.h
+--- linux-2.6.6/include/linux/percpu_counter.h	2004-04-04 04:37:23.000000000 +0100
++++ linux-2.6.6-gentoo/include/linux/percpu_counter.h	2004-05-11 19:46:31.423583912 +0100
+@@ -4,6 +4,7 @@
+  * WARNING: these things are HUGE.  4 kbytes per counter on 32-way P4.
+  */
+ 
++#include <linux/preempt.h>
+ #include <linux/config.h>
+ #include <linux/spinlock.h>
+ #include <linux/smp.h>
+
+diff -ur linux-2.6.7/include/linux/pid.h linux-2.6.7-gentoo/include/linux/pid.h
+--- linux-2.6.7/include/linux/pid.h	2004-06-16 06:19:02.000000000 +0100
++++ linux-2.6.7-gentoo/pid.h	2004-06-18 18:38:37.252859416 +0100
+@@ -1,6 +1,10 @@
+ #ifndef _LINUX_PID_H
+ #define _LINUX_PID_H
+ 
++#include <linux/wait.h>
++#include <linux/types.h>
++#include <asm/atomic.h>
++
+ enum pid_type
+ {
+ 	PIDTYPE_PID,
+@@ -29,6 +31,8 @@
+ #define pid_task(elem, type) \
+ 	list_entry(elem, struct task_struct, pids[type].pid_chain)
+ 
++#ifdef __KERNEL__
++
+ /*
+  * attach_pid() and link_pid() must be called with the tasklist_lock
+  * write-held.
+@@ -61,4 +64,5 @@
+ 			elem = elem->next, prefetch(elem->next), 	\
+ 			task = pid_task(elem, type))
+ 
++#endif /* __KERNEL__ */
+ #endif /* _LINUX_PID_H */
+diff -ur linux-2.6.15/include/linux/compiler.h linux-2.6.15-gentoo/include/linux/compiler.h
+--- linux-2.6.15/include/linux/compiler.h	2004-06-12 12:11:54.000000000 +0100
++++ linux-2.6.15-gentoo/include/linux/compiler.h	2004-06-24 09:48:32.478502752 +0100
+@@ -34,7 +34,14 @@
+ # define __cond_lock(x) (x)
+ #endif
+ 
+-#ifdef __KERNEL__
++#if (__GNUC__ > 3) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1)
++#ifndef asm
++#  define asm           __asm__
++#endif
++#ifndef volatile
++#  define volatile      __volatile__
++#endif
++#endif
+ 
+ #if __GNUC__ > 4
+ #error no compiler-gcc.h file for this gcc version
+@@ -66,7 +73,11 @@
+ 
+ /* Optimization barrier */
+ #ifndef barrier
+-# define barrier() __memory_barrier()
++# ifdef mb
++#   define barrier() mb()
++# else
++#   define barrier() __asm__ __volatile__ ("" : : : "memory")
++# endif
+ #endif
+ 
+ #ifndef RELOC_HIDE
+@@ -76,8 +87,6 @@
+     (typeof(ptr)) (__ptr + (off)); })
+ #endif
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* __ASSEMBLY__ */
+ 
+ /*
+@@ -147,12 +156,14 @@
+ # define __attribute_const__	/* unimplemented */
+ #endif
+ 
+-#ifndef noinline
+-#define noinline
+-#endif
+-
+ #ifndef __always_inline
+-#define __always_inline inline
++#define __always_inline __inline__
+ #endif
+ 
++#ifdef __cplusplus
++#define __cast__(_to) (_to)
++#else
++#define __cast__(_to)
++#endif
++
+ #endif /* __LINUX_COMPILER_H */
+diff -ur linux-2.6.6/include/linux/hiddev.h linux-2.6.6-gentoo/include/linux/hiddev.h
+--- linux-2.6.6/include/linux/hiddev.h	2004-06-12 12:11:54.000000000 +0100
++++ linux-2.6.6-gentoo/include/linux/hiddev.h	2004-07-10 00:13:36.584448824 +0100
+@@ -33,6 +33,8 @@
+  * The event structure itself
+  */
+ 
++#define HID_MAX_USAGES 1024 /* From: drivers/usb/input/hid.h */
++
+ struct hiddev_event {
+ 	unsigned hid;
+ 	signed int value;
+diff -ur linux-2.6.7/include/asm-i386/cache.h linux-2.6.7-gentoo/include/asm-i386/cache.h
+--- linux-2.6.7/include/asm-i386/cache.h	2004-07-13 16:33:15.000000000 +0200
++++ linux-2.6.7-gentoo/include/asm-i386/cache.h	2004-07-13 16:50:38.384364344 +0200
+@@ -7,7 +7,11 @@
+ #include <linux/config.h>
+ 
+ /* L1 cache line size */
++#ifndef CONFIG_X86_L1_CACHE_SHIFT
++#define L1_CACHE_SHIFT 7  /* 7 is given with X86_GENERIC kernel config */
++#else
+ #define L1_CACHE_SHIFT	(CONFIG_X86_L1_CACHE_SHIFT)
++#endif
+ #define L1_CACHE_BYTES	(1 << L1_CACHE_SHIFT)
+ 
+ #define L1_CACHE_SHIFT_MAX 7	/* largest L1 which this arch supports */
+diff -ur linux-2.6.7/include/asm-i386/system.h linux-2.6.7-gentoo/include/asm-i386/system.h
+--- linux-2.6.7/include/asm-i386/system.h	2004-06-16 07:18:38.000000000 +0200
++++ linux-2.6.7-gentoo/include/asm-i386/system.h	2004-07-13 16:34:50.632444536 +0200
+@@ -269,26 +269,26 @@
+ #endif
+ 
+ static inline unsigned long __cmpxchg(volatile void *ptr, unsigned long old,
+-				      unsigned long new, int size)
++				      unsigned long __new, int size)
+ {
+ 	unsigned long prev;
+ 	switch (size) {
+ 	case 1:
+ 		__asm__ __volatile__(LOCK_PREFIX "cmpxchgb %b1,%2"
+ 				     : "=a"(prev)
+-				     : "q"(new), "m"(*__xg(ptr)), "0"(old)
++				     : "q"(__new), "m"(*__xg(ptr)), "0"(old)
+ 				     : "memory");
+ 		return prev;
+ 	case 2:
+ 		__asm__ __volatile__(LOCK_PREFIX "cmpxchgw %w1,%2"
+ 				     : "=a"(prev)
+-				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
++				     : "r"(__new), "m"(*__xg(ptr)), "0"(old)
+ 				     : "memory");
+ 		return prev;
+ 	case 4:
+ 		__asm__ __volatile__(LOCK_PREFIX "cmpxchgl %1,%2"
+ 				     : "=a"(prev)
+-				     : "r"(new), "m"(*__xg(ptr)), "0"(old)
++				     : "r"(__new), "m"(*__xg(ptr)), "0"(old)
+ 				     : "memory");
+ 		return prev;
+ 	}
+@@ -307,15 +307,15 @@
+ extern unsigned long cmpxchg_386_u32(volatile void *, u32, u32);
+ 
+ static inline unsigned long cmpxchg_386(volatile void *ptr, unsigned long old,
+-				      unsigned long new, int size)
++				      unsigned long __new, int size)
+ {
+ 	switch (size) {
+ 	case 1:
+-		return cmpxchg_386_u8(ptr, old, new);
++		return cmpxchg_386_u8(ptr, old, __new);
+ 	case 2:
+-		return cmpxchg_386_u16(ptr, old, new);
++		return cmpxchg_386_u16(ptr, old, __new);
+ 	case 4:
+-		return cmpxchg_386_u32(ptr, old, new);
++		return cmpxchg_386_u32(ptr, old, __new);
+ 	}
+ 	return old;
+ }
+@@ -336,13 +336,13 @@
+ #ifdef CONFIG_X86_CMPXCHG64
+ 
+ static inline unsigned long long __cmpxchg64(volatile void *ptr, unsigned long long old,
+-				      unsigned long long new)
++				      unsigned long long __new)
+ {
+ 	unsigned long long prev;
+ 	__asm__ __volatile__(LOCK_PREFIX "cmpxchg8b %3"
+ 			     : "=A"(prev)
+-			     : "b"((unsigned long)new),
+-			       "c"((unsigned long)(new >> 32)),
++			     : "b"((unsigned long)__new),
++			       "c"((unsigned long)(__new >> 32)),
+ 			       "m"(*__xg(ptr)),
+ 			       "0"(old)
+ 			     : "memory");
+diff -ur linux-2.6.7/include/asm-i386/processor.h linux-2.6.7-gentoo/include/asm-i386/processor.h
+--- linux-2.6.7/include/asm-i386/processor.h	2004-07-18 13:09:36.191824280 +0100
++++ linux-2.6.7-gentoo/include/asm-i386/processor.h	2004-07-18 13:14:01.627471928 +0100
+@@ -403,8 +403,10 @@
+ 	/*
+ 	 * .. and then another 0x100 bytes for emergency kernel stack
+ 	 */
+-	unsigned long stack[64];
+-} __attribute__((packed));
++	#ifndef stack /* LVM2-Userspace defines this as a function... */
++		unsigned long stack[64];
++	#endif
++}  __attribute__((packed));
+ 
+ #define ARCH_MIN_TASKALIGN	16
+ 
+@@ -491,7 +493,9 @@
+ extern int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags);
+ 
+ extern unsigned long thread_saved_pc(struct task_struct *tsk);
++#ifdef __KERNEL__
+ void show_trace(struct task_struct *task, unsigned long *stack);
++#endif
+ 
+ unsigned long get_wchan(struct task_struct *p);
+ 
+diff -ur linux-2.6.8.1/scripts/mod/file2alias.c linux-2.6.8.1-gentoo/scripts/mod/file2alias.c
+--- linux-2.6.8.1/scripts/mod/file2alias.c.orig	2004-07-22 14:10:33.644026328 -0400
++++ linux-2.6.8.1/scripts/mod/file2alias.c	2004-07-22 14:10:53.613990432 -0400
+@@ -10,6 +10,8 @@
+  * of the GNU General Public License, incorporated herein by reference.
+  */
+ 
++#define __KERNEL__
++#define __KERNEL_ULONG_T__
+ #include "modpost.h"
+ 
+ /* We use the ELF typedefs, since we can't rely on stdint.h being present. */
+diff -ur linux-2.6.7/include/asm-x86_64/pda.h linux-2.6.7-gentoo/include/asm-x86_64/pda.h
+--- linux-2.6.7/include/asm-x86_64/pda.h	2004-07-24 21:30:43.213205064 +0100
++++ linux-2.6.7-gentoo/include/asm-x86_64/pda.h	2004-07-24 21:31:24.238968200 +0100
+@@ -36,7 +36,7 @@
+  * have to mention %fs/%gs.  So it needs to be done this Torvaldian way.
+  */ 
+ #define sizeof_field(type,field)  (sizeof(((type *)0)->field))
+-#define typeof_field(type,field)  typeof(((type *)0)->field)
++#define typeof_field(type,field)  __typeof__(((type *)0)->field)
+ 
+ extern void __bad_pda_field(void);
+ 
+--- linux-2.6.16/include/linux/compiler-gcc.h	2005-12-30 15:03:58.000000000 +0000
++++ linux-2.6.16-gentoo/include/linux/compiler-gcc.h	2005-12-30 11:14:52.000000000 +0000
+@@ -23,10 +23,13 @@
+     (typeof(ptr)) (__ptr + (off)); })
+ 
+ 
+-#define inline		inline		__attribute__((always_inline))
+-#define __inline__	__inline__	__attribute__((always_inline))
+-#define __inline	__inline	__attribute__((always_inline))
+ #define __deprecated			__attribute__((deprecated))
++
++/* Disable - plasmaroo; kernel headers don't use this
++   and this causes clashes with anything that literally
++   uses __attribute__((noinline)).
+ #define  noinline			__attribute__((noinline))
++*/
++
+ #define __attribute_pure__		__attribute__((pure))
+ #define __attribute_const__		__attribute__((__const__))
+diff -ur linux-2.6.7/include/linux/sem.h linux-2.6.7-gentoo/include/linux/sem.h
+--- linux-2.6.7/include/linux/sem.h	2004-07-10 01:47:34.000000000 +0100
++++ linux-2.6.7-gentoo/include/linux/sem.h	2004-07-27 11:48:07.440273000 +0100
+@@ -1,6 +1,7 @@
+ #ifndef _LINUX_SEM_H
+ #define _LINUX_SEM_H
+ 
++#include <linux/compiler.h>
+ #include <linux/ipc.h>
+ #include <asm/atomic.h>
+ 
+diff -ur linux-2.6.7/include/asm-x86_64/bitops.h linux-2.6.7-gentoo/include/asm-x86_64/bitops.h
+--- linux-2.6.7/include/asm-x86_64/bitops.h	2004-07-10 01:47:34.000000000 +0100
++++ linux-2.6.7-gentoo/include/asm-x86_64/bitops.h	2004-07-28 16:08:37.650740208 +0100
+@@ -262,7 +262,7 @@
+ /* return index of first bet set in val or max when no bit is set */
+ static inline unsigned long __scanbit(unsigned long val, unsigned long max)
+ {
+-	asm("bsfq %1,%0 ; cmovz %2,%0" : "=&r" (val) : "r" (val), "r" (max));
++	__asm__("bsfq %1,%0 ; cmovz %2,%0" : "=&r" (val) : "r" (val), "r" (max));
+ 	return val;
+ }
+ 
+diff -urp linux-2.6.7/include/asm-parisc/hardware.h linux-2.6.7-gentoo/include/asm-parisc/hardware.h
+--- linux-2.6.7/include/asm-parisc/hardware.h	2004-08-24 12:09:23.000000000 -0400
++++ linux-2.6.7-gentoo/include/asm-parisc/hardware.h	2004-08-24 11:59:41.978663224 -0400
+@@ -45,41 +46,41 @@ extern char *cpu_name_version[][2]; /* m
+ struct parisc_driver;
+ 
+ struct io_module {
+-        volatile uint32_t nothing;		/* reg 0 */
+-        volatile uint32_t io_eim;
+-        volatile uint32_t io_dc_adata;
+-        volatile uint32_t io_ii_cdata;
+-        volatile uint32_t io_dma_link;		/* reg 4 */
+-        volatile uint32_t io_dma_command;
+-        volatile uint32_t io_dma_address;
+-        volatile uint32_t io_dma_count;
+-        volatile uint32_t io_flex;		/* reg 8 */
+-        volatile uint32_t io_spa_address;
+-        volatile uint32_t reserved1[2];
+-        volatile uint32_t io_command;		/* reg 12 */
+-        volatile uint32_t io_status;
+-        volatile uint32_t io_control;
+-        volatile uint32_t io_data;
+-        volatile uint32_t reserved2;		/* reg 16 */
+-        volatile uint32_t chain_addr;
+-        volatile uint32_t sub_mask_clr;
+-        volatile uint32_t reserved3[13];
+-        volatile uint32_t undefined[480];
+-        volatile uint32_t unpriv[512];
++        volatile __u32 nothing;		/* reg 0 */
++        volatile __u32 io_eim;
++        volatile __u32 io_dc_adata;
++        volatile __u32 io_ii_cdata;
++        volatile __u32 io_dma_link;		/* reg 4 */
++        volatile __u32 io_dma_command;
++        volatile __u32 io_dma_address;
++        volatile __u32 io_dma_count;
++        volatile __u32 io_flex;		/* reg 8 */
++        volatile __u32 io_spa_address;
++        volatile __u32 reserved1[2];
++        volatile __u32 io_command;		/* reg 12 */
++        volatile __u32 io_status;
++        volatile __u32 io_control;
++        volatile __u32 io_data;
++        volatile __u32 reserved2;		/* reg 16 */
++        volatile __u32 chain_addr;
++        volatile __u32 sub_mask_clr;
++        volatile __u32 reserved3[13];
++        volatile __u32 undefined[480];
++        volatile __u32 unpriv[512];
+ };
+ 
+ struct bc_module {
+-        volatile uint32_t unused1[12];
+-        volatile uint32_t io_command;
+-        volatile uint32_t io_status;
+-        volatile uint32_t io_control;
+-        volatile uint32_t unused2[1];
+-        volatile uint32_t io_err_resp;
+-        volatile uint32_t io_err_info;
+-        volatile uint32_t io_err_req;
+-        volatile uint32_t unused3[11];
+-        volatile uint32_t io_io_low;
+-        volatile uint32_t io_io_high;
++        volatile __u32 unused1[12];
++        volatile __u32 io_command;
++        volatile __u32 io_status;
++        volatile __u32 io_control;
++        volatile __u32 unused2[1];
++        volatile __u32 io_err_resp;
++        volatile __u32 io_err_info;
++        volatile __u32 io_err_req;
++        volatile __u32 unused3[11];
++        volatile __u32 io_io_low;
++        volatile __u32 io_io_high;
+ };
+ 
+ #define HPHW_NPROC     0 
+diff -urp linux-2.6.7/include/asm-parisc/processor.h linux-2.6.7-gentoo/include/asm-parisc/processor.h
+--- linux-2.6.7/include/asm-parisc/processor.h	2004-08-24 12:09:23.000000000 -0400
++++ linux-2.6.7-gentoo/include/asm-parisc/processor.h	2004-08-24 11:59:41.950667480 -0400
+@@ -12,11 +12,11 @@
+ #include <linux/config.h>
+ #include <linux/threads.h>
+ 
++#include <asm/types.h>
+ #include <asm/hardware.h>
+ #include <asm/page.h>
+ #include <asm/pdc.h>
+ #include <asm/ptrace.h>
+-#include <asm/types.h>
+ #include <asm/system.h>
+ #endif /* __ASSEMBLY__ */
+ 
+diff -up linux-2.6.11/include/linux/list.h linux-2.6.11-gentoo/include/linux/list.h
+--- linux-2.6.11/include/linux/list.h	2004-08-20 19:54:37.000000000 +0100
++++ linux-2.6.11-gentoo/linux/list.h	2004-08-24 17:52:07.416139368 +0100
+@@ -1,8 +1,6 @@
+ #ifndef _LINUX_LIST_H
+ #define _LINUX_LIST_H
+ 
+-#ifdef __KERNEL__
+-
+ #include <linux/stddef.h>
+ #include <linux/prefetch.h>
+ #include <asm/system.h>
+@@ -38,20 +36,39 @@ struct list_head {
+ 	(ptr)->next = (ptr); (ptr)->prev = (ptr); \
+ } while (0)
+ 
++struct hlist_head {
++	struct hlist_node *first;
++};
++
++struct hlist_node {
++	struct hlist_node *next, **pprev;
++};
++
++/**
++ * list_empty - tests whether a list is empty
++ * @head: the list to test.
++ */
++static inline int list_empty(const struct list_head *head)
++{
++       return head->next == head;
++}
++
++#if defined(__KERNEL__) || defined(__LINUX_KEYBOARD_H)
++
+ /*
+  * Insert a new entry between two known consecutive entries.
+  *
+  * This is only for internal list manipulation where we know
+  * the prev/next entries already!
+  */
+-static inline void __list_add(struct list_head *new,
++static inline void __list_add(struct list_head *_new,
+ 			      struct list_head *prev,
+ 			      struct list_head *next)
+ {
+-	next->prev = new;
+-	new->next = next;
+-	new->prev = prev;
+-	prev->next = new;
++	next->prev = _new;
++	_new->next = next;
++	_new->prev = prev;
++	prev->next = _new;
+ }
+ 
+ /**
+@@ -62,9 +62,9 @@ static inline void __list_add(struct lis
+  * Insert a new entry after the specified head.
+  * This is good for implementing stacks.
+  */
+-static inline void list_add(struct list_head *new, struct list_head *head)
++static inline void list_add(struct list_head *_new, struct list_head *head)
+ {
+-	__list_add(new, head, head->next);
++	__list_add(_new, head, head->next);
+ }
+ 
+ /**
+@@ -75,9 +75,9 @@ static inline void list_add(struct list_
+  * Insert a new entry before the specified head.
+  * This is useful for implementing queues.
+  */
+-static inline void list_add_tail(struct list_head *new, struct list_head *head)
++static inline void list_add_tail(struct list_head *_new, struct list_head *head)
+ {
+-	__list_add(new, head->prev, head);
++	__list_add(_new, head->prev, head);
+ }
+ 
+ /*
+@@ -86,14 +86,14 @@ static inline void list_add_tail(struct 
+  * This is only for internal list manipulation where we know
+  * the prev/next entries already!
+  */
+-static inline void __list_add_rcu(struct list_head * new,
++static inline void __list_add_rcu(struct list_head * _new,
+ 		struct list_head * prev, struct list_head * next)
+ {
+-	new->next = next;
+-	new->prev = prev;
++	_new->next = next;
++	_new->prev = prev;
+ 	smp_wmb();
+-	next->prev = new;
+-	prev->next = new;
++	next->prev = _new;
++	prev->next = _new;
+ }
+ 
+ /**
+@@ -112,9 +112,9 @@ static inline void __list_add_rcu(struct
+  * the _rcu list-traversal primitives, such as
+  * list_for_each_entry_rcu().
+  */
+-static inline void list_add_rcu(struct list_head *new, struct list_head *head)
++static inline void list_add_rcu(struct list_head *_new, struct list_head *head)
+ {
+-	__list_add_rcu(new, head, head->next);
++	__list_add_rcu(_new, head, head->next);
+ }
+ 
+ /**
+@@ -133,10 +133,10 @@ static inline void list_add_rcu(struct l
+  * the _rcu list-traversal primitives, such as
+  * list_for_each_entry_rcu().
+  */
+-static inline void list_add_tail_rcu(struct list_head *new,
++static inline void list_add_tail_rcu(struct list_head *_new,
+ 					struct list_head *head)
+ {
+-	__list_add_rcu(new, head->prev, head);
++	__list_add_rcu(_new, head->prev, head);
+ }
+ 
+ /*
+@@ -161,8 +161,8 @@ static inline void __list_del(struct lis
+ static inline void list_del(struct list_head *entry)
+ {
+ 	__list_del(entry->prev, entry->next);
+-	entry->next = LIST_POISON1;
+-	entry->prev = LIST_POISON2;
++	entry->next = __cast__(list_head*) LIST_POISON1;
++	entry->prev = __cast__(list_head*) LIST_POISON2;
+ }
+ 
+ /**
+@@ -192,7 +192,7 @@ static inline void list_del(struct list_
+ static inline void list_del_rcu(struct list_head *entry)
+ {
+ 	__list_del(entry->prev, entry->next);
+-	entry->prev = LIST_POISON2;
++	entry->prev = __cast__(list_head*) LIST_POISON2;
+ }
+ 
+ /**
+@@ -203,13 +203,13 @@
+  * The old entry will be replaced with the new entry atomically.
+  */
+ static inline void list_replace_rcu(struct list_head *old,
+-				struct list_head *new)
++				struct list_head *_new)
+ {
+-	new->next = old->next;
+-	new->prev = old->prev;
++	_new->next = old->next;
++	_new->prev = old->prev;
+ 	smp_wmb();
+-	new->next->prev = new;
+-	new->prev->next = new;
++	_new->next->prev = _new;
++	_new->prev->next = _new;
+ 	old->prev = LIST_POISON2;
+ }
+ 
+@@ -244,15 +244,6 @@
+ }
+ 
+ /**
+- * list_empty - tests whether a list is empty
+- * @head: the list to test.
+- */
+-static inline int list_empty(const struct list_head *head)
+-{
+-	return head->next == head;
+-}
+-
+-/**
+  * list_empty_careful - tests whether a list is
+  * empty _and_ checks that no other CPU might be
+  * in the process of still modifying either member
+@@ -496,14 +504,6 @@ static inline void list_splice_init(stru
+  * You lose the ability to access the tail in O(1).
+  */
+ 
+-struct hlist_head {
+-	struct hlist_node *first;
+-};
+-
+-struct hlist_node {
+-	struct hlist_node *next, **pprev;
+-};
+-
+ #define HLIST_HEAD_INIT { .first = NULL }
+ #define HLIST_HEAD(name) struct hlist_head name = {  .first = NULL }
+ #define INIT_HLIST_HEAD(ptr) ((ptr)->first = NULL)
+@@ -506,8 +506,8 @@ static inline int hlist_empty(const stru
+ 
+ static inline void __hlist_del(struct hlist_node *n)
+ {
+-	struct hlist_node *next = n->next;
+-	struct hlist_node **pprev = n->pprev;
++	struct hlist_node *next = __cast__(hlist_node*) n->next;
++	struct hlist_node **pprev = __cast__(hlist_node**) n->pprev;
+ 	*pprev = next;
+ 	if (next)
+ 		next->pprev = pprev;
+@@ -516,8 +516,8 @@ static inline void __hlist_del(struct hl
+ static inline void hlist_del(struct hlist_node *n)
+ {
+ 	__hlist_del(n);
+-	n->next = LIST_POISON1;
+-	n->pprev = LIST_POISON2;
++	n->next = __cast__(hlist_node*) LIST_POISON1;
++	n->pprev = __cast__(hlist_node**) LIST_POISON2;
+ }
+ 
+ /**
+@@ -542,7 +542,7 @@ static inline void hlist_del(struct hlis
+ static inline void hlist_del_rcu(struct hlist_node *n)
+ {
+ 	__hlist_del(n);
+-	n->pprev = LIST_POISON2;
++	n->pprev = __cast__(hlist_node**) LIST_POISON2;
+ }
+ 
+ static inline void hlist_del_init(struct hlist_node *n)
+@@ -790,7 +790,5 @@
+ 		({ tpos = hlist_entry(pos, typeof(*tpos), member); 1;}); \
+ 	     pos = pos->next)
+ 
+-#else
+-#warning "don't include kernel headers in userspace"
+-#endif /* __KERNEL__ */
++#endif
+ #endif
+diff -ur linux-2.6.8.1/include/linux/prefetch.h linux-2.6.8.1-gentoo/include/linux/prefetch.h
+--- linux-2.6.8.1/include/linux/prefetch.h	2004-07-13 19:00:02.450665496 +0100
++++ linux-2.6.8.1-gentoo/include/linux/prefetch.h	2004-07-13 18:44:43.000000000 +0100
+@@ -10,6 +10,7 @@
+ #ifndef _LINUX_PREFETCH_H
+ #define _LINUX_PREFETCH_H
+ 
++#include <linux/compiler.h>
+ #include <linux/types.h>
+ #include <asm/processor.h>
+ #include <asm/cache.h>
+@@ -59,9 +59,9 @@
+ {
+ #ifdef ARCH_HAS_PREFETCH
+ 	char *cp;
+-	char *end = addr + len;
++	char *end = __cast__(char *) addr + len;
+ 
+-	for (cp = addr; cp < end; cp += PREFETCH_STRIDE)
++	for (cp = __cast__(char *) addr; cp < end; cp += PREFETCH_STRIDE)
+ 		prefetch(cp);
+ #endif
+ }
+diff -ur linux-2.6.8.1/include/linux/videodev2.h linux-2.6.8.1-gentoo/include/linux/videodev2.h
+--- linux-2.6.8.1/include/linux/videodev2.h	2004-08-20 19:54:37.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/linux/videodev2.h	2004-08-24 21:20:48.468650056 +0100
+@@ -13,6 +13,8 @@
+  *		Justin Schoeman
+  *		et al.
+  */
++
++#include <linux/compiler.h>
+ #ifdef __KERNEL__
+ #include <linux/time.h> /* need struct timeval */
+ #endif
+diff -ur linux-2.6.8.1/include/linux/crc-ccitt.h linux-2.6.8.1-gentoo/include/linux/crc-ccitt.h
+--- linux-2.6.8.1/include/linux/crc-ccitt.h	2004-08-20 19:54:37.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/linux/crc-ccitt.h	2004-08-25 18:49:57.048297800 +0100
+@@ -3,11 +3,11 @@
+ 
+ #include <linux/types.h>
+ 
+-extern u16 const crc_ccitt_table[256];
++extern __u16 const crc_ccitt_table[256];
+ 
+-extern u16 crc_ccitt(u16 crc, const u8 *buffer, size_t len);
++extern __u16 crc_ccitt(__u16 crc, const __u8 *buffer, size_t len);
+ 
+-static inline u16 crc_ccitt_byte(u16 crc, const u8 c)
++static inline __u16 crc_ccitt_byte(__u16 crc, const __u8 c)
+ {
+ 	return (crc >> 8) ^ crc_ccitt_table[(crc ^ c) & 0xff];
+ }
+diff -ur linux-2.6.8.1/include/linux/capi.h linux-2.6.8.1-gentoo/include/linux/capi.h
+--- linux-2.6.8.1/include/linux/capi.h	2004-08-20 19:54:37.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/linux/capi.h	2004-08-25 18:49:57.048297800 +0100
+@@ -17,6 +17,7 @@
+ #ifndef __KERNEL__
+ #include <linux/kernelcapi.h>
+ #endif
++#include <linux/compiler.h>
+ 
+ /*
+  * CAPI_REGISTER
+diff -ur linux-2.6.8.1/include/asm-parisc/types.h linux-2.6.8.1-gentoo/include/asm-parisc/types.h
+--- linux-2.6.8.1/include/asm-parisc/types.h	2004-08-20 19:54:37.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/asm-parisc/types.h	2004-08-25 18:49:57.048297800 +0100
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if defined(__GNUC__)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+diff -ur linux-2.6.15/include/asm-powerpc/unaligned.h linux-2.6.15-gentoo/include/asm-powerpc/unaligned.h
+--- linux-2.6.15/include/asm-powerpc/unaligned.h	2004-07-10 01:47:34.000000000 +0100
++++ linux-2.6.15-gentoo/include/asm-powerpc/unaligned.h	2004-09-25 19:07:46.956434136 +0100
+@@ -1,8 +1,6 @@
+ #ifndef _ASM_POWERPC_UNALIGNED_H
+ #define _ASM_POWERPC_UNALIGNED_H
+ 
+-#ifdef __KERNEL__
+-
+ /*
+  * The PowerPC can do unaligned accesses itself in big endian mode.
+  *
+@@ -15,5 +13,4 @@
+ 
+ #define put_unaligned(val, ptr) ((void)( *(ptr) = (val) ))
+ 
+-#endif	/* __KERNEL__ */
+ #endif	/* _ASM_POWERPC_UNALIGNED_H */
+diff -ur linux-2.6.15/include/asm-powerpc/processor.h linux-2.6.15-gentoo/include/asm-powerpc/processor.h
+--- linux-2.6.15/include/asm-powerpc/processor.h	2004-09-28 16:56:15.966475184 +0100
++++ linux-2.6.15-gentoo/include/asm-powerpc/processor.h	2004-09-28 16:54:55.359729000 +0100
+@@ -547,9 +547,9 @@
+ 	unsigned long	saved_softe;	/* Ditto for Soft Enable/Disable */
+ #ifdef CONFIG_ALTIVEC
+ 	/* Complete AltiVec register set */
+-	vector128	vr[32] __attribute((aligned(16)));
++	__vector128	vr[32] __attribute((aligned(16)));
+ 	/* AltiVec status */
+-	vector128	vscr __attribute((aligned(16)));
++	__vector128	vscr __attribute((aligned(16)));
+ 	unsigned long	vrsave;
+ 	int		used_vr;	/* set if process has used altivec */
+ #endif /* CONFIG_ALTIVEC */
+diff -ur linux-2.6.8.1/include/asm-sparc64/signal.h linux-2.6.8.1-gentoo/include/asm-sparc64/signal.h
+--- linux-2.6.8.1/include/asm-sparc64/signal.h	2004-07-10 01:47:34.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/asm-sparc64/signal.h	2004-10-03 14:09:31.434460808 +0100
+@@ -110,7 +110,9 @@
+ 
+ #ifndef __ASSEMBLY__
+ 
++#ifndef __sigset_t_defined
+ typedef unsigned long __old_sigset_t;            /* at least 32 bits */
++#endif
+ 
+ typedef struct {
+        unsigned long sig[_NSIG_WORDS];
+diff -ur linux-2.6.8.1/include/asm-sparc/signal.h linux-2.6.8.1-gentoo/include/asm-sparc/signal.h
+--- linux-2.6.8.1/include/asm-sparc/signal.h	2004-07-10 01:47:34.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/asm-sparc/signal.h	2004-10-03 14:09:31.434460808 +0100
+@@ -105,7 +105,9 @@
+ 
+ #ifndef __ASSEMBLY__
+ 
++#ifndef __sigset_t_defined
+ typedef unsigned long __old_sigset_t;
++#endif
+ 
+ typedef struct {
+ 	unsigned long	sig[_NSIG_WORDS];
+diff -ur linux-2.6.8.1/include/asm-ia64/fpu.h linux-2.6.8.1-gentoo/include/asm-ia64/fpu.h
+--- linux-2.6.8.1/include/asm-ia64/fpu.h	2004-10-31 14:20:01.000000000 -0700
++++ linux-2.6.8.1-gentoo/include/asm-ia64/fpu.h	2004-11-01 12:04:54.202369190 -0700
+@@ -53,13 +53,24 @@
+ 			 | FPSR_S3 (FPSF_DEFAULT | FPSF_TD))
+ 
+ # ifndef __ASSEMBLY__
++#   ifndef __KERNEL__
++#     include <bits/posix1_lim.h>
++      /* Versioning, newer glibc's declare ia64_fpreg without telling us
++           -- plasmaroo */
++#   endif
+ 
++#   ifdef _FCNTL_H /* Userspace */
++#     include <signal.h>
++#   else
++#     if !defined(_POSIX_HOST_NAME_MAX) || !defined(_BITS_SIGCONTEXT_H) || defined(__KERNEL__)
+ struct ia64_fpreg {
+ 	union {
+ 		unsigned long bits[2];
+ 		long double __dummy;	/* force 16-byte alignment */
+ 	} u;
+ };
++#     endif
++#   endif
+ 
+ # endif /* __ASSEMBLY__ */
+ 
+diff -ur linux-2.6.15/include/asm-powerpc/bitops.h linux-2.6.15-gentoo/include/asm-powerpc/bitops.h
+--- linux-2.6.15/include/asm-powerpc/bitops.h	2004-08-14 11:55:32.000000000 +0100
++++ linux-2.6.15-gentoo/include/asm-powerpc/bitops.h	2004-12-26 19:58:15.881705760 +0000
+@@ -36,8 +36,6 @@
+ #ifndef _ASM_POWERPC_BITOPS_H
+ #define _ASM_POWERPC_BITOPS_H
+ 
+-#ifdef __KERNEL__
+-
+ #include <linux/compiler.h>
+ #include <asm/atomic.h>
+ #include <asm/asm-compat.h>
+@@ -283,6 +281,8 @@
+ 	return __ilog2(x & -x);
+ }
+ 
++#ifdef __KERNEL__
++
+ static __inline__ int __ffs(unsigned long x)
+ {
+ 	return __ilog2(x & -x);
+@@ -299,6 +299,8 @@
+ 	return __ilog2(i & -i) + 1;
+ }
+ 
++#endif /* __KERNEL__ */
++
+ /*
+  * fls: find last (most-significant) bit set.
+  * Note fls(0) = 0, fls(1) = 1, fls(0x80000000) = 32.
+diff -ur linux-2.6.8.1/include/asm-alpha/signal.h linux-2.6.8.1-gentoo/include/asm-alpha/signal.h
+--- linux-2.6.8.1/include/asm-alpha/signal.h	2004-08-14 11:55:32.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/asm-alpha/signal.h	2004-12-26 19:58:15.881705760 +0000
+@@ -24,7 +24,9 @@
+ /* Here we must cater to libcs that poke about in kernel headers.  */
+ 
+ #define NSIG		32
++#ifndef __sigset_t_defined
+ typedef unsigned long sigset_t;
++#endif
+ 
+ #endif /* __KERNEL__ */
+ 
+@@ -158,6 +160,7 @@
+ #else
+ /* Here we must cater to libcs that poke about in kernel headers.  */
+ 
++#ifndef _SIGNAL_H
+ struct sigaction {
+ 	union {
+ 	  __sighandler_t	_sa_handler;
+@@ -166,22 +169,27 @@
+ #define sa_handler	_u._sa_handler
+ #define sa_sigaction	_u._sa_sigaction
+ 
++#endif
+ #endif /* __KERNEL__ */
+ 
++#ifndef _SIGNAL_H
+ typedef struct sigaltstack {
+ 	void __user *ss_sp;
+ 	int ss_flags;
+ 	size_t ss_size;
+ } stack_t;
++#endif
+ 
+ /* sigstack(2) is deprecated, and will be withdrawn in a future version
+    of the X/Open CAE Specification.  Use sigaltstack instead.  It is only
+    implemented here for OSF/1 compatibility.  */
+ 
++#ifndef _SIGNAL_H
+ struct sigstack {
+ 	void __user *ss_sp;
+ 	int ss_onstack;
+ };
++#endif
+ 
+ #ifdef __KERNEL__
+ #include <asm/sigcontext.h>
+diff -ur linux-2.6.8.1/include/linux/preempt.h linux-2.6.8.1-gentoo/include/linux/preempt.h
+--- linux-2.6.8.1/include/linux/preempt.h      2004-08-14 11:55:32.000000000 +0100
++++ linux-2.6.8.1-gentoo/include/linux/preempt.h	  2004-12-26 19:58:15.881705760 +0000
+@@ -8,6 +8,7 @@
+ 
+ #include <linux/config.h>
+ #include <linux/linkage.h>
++#include <asm/system.h> /* barrier() <--> mb() */
+ 
+ #define preempt_count()        (current_thread_info()->preempt_count)
+ 
+diff -ur linux-2.6.8.1/include/linux/blkpg.h linux-2.6.8.1-gentoo/include/linux/blkpg.h
+--- linux-2.6.8.1/include/linux/blkpg.h.orig	2005-01-12 23:15:25.000000000 -0800
++++ linux-2.6.8.1-gentoo/include/linux/blkpg.h	2005-01-12 23:16:05.000000000 -0800
+@@ -25,6 +25,7 @@
+  * For today, only the partition stuff - aeb, 990515
+  */
+ #include <linux/ioctl.h>
++#include <linux/compiler.h>
+ 
+ #define BLKPG      _IO(0x12,105)
+ 
+diff -urp linux-2.6.10/include/asm-i386/param.h linux-2.6.10-gentoo/include/asm-i386/param.h
+--- linux-2.6.10/include/asm-i386/param.h	2005-02-08 21:01:47.000000000 +0000
++++ linux-2.6.10-gentoo/include/asm-i386/param.h	2005-02-08 20:28:36.000000000 +0000
+@@ -11,6 +11,10 @@
+ #define HZ 100
+ #endif
+ 
++#ifndef USER_HZ
++#define USER_HZ 100
++#endif
++
+ #define EXEC_PAGESIZE	4096
+ 
+ #ifndef NOGROUP
+diff -urp linux-2.6.10/include/asm-i386/semaphore.h linux-2.6.10-gentoo/include/asm-i386/semaphore.h
+--- linux-2.6.10/include/asm-i386/semaphore.h	2005-02-08 21:01:47.000000000 +0000
++++ linux-2.6.10-gentoo/include/asm-i386/semaphore.h	2005-02-08 20:46:02.000000000 +0000
+@@ -1,6 +1,7 @@
+ #ifndef _I386_SEMAPHORE_H
+ #define _I386_SEMAPHORE_H
+ 
++#include <linux/wait.h>
+ #include <linux/linkage.h>
+ 
+ /*
+diff -urp linux-2.6.10/include/linux/prio_tree.h linux-2.6.10-gentoo/include/linux/prio_tree.h
+--- linux-2.6.10/include/linux/prio_tree.h	2005-02-08 21:01:47.000000000 +0000
++++ linux-2.6.10-gentoo/include/linux/prio_tree.h	2005-02-08 20:15:28.000000000 +0000
+@@ -1,6 +1,8 @@
+ #ifndef _LINUX_PRIO_TREE_H
+ #define _LINUX_PRIO_TREE_H
+ 
++#include <linux/types.h>
++
+ struct prio_tree_node {
+ 	struct prio_tree_node	*left;
+ 	struct prio_tree_node	*right;
+diff -urp linux-2.6.10/include/topology.h linux-2.6.10-gentoo/include/linux/topology.h
+--- linux-2.6.10/include/linux/topology.h	2005-02-08 21:01:47.000000000 +0000
++++ linux-2.6.10-gentoo/include/linux/topology.h	2005-02-08 20:48:27.000000000 +0000
+@@ -27,6 +27,8 @@
+ #ifndef _LINUX_TOPOLOGY_H
+ #define _LINUX_TOPOLOGY_H
+ 
++#ifdef __KERNEL__
++
+ #include <linux/cpumask.h>
+ #include <linux/bitops.h>
+ #include <linux/mmzone.h>
+@@ -133,4 +135,5 @@ static inline int __next_node_with_cpus(
+ #endif
+ #endif /* CONFIG_NUMA */
+ 
++#endif /* __KERNEL__ */
+ #endif /* _LINUX_TOPOLOGY_H */
+diff -urp linux-2.6.10/include/linux/types.h linux-2.6.10-gentoo/include/linux/types.h
+--- linux-2.6.10/include/linux/types.h	2005-02-08 21:01:47.000000000 +0000
++++ linux-2.6.10-gentoo/include/linux/types.h	2005-02-08 20:40:22.000000000 +0000
+@@ -11,6 +11,7 @@
+ #endif
+ 
+ #include <linux/posix_types.h>
++#include <asm/posix_types.h>
+ #include <asm/types.h>
+ 
+ #ifndef __KERNEL_STRICT_NAMES
+@@ -148,6 +149,10 @@ typedef		__s64		int64_t;
+ typedef unsigned long sector_t;
+ #endif
+ 
++#else /* Userspace ... */
++#include <time.h>
++#endif /* __KERNEL_STRICT_NAMES */
++
+ /*
+  * The type of an index into the pagecache.  Use a #define so asm/types.h
+  * can override it.
+@@ -156,8 +161,6 @@ typedef unsigned long sector_t;
+ #define pgoff_t unsigned long
+ #endif
+ 
+-#endif /* __KERNEL_STRICT_NAMES */
+-
+ /*
+  * Below are truly Linux-specific types that should never collide with
+  * any application/library that wants linux/types.h.
+diff -urp linux-2.6.10/include/asm-i386/thread_info.h linux-2.6.10-gentoo/include/asm-i386/thread_info.h
+--- linux-2.6.10/include/asm-i386/thread_info.h	2005-02-08 21:30:49.000000000 +0000
++++ linux-2.6.10-gentoo/asm-i386/thread_info.h	2005-02-08 21:27:03.000000000 +0000
+@@ -7,8 +7,7 @@
+ #ifndef _ASM_THREAD_INFO_H
+ #define _ASM_THREAD_INFO_H
+ 
+-#ifdef __KERNEL__
+ 
+ #include <linux/config.h>
+ #include <linux/compiler.h>
+ #include <asm/page.h>
+@@ -165,6 +163,4 @@ register unsigned long current_stack_poi
+  */
+ #define TS_USEDFPU		0x0001	/* FPU was used by this task this quantum (SMP) */
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* _ASM_THREAD_INFO_H */
+diff -urp linux-2.6.10/include/linux/telephony.h linux-2.6.10-gentoo/include/linux/telephony.h
+--- linux-2.6.10/include/linux/telephony.h	2004-11-20 16:54:35.000000000 +0000
++++ linux-2.6.10-gentoo/include/linux/telephony.h	2005-02-08 22:03:49.468357464 +0000
+@@ -37,6 +37,8 @@
+ #ifndef TELEPHONY_H
+ #define TELEPHONY_H
+ 
++#include <linux/compiler.h>
++
+ #define TELEPHONY_VERSION 3013
+ 
+ #define PHONE_VENDOR_IXJ          1
+diff -urp linux-2.6.10/include/asm-i386/unistd.h linux-2.6.10-gentoo/include/asm-i386/unistd.h
+--- linux-2.6.10/include/asm-i386/unistd.h	2005-02-08 21:30:49.000000000 +0000
++++ linux-2.6.10-gentoo/asm-i386/unistd.h	2005-02-08 21:27:03.000000000 +0000
+@@ -314,6 +314,21 @@
+ __syscall_return(type,__res); \
+ }
+ 
++#ifdef __PIC__
++#define _syscall1(type,name,type1,arg1) \
++type name(type1 arg1) \
++{ \
++long __res; \
++__asm__ volatile (\
++	"pushl %%ebx\n\t" \
++	"movl %2,%%ebx\n\t" \
++	"int $0x80\n\t" \
++	"popl %%ebx\n\t" \
++	: "=a" (__res) \
++	: "0" (__NR_##name),"r" ((long)(arg1))); \
++__syscall_return(type,__res); \
++}
++#else
+ #define _syscall1(type,name,type1,arg1) \
+ type name(type1 arg1) \
+ { \
+@@ -323,7 +338,23 @@
+ 	: "0" (__NR_##name),"b" ((long)(arg1))); \
+ __syscall_return(type,__res); \
+ }
++#endif
+ 
++#ifdef __PIC__
++#define _syscall2(type,name,type1,arg1,type2,arg2) \
++type name(type1 arg1,type2 arg2) \
++{ \
++long __res; \
++__asm__ volatile (\
++	"pushl %%ebx\n\t" \
++	"movl %2,%%ebx\n\t" \
++	"int $0x80\n\t" \
++	"popl %%ebx\n\t" \
++	: "=a" (__res) \
++	: "0" (__NR_##name),"r" ((long)(arg1)),"c" ((long)(arg2))); \
++__syscall_return(type,__res); \
++}
++#else
+ #define _syscall2(type,name,type1,arg1,type2,arg2) \
+ type name(type1 arg1,type2 arg2) \
+ { \
+@@ -333,7 +364,24 @@
+ 	: "0" (__NR_##name),"b" ((long)(arg1)),"c" ((long)(arg2))); \
+ __syscall_return(type,__res); \
+ }
++#endif
+ 
++#ifdef __PIC__
++#define _syscall3(type,name,type1,arg1,type2,arg2,type3,arg3) \
++type name(type1 arg1,type2 arg2,type3 arg3) \
++{ \
++long __res; \
++__asm__ volatile (\
++	"pushl %%ebx\n\t" \
++	"movl %2,%%ebx\n\t" \
++	"int $0x80\n\t" \
++	"popl %%ebx\n\t" \
++	: "=a" (__res) \
++	: "0" (__NR_##name),"r" ((long)(arg1)),"c" ((long)(arg2)), \
++		  "d" ((long)(arg3))); \
++__syscall_return(type,__res); \
++}
++#else
+ #define _syscall3(type,name,type1,arg1,type2,arg2,type3,arg3) \
+ type name(type1 arg1,type2 arg2,type3 arg3) \
+ { \
+@@ -344,7 +392,24 @@
+ 		  "d" ((long)(arg3))); \
+ __syscall_return(type,__res); \
+ }
++#endif
+ 
++#ifdef __PIC__
++#define _syscall4(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
++type name (type1 arg1, type2 arg2, type3 arg3, type4 arg4) \
++{ \
++long __res; \
++__asm__ volatile (\
++	"pushl %%ebx\n\t" \
++	"movl %2,%%ebx\n\t" \
++	"int $0x80\n\t" \
++	"popl %%ebx\n\t" \
++	: "=a" (__res) \
++	: "0" (__NR_##name),"r" ((long)(arg1)),"c" ((long)(arg2)), \
++	  "d" ((long)(arg3)),"S" ((long)(arg4))); \
++__syscall_return(type,__res); \
++} 
++#else
+ #define _syscall4(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4) \
+ type name (type1 arg1, type2 arg2, type3 arg3, type4 arg4) \
+ { \
+@@ -355,7 +420,25 @@
+ 	  "d" ((long)(arg3)),"S" ((long)(arg4))); \
+ __syscall_return(type,__res); \
+ } 
++#endif
+ 
++#ifdef __PIC__
++#define _syscall5(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4, \
++	  type5,arg5) \
++type name (type1 arg1,type2 arg2,type3 arg3,type4 arg4,type5 arg5) \
++{ \
++long __res; \
++__asm__ volatile (\
++	"pushl %%ebx\n\t" \
++	"movl %2,%%ebx\n\t" \
++	"int $0x80\n\t" \
++	"popl %%ebx\n\t" \
++	: "=a" (__res) \
++	: "0" (__NR_##name),"m" ((long)(arg1)),"c" ((long)(arg2)), \
++	  "d" ((long)(arg3)),"S" ((long)(arg4)),"D" ((long)(arg5))); \
++__syscall_return(type,__res); \
++}
++#else
+ #define _syscall5(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4, \
+ 	  type5,arg5) \
+ type name (type1 arg1,type2 arg2,type3 arg3,type4 arg4,type5 arg5) \
+@@ -367,7 +450,30 @@
+ 	  "d" ((long)(arg3)),"S" ((long)(arg4)),"D" ((long)(arg5))); \
+ __syscall_return(type,__res); \
+ }
++#endif
+ 
++#ifdef __PIC__
++#define _syscall6(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4, \
++	  type5,arg5,type6,arg6) \
++type name (type1 arg1,type2 arg2,type3 arg3,type4 arg4,type5 arg5,type6 arg6) \
++{ \
++long __res; \
++__asm__ volatile (\
++	"pushl %%ebp\n\t" \
++	"pushl %%ebx\n\t" \
++	"movl %2,%%ebx\n\t" \
++	"movl %%eax,%%ebp\n\t" \
++	"movl %1,%%eax\n\t" \
++	"int $0x80\n\t" \
++	"popl %%ebx\n\t" \
++	"popl %%ebp\n\t" \
++	: "=a" (__res) \
++	: "i" (__NR_##name),"m" ((long)(arg1)),"c" ((long)(arg2)), \
++	  "d" ((long)(arg3)),"S" ((long)(arg4)),"D" ((long)(arg5)), \
++	  "0" ((long)(arg6))); \
++__syscall_return(type,__res); \
++}
++#else
+ #define _syscall6(type,name,type1,arg1,type2,arg2,type3,arg3,type4,arg4, \
+ 	  type5,arg5,type6,arg6) \
+ type name (type1 arg1,type2 arg2,type3 arg3,type4 arg4,type5 arg5,type6 arg6) \
+@@ -380,6 +486,7 @@
+ 	  "0" ((long)(arg6))); \
+ __syscall_return(type,__res); \
+ }
++#endif
+ 
+ #ifdef __KERNEL__
+ #define __ARCH_WANT_IPC_PARSE_VERSION
+diff -urp linux-2.6.10/include/linux/if_fddi.h linux-2.6.10-gentoo/include/linux/if_fddi.h
+--- linux-2.6.10/include/linux/if_fddi.h	2004-11-20 16:54:35.000000000 +0000
++++ linux-2.6.10-gentoo/include/linux/if_fddi.h	2005-02-12 19:19:51.244852928 +0000
+@@ -24,6 +24,8 @@
+ #ifndef _LINUX_IF_FDDI_H
+ #define _LINUX_IF_FDDI_H
+ 
++#include <linux/netdevice.h>
++
+ /*
+  *  Define max and min legal sizes.  The frame sizes do not include
+  *  4 byte FCS/CRC (frame check sequence).
+diff -urp linux-2.6.11/include/linux/keyboard.h linux-2.6.11-gentoo/include/linux/keyboard.h
+--- linux-2.6.11/include/linux/keyboard.h	2004-11-20 16:54:35.000000000 +0000
++++ linux-2.6.11-gentoo/include/linux/keyboard.h	2005-02-12 19:19:51.244852928 +0000
+@@ -1,6 +1,21 @@
+ #ifndef __LINUX_KEYBOARD_H
+ #define __LINUX_KEYBOARD_H
+ 
++#ifdef __hppa__ /* Add more affected archs as needed */
++/* Currently this only seems to be applicable to HPPA and eradicator
++   has fixed this locally in 2.3.5 anyway, but we still need this here
++   for HPPA as 2.3.5 doesn't work for them just yet. -- plasmaroo */
++#ifndef __le64
++#ifdef _LINUX_TYPES_H
++#undef _LINUX_TYPES_H
++#warning Gentoo Linux Headers Warning: GNU Libc Linux Headers Override Detected.
++#warning Gentoo Linux Headers Warning: This is bad. Removing override and continuing.
++#warning Gentoo Linux Headers Warning: If your compilation dies here, mention this when
++#warning Gentoo Linux Headers Warning: filing a bug!
++#include <linux/types.h>
++#endif /* #ifdef _LINUX_TYPES_H */
++#endif /* #ifndef __le64 */
++#endif /* #if (arch) */
++
+-#include <linux/wait.h>
+ 
+ #define KG_SHIFT	0
+diff -urp linux-2.6.11/include/asm-parisc/thread_info.h linux-2.6.11-gentoo/include/asm-parisc/thread_info.h
+--- linux-2.6.11/include/asm-parisc/thread_info.h	2004-11-20 16:54:35.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-parisc/thread_info.h	2005-02-12 19:19:51.244852928 +0000
+@@ -1,8 +1,6 @@
+ #ifndef _ASM_PARISC_THREAD_INFO_H
+ #define _ASM_PARISC_THREAD_INFO_H
+ 
+-#ifdef __KERNEL__
+-
+ #ifndef __ASSEMBLY__
+ #include <asm/processor.h>
+ 
+@@ -75,6 +73,4 @@
+ #define _TIF_USER_WORK_MASK     (_TIF_NOTIFY_RESUME | _TIF_SIGPENDING | \
+                                  _TIF_NEED_RESCHED)
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* _ASM_PARISC_THREAD_INFO_H */
+--- linux-2.6.10/include/asm-sparc/processor.h	2004-12-11 15:49:24.522603912 -0800
++++ linux-2.6.10-gentoo/include/asm-sparc/processor.h	2004-12-11 15:49:18.865463928 -0800
+@@ -44,11 +44,13 @@
+ struct task_struct;
+ 
+ #ifdef __KERNEL__
+-struct fpq {
++#define __fpq fpq
++#endif
++
++struct __fpq {
+ 	unsigned long *insn_addr;
+ 	unsigned long insn;
+ };
+-#endif
+ 
+ typedef struct {
+ 	int seg;
+@@ -67,13 +69,17 @@ struct thread_struct {
+ 	unsigned long   float_regs[32] __attribute__ ((aligned (8)));
+ 	unsigned long   fsr;
+ 	unsigned long   fpqdepth;
+-	struct fpq	fpqueue[16];
++	struct __fpq	fpqueue[16];
+ 	unsigned long flags;
+ 	mm_segment_t current_ds;
+ 	struct exec core_exec;     /* just what it says. */
+ 	int new_signal;
+ };
+ 
++#ifdef __KERNEL__
++#undef __fpq
++#endif
++
+ #define SPARC_FLAG_KTHREAD      0x1    /* task is a kernel thread */
+ #define SPARC_FLAG_UNALIGNED    0x2    /* is allowed to do unaligned accesses */
+ 
+diff -urp linux-2.6.10/include/linux/if_ppp.h linux-2.6.10-gentoo/include/linux/if_ppp.h
+--- linux-2.6.10/include/linux/if_ppp.h	2005-02-25 00:19:05.000000000 +0000
++++ linux-2.6.10-gentoo/include/linux/if_ppp.h	2005-03-06 18:22:18.483422888 +0000
+@@ -34,6 +34,13 @@
+ 
+ #ifndef _IF_PPP_H_
+ #define _IF_PPP_H_
++#include <linux/types.h>
++
++/* For NPmode */
++#include <linux/ppp_defs.h>
++
++/* For ifreq */
++#include <linux/if.h>
+ 
+ /*
+  * Packet sizes
+--- linux-2.6.10/include/asm-sparc/thread_info.h.orig	2004-12-23 21:38:32.000000000 -0800
++++ linux-2.6.10/include/asm-sparc/thread_info.h	2005-03-07 15:24:52.954659122 -0800
+@@ -11,8 +11,6 @@
+ #ifndef _ASM_THREAD_INFO_H
+ #define _ASM_THREAD_INFO_H
+ 
+-#ifdef __KERNEL__
+-
+ #ifndef __ASSEMBLY__
+ 
+ #include <asm/btfixup.h>
+@@ -147,6 +145,4 @@ BTFIXUPDEF_CALL(void, free_thread_info, 
+ #define _TIF_USEDFPU		(1<<TIF_USEDFPU)
+ #define _TIF_POLLING_NRFLAG	(1<<TIF_POLLING_NRFLAG)
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* _ASM_THREAD_INFO_H */
+--- linux-2.6.10/include/asm-sparc64/thread_info.h.orig	2004-12-23 21:38:32.000000000 -0800
++++ linux-2.6.10/include/asm-sparc64/thread_info.h	2005-03-07 15:24:43.765013779 -0800
+@@ -7,8 +7,6 @@
+ #ifndef _ASM_THREAD_INFO_H
+ #define _ASM_THREAD_INFO_H
+ 
+-#ifdef __KERNEL__
+-
+ #define NSWINS		7
+ 
+ #define TI_FLAG_BYTE_FAULT_CODE		0
+@@ -246,6 +244,4 @@ register struct thread_info *current_thr
+ 				 (_TIF_NOTIFY_RESUME | _TIF_SIGPENDING | \
+ 				  _TIF_NEED_RESCHED | _TIF_PERFCTR))
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* _ASM_THREAD_INFO_H */
+--- linux-2.6.10/include/asm-sparc/fbio.h.orig	2005-03-07 18:29:59.719149292 -0800
++++ linux-2.6.10/include/asm-sparc/fbio.h	2005-03-07 18:30:39.958067643 -0800
+@@ -1,6 +1,8 @@
+ #ifndef __LINUX_FBIO_H
+ #define __LINUX_FBIO_H
+ 
++#include <linux/compiler.h>
++
+ /* Constants used for fbio SunOS compatibility */
+ /* (C) 1996 Miguel de Icaza */
+ 
+--- linux-2.6.11/include/linux/byteorder/little_endian.h.84353	2005-03-07 01:19:49.000000000 +0100
++++ linux-2.6.11-gentoo/include/linux/byteorder/little_endian.h	2005-03-07 01:20:22.000000000 +0100
+@@ -40,6 +40,7 @@
+ #define __cpu_to_be16(x) ((__force __be16)__swab16((x)))
+ #define __be16_to_cpu(x) __swab16((__force __u16)(__be16)(x))
+ 
++#ifndef __STRICT_ANSI__
+ static inline __le64 __cpu_to_le64p(const __u64 *p)
+ {
+ 	return (__force __le64)*p;
+@@ -48,6 +49,7 @@
+ {
+ 	return (__force __u64)*p;
+ }
++#endif /* !__STRICT_ANSI__ */
+ static inline __le32 __cpu_to_le32p(const __u32 *p)
+ {
+ 	return (__force __le32)*p;
+@@ -64,6 +66,7 @@
+ {
+ 	return (__force __u16)*p;
+ }
++#ifndef __STRICT_ANSI__
+ static inline __be64 __cpu_to_be64p(const __u64 *p)
+ {
+ 	return (__force __be64)__swab64p(p);
+@@ -72,6 +75,7 @@
+ {
+ 	return __swab64p((__u64 *)p);
+ }
++#endif /* !__STRICT_ANSI__ */
+ static inline __be32 __cpu_to_be32p(const __u32 *p)
+ {
+ 	return (__force __be32)__swab32p(p);
+--- linux-2.6.8.1/include/linux/ethtool.h	2005-04-13 13:39:08.000000000 -0700
++++ linux-2.6.8.1-gentoo/include/linux/ethtool.h	2005-04-13 13:35:31.000000000 -0700
+@@ -12,6 +12,8 @@
+ #ifndef _LINUX_ETHTOOL_H
+ #define _LINUX_ETHTOOL_H
+ 
++#include <linux/types.h>
++
+ /* This should work for both 32 and 64 bit userland. */
+ struct ethtool_cmd {
+ 	__u32	    cmd;
+diff -ur linux-2.6.11/include/asm-ia64/bitops.h linux-2.6.11-gentoo/include/asm-ia64/bitops.h
+--- linux-2.6.11/include/asm-ia64/bitops.h	2005-04-24 13:56:27.000000000 -0500
++++ linux-2.6.11-gentoo/include/asm-ia64/bitops.h	2005-04-24 13:48:38.120189000 -0500
+@@ -311,8 +311,6 @@
+ 	return result;
+ }
+ 
+-#ifdef __KERNEL__
+-
+ /*
+  * find_last_zero_bit - find the last zero bit in a 64 bit quantity
+  * @x: The value to search
+@@ -341,6 +339,8 @@
+  */
+ #define ffs(x)	__builtin_ffs(x)
+ 
++#ifdef __KERNEL__
++
+ /*
+  * hweightN: returns the hamming weight (i.e. the number
+  * of bits set) of a N-bit word
+diff -ur linux-2.6.11/include/asm-ia64/processor.h linux-2.6.11-gentoo/include/asm-ia64/processor.h
+--- linux-2.6.11/include/asm-ia64/processor.h	2005-04-24 13:56:27.000000000 -0500
++++ linux-2.6.11-gentoo/include/asm-ia64/processor.h	2005-04-24 13:53:40.383857000 -0500
+@@ -351,7 +353,7 @@
+  * do_basic_setup() and the timing is such that free_initmem() has
+  * been called already.
+  */
+-extern pid_t kernel_thread (int (*fn)(void *), void *arg, unsigned long flags);
++extern __kernel_pid_t kernel_thread (int (*fn)(void *), void *arg, unsigned long flags);
+ 
+ /* Get wait channel for task P.  */
+ extern unsigned long get_wchan (struct task_struct *p);
+--- linux-2.6.11/include/linux/i2c-dev.h	2005-04-28 22:30:29.000000000 +0100
++++ linux-2.6.11-gentoo/include/linux/i2c-dev.h	2005-05-24 14:48:01.000000000 +0100
+@@ -24,6 +24,8 @@
+ #ifndef _LINUX_I2C_DEV_H
+ #define _LINUX_I2C_DEV_H
+ 
++#include <linux/compiler.h>
++#include <linux/i2c.h>
+ #include <linux/types.h>
+ 
+ /* Some IOCTL commands are defined in <linux/i2c.h> */
+--- linux-2.6.11/include/asm-arm/thread_info.h	2005-03-02 07:38:08.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-arm/thread_info.h	2005-05-29 23:42:31.000000000 +0100
+@@ -10,8 +10,6 @@
+ #ifndef __ASM_ARM_THREAD_INFO_H
+ #define __ASM_ARM_THREAD_INFO_H
+ 
+-#ifdef __KERNEL__
+-
+ #include <linux/compiler.h>
+ #include <asm/fpstate.h>
+ 
+@@ -143,5 +141,4 @@
+  */
+ #define _TIF_WORK_MASK		0x000000ff
+ 
+-#endif /* __KERNEL__ */
+ #endif /* __ASM_ARM_THREAD_INFO_H */
+--- linux-2.6.11/include/asm-arm/types.h	2005-03-02 07:37:31.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-arm/types.h	2005-05-29 23:42:46.000000000 +0100
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if defined(__GNUC__)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+diff -u linux-2.6.15/include/asm-powerpc/types.h linux-2.6.15-gentoo/include/asm-powerpc/types.h
+--- linux-2.6.15/include/asm-powerpc/types.h	2005-05-29 23:42:46.000000000 +0100
++++ linux-2.6.15-gentoo/include/asm-powerpc/types.h	2006-01-09 01:38:31.000000000 +0000
+@@ -40,7 +40,7 @@
+ typedef __signed__ long __s64;
+ typedef unsigned long __u64;
+ #else
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if defined(__GNUC__)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+@@ -52,15 +52,18 @@
+ 
+ #endif /* __ASSEMBLY__ */
+ 
+-#ifdef __KERNEL__
+-/*
+- * These aren't exported outside the kernel to avoid name space clashes
+- */
++#ifndef BITS_PER_LONG
+ #ifdef __powerpc64__
+ #define BITS_PER_LONG 64
+ #else
+ #define BITS_PER_LONG 32
+ #endif
++#endif /* BITS_PER_LONG */
++
++#ifdef __KERNEL__
++/*     
++ * These aren't exported outside the kernel to avoid name space clashes
++ */
+ 
+ #ifndef __ASSEMBLY__
+ 
+--- linux-2.6.11/include/linux/byteorder/big_endian.h	2005-03-02 07:38:26.000000000 +0000
++++ linux-2.6.11-gentoo/include/linux/byteorder/big_endian.h	2005-07-18 19:01:53.000000000 +0100
+@@ -40,6 +40,7 @@
+ #define __cpu_to_be16(x) ((__force __be16)(__u16)(x))
+ #define __be16_to_cpu(x) ((__force __u16)(__be16)(x))
+ 
++#ifndef __STRICT_ANSI__
+ static inline __le64 __cpu_to_le64p(const __u64 *p)
+ {
+ 	return (__force __le64)__swab64p(p);
+@@ -48,6 +49,7 @@
+ {
+ 	return __swab64p((__u64 *)p);
+ }
++#endif
+ static inline __le32 __cpu_to_le32p(const __u32 *p)
+ {
+ 	return (__force __le32)__swab32p(p);
+@@ -64,6 +66,7 @@
+ {
+ 	return __swab16p((__u16 *)p);
+ }
++#ifndef __STRICT_ANSI__
+ static inline __be64 __cpu_to_be64p(const __u64 *p)
+ {
+ 	return (__force __be64)*p;
+@@ -72,6 +75,7 @@
+ {
+ 	return (__force __u64)*p;
+ }
++#endif
+ static inline __be32 __cpu_to_be32p(const __u32 *p)
+ {
+ 	return (__force __be32)*p;
+--- linux-2.6.11/include/asm-s390/types.h	2005-03-02 07:38:09.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-s390/types.h	2005-07-18 20:45:45.000000000 +0100
+@@ -28,7 +28,7 @@
+ typedef unsigned int __u32;
+ 
+ #ifndef __s390x__
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if defined(__GNUC__)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- linux-2.6.11/include/asm-s390/elf.h	2005-03-02 07:38:26.000000000 +0000
++++ linux-2.6.11-gentoo/include/asm-s390/elf.h	2005-07-18 20:45:37.000000000 +0100
+@@ -150,6 +150,7 @@
+ /* regs is struct pt_regs, pr_reg is elf_gregset_t (which is
+    now struct_user_regs, they are different) */
+ 
++#ifdef __KERNEL__
+ static inline int dump_regs(struct pt_regs *ptregs, elf_gregset_t *regs)
+ {
+ 	memcpy(&regs->psw, &ptregs->psw, sizeof(regs->psw)+sizeof(regs->gprs));
+@@ -181,7 +182,7 @@
+ }
+ 
+ #define ELF_CORE_COPY_FPREGS(tsk, fpregs) dump_task_fpu(tsk, fpregs)
+-
++#endif
+ 
+ /* This yields a mask that user programs can use to figure out what
+    instruction set this CPU supports. */
+diff -Naur linux-2.6.11.orig/include/asm-sh/thread_info.h linux-2.6.11/include/asm-sh/thread_info.h
+--- linux-2.6.11.orig/include/asm-sh/thread_info.h	2005-03-02 16:38:13.000000000 +0900
++++ linux-2.6.11/include/asm-sh/thread_info.h	2005-07-24 10:18:10.000000000 +0900
+@@ -10,8 +10,6 @@
+  *  - Incorporating suggestions made by Linus Torvalds and Dave Miller
+  */
+ 
+-#ifdef __KERNEL__
+-
+ #ifndef __ASSEMBLY__
+ #include <asm/processor.h>
+ 
+@@ -97,6 +95,4 @@
+ #define _TIF_WORK_MASK		0x000000FE	/* work to do on interrupt/exception return */
+ #define _TIF_ALLWORK_MASK	0x000000FF	/* work to do on any return to u-space */
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* __ASM_SH_THREAD_INFO_H */
+--- linux-2.6.11.orig/include/asm-sh/types.h	2005-03-02 07:38:26.000000000 +0000
++++ linux-2.6.11/include/asm-sh/types.h	2005-07-28 22:54:52.000000000 +0100
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if defined(__GNUC__)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+diff -ur linux-2.6.11.orig/include/asm-ia64/siginfo.h linux-2.6.11/include/asm-ia64/siginfo.h
+--- linux-2.6.11.orig/include/asm-ia64/siginfo.h	2005-11-18 21:07:42.000000000 +0000
++++ linux-2.6.11/include/asm-ia64/siginfo.h	2005-11-18 21:03:17.000000000 +0000
+@@ -18,6 +18,7 @@
+ 
+ #include <asm-generic/siginfo.h>
+ 
++#ifndef _SIGNAL_H
+ typedef struct siginfo {
+ 	int si_signo;
+ 	int si_errno;
+@@ -73,6 +74,7 @@
+ 		} _sigpoll;
+ 	} _sifields;
+ } siginfo_t;
++#endif
+ 
+ #define si_imm		_sifields._sigfault._imm	/* as per UNIX SysV ABI spec */
+ #define si_flags	_sifields._sigfault._flags
+diff -ur linux-2.6.11.orig/include/asm-ia64/signal.h linux-2.6.11/include/asm-ia64/signal.h
+--- linux-2.6.11.orig/include/asm-ia64/signal.h	2005-11-18 21:07:42.000000000 +0000
++++ linux-2.6.11/include/asm-ia64/signal.h	2005-11-18 21:02:36.000000000 +0000
+@@ -146,11 +146,13 @@
+ /* Type of a signal handler.  */
+ typedef void __user (*__sighandler_t)(int);
+ 
++#ifndef _SIGNAL_H
+ typedef struct sigaltstack {
+ 	void __user *ss_sp;
+ 	int ss_flags;
+ 	size_t ss_size;
+ } stack_t;
++#endif
+ 
+ #ifdef __KERNEL__ 
+ 
+--- linux-2.6.15/include/linux/resource.h	2005-10-28 01:02:08.000000000 +0100
++++ linux-2.6.15-gentoo/include/linux/resource.h	2005-12-21 00:41:40.000000000 +0000
+@@ -18,6 +18,7 @@
+ #define	RUSAGE_CHILDREN	(-1)
+ #define RUSAGE_BOTH	(-2)		/* sys_wait4() uses this */
+ 
++#ifndef _SYS_RESOURCE_H
+ struct	rusage {
+ 	struct timeval ru_utime;	/* user time used */
+ 	struct timeval ru_stime;	/* system time used */
+@@ -41,6 +42,7 @@
+ 	unsigned long	rlim_cur;
+ 	unsigned long	rlim_max;
+ };
++#endif
+ 
+ #define	PRIO_MIN	(-20)
+ #define	PRIO_MAX	20
+--- linux-2.6.15/include/linux/sched.h	2005-11-28 17:54:08.000000000 +0000
++++ linux-2.6.15-gentoo/include/linux/sched.h	2005-12-21 00:42:19.000000000 +0000
+@@ -159,9 +159,11 @@
+ #define SCHED_FIFO		1
+ #define SCHED_RR		2
+ 
++#if !defined(_SCHED_H) && !defined(__cplusplus)
+ struct sched_param {
+ 	int sched_priority;
+ };
++#endif
+ 
+ #ifdef __KERNEL__
+ 
+--- linux-2.6.15/include/linux/nodemask.h	2005-10-28 01:02:08.000000000 +0100
++++ linux-2.6.15-gentoo/include/linux/nodemask.h	2005-12-21 01:13:17.000000000 +0000
+@@ -1,6 +1,8 @@
+ #ifndef __LINUX_NODEMASK_H
+ #define __LINUX_NODEMASK_H
+ 
++#ifdef __KERNEL__
++
+ /*
+  * Nodemasks provide a bitmap suitable for representing the
+  * set of Node's in a system, one bit position per Node number.
+@@ -353,4 +375,5 @@
+ #define for_each_node(node)	   for_each_node_mask((node), node_possible_map)
+ #define for_each_online_node(node) for_each_node_mask((node), node_online_map)
+ 
++#endif /* __KERNEL__ */
+ #endif /* __LINUX_NODEMASK_H */
+--- linux-2.6.15/include/asm-i386/current.h	2005-10-28 01:02:08.000000000 +0100
++++ linux-2.6.15-gentoo/include/asm-i386/current.h	2005-12-21 13:16:44.000000000 +0000
+@@ -9,7 +9,9 @@ static inline struct task_struct * get_c
+ {
+ 	return current_thread_info()->task;
+ }
+- 
++
++#ifndef __cplusplus 
+ #define current get_current()
++#endif
+ 
+ #endif /* !(_I386_CURRENT_H) */
+--- linux-2.6.15/include/asm-i386/semaphore.h	2005-12-21 13:46:11.000000000 +0000
++++ linux-2.6.15-gentoo/include/asm-i386/semaphore.h	2005-12-21 13:14:21.000000000 +0000
+@@ -95,7 +95,9 @@ fastcall void __up_wakeup(void /* specia
+  */
+ static inline void down(struct semaphore * sem)
+ {
++#ifdef __KERNEL__
+ 	might_sleep();
++#endif
+ 	__asm__ __volatile__(
+ 		"# atomic down operation\n\t"
+ 		LOCK "decl %0\n\t"     /* --sem->count */
+@@ -119,7 +121,9 @@ static inline int down_interruptible(str
+ {
+ 	int result;
+ 
++#ifdef __KERNEL__
+ 	might_sleep();
++#endif
+ 	__asm__ __volatile__(
+ 		"# atomic interruptible down operation\n\t"
+ 		LOCK "decl %1\n\t"     /* --sem->count */
+--- linux-2.6.15/include/asm-i386/system.h	2005-12-21 13:46:11.000000000 +0000
++++ linux-2.6.15-gentoo/include/asm-i386/system.h	2005-12-21 13:02:25.000000000 +0000
+@@ -133,6 +133,8 @@ static inline unsigned long _get_base(ch
+ #define write_cr3(x) \
+ 	__asm__ __volatile__("movl %0,%%cr3": :"r" (x));
+ 
++#endif	/* __KERNEL__ */
++
+ #define read_cr4() ({ \
+ 	unsigned int __dummy; \
+ 	__asm__( \
+@@ -144,8 +146,6 @@ static inline unsigned long _get_base(ch
+ 	__asm__ __volatile__("movl %0,%%cr4": :"r" (x));
+ #define stts() write_cr0(8 | read_cr0())
+ 
+-#endif	/* __KERNEL__ */
+-
+ #define wbinvd() \
+ 	__asm__ __volatile__ ("wbinvd": : :"memory");
+ 
+--- linux-2.6.15/include/linux/rbtree.h	2005-10-28 01:02:08.000000000 +0100
++++ linux-2.6.15-gentoo/include/linux/rbtree.h	2005-12-21 01:36:16.000000000 +0000
+@@ -125,7 +125,7 @@ extern struct rb_node *rb_first(struct r
+ extern struct rb_node *rb_last(struct rb_root *);
+ 
+ /* Fast replacement of a single node without remove/rebalance/add/rebalance */
+-extern void rb_replace_node(struct rb_node *victim, struct rb_node *new, 
++extern void rb_replace_node(struct rb_node *victim, struct rb_node *_new, 
+ 			    struct rb_root *root);
+ 
+ static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
+--- linux-2.6.15/include/linux/thread_info.h	2005-12-21 13:45:55.000000000 +0000
++++ linux-2.6.15-gentoo/include/linux/thread_info.h	2005-12-21 13:33:11.000000000 +0000
+@@ -20,8 +20,6 @@ extern long do_no_restart_syscall(struct
+ #include <linux/bitops.h>
+ #include <asm/thread_info.h>
+ 
+-#ifdef __KERNEL__
+-
+ /*
+  * flag set/clear/test wrappers
+  * - pass TIF_xxxx constants to these functions
+@@ -66,6 +64,4 @@ static inline int test_ti_thread_flag(st
+ #define set_need_resched()	set_thread_flag(TIF_NEED_RESCHED)
+ #define clear_need_resched()	clear_thread_flag(TIF_NEED_RESCHED)
+ 
+-#endif
+-
+ #endif /* _LINUX_THREAD_INFO_H */
+--- linux-2.6.15/include/linux/timer.h	2005-12-21 13:45:55.000000000 +0000
++++ linux-2.6.15-gentoo/include/linux/timer.h	2005-12-21 13:33:34.000000000 +0000
+@@ -80,7 +80,6 @@ extern unsigned long next_timer_interrup
+  */
+ static inline void add_timer(struct timer_list *timer)
+ {
+-	BUG_ON(timer_pending(timer));
+ 	__mod_timer(timer, timer->expires);
+ }
+ 
+--- linux-2.6.15.orig/include/asm-powerpc/cache.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/cache.h	2006-01-08 02:04:57.000000000 +0000
+@@ -1,8 +1,6 @@
+ #ifndef _ASM_POWERPC_CACHE_H
+ #define _ASM_POWERPC_CACHE_H
+ 
+-#ifdef __KERNEL__
+-
+ #include <linux/config.h>
+ 
+ /* bytes per L1 cache line */
+@@ -36,5 +34,4 @@
+ extern struct ppc64_caches ppc64_caches;
+ #endif /* __powerpc64__ && ! __ASSEMBLY__ */
+ 
+-#endif /* __KERNEL__ */
+ #endif /* _ASM_POWERPC_CACHE_H */
+--- linux-2.6.15.orig/include/asm-powerpc/elf.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/elf.h	2006-01-08 23:07:27.000000000 +0000
+@@ -105,11 +107,16 @@
+  */
+ #ifdef __powerpc64__
+ # define ELF_NVRREG32	33	/* includes vscr & vrsave stuffed together */
++#ifdef __KERNEL__
+ # define ELF_NVRREG	34	/* includes vscr & vrsave in split vectors */
++#endif /* __KERNEL__ */
++# define ELF_NVRREG_VMX	34+34+1
+ # define ELF_GREG_TYPE	elf_greg_t64
+ #else
+-# define ELF_NEVRREG	34	/* includes acc (as 2) */
++# define ELF_NEVRREG	34/* includes acc (as 2) */
++#ifdef __KERNEL__
+ # define ELF_NVRREG	33	/* includes vscr */
++#endif /* __KERNEL__ */
+ # define ELF_GREG_TYPE	elf_greg_t32
+ # define ELF_ARCH	EM_PPC
+ # define ELF_CLASS	ELFCLASS32
+@@ -134,6 +141,8 @@
+ typedef double elf_fpreg_t;
+ typedef elf_fpreg_t elf_fpregset_t[ELF_NFPREG];
+ 
++#ifdef __KERNEL__
++
+ /* Altivec registers */
+ /*
+  * The entries with indexes 0-31 contain the corresponding vector registers. 
+@@ -159,6 +168,8 @@
+ typedef elf_vrreg_t elf_vrregset_t32[ELF_NVRREG32];
+ #endif
+ 
++#endif /* __KERNEL__ */
++
+ /*
+  * This is used to ensure we don't load something for the wrong architecture.
+  */
+--- linux-2.6.15.orig/include/asm-powerpc/page.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/page.h	2006-01-08 02:02:49.000000000 +0000
+@@ -10,7 +10,6 @@
+  * 2 of the License, or (at your option) any later version.
+  */
+ 
+-#ifdef __KERNEL__
+ #include <linux/config.h>
+ #include <asm/asm-compat.h>
+ 
+@@ -174,6 +173,4 @@
+ 
+ #endif /* __ASSEMBLY__ */
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* _ASM_POWERPC_PAGE_H */
+--- linux-2.6.15.orig/include/asm-powerpc/param.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/param.h	2006-01-08 23:24:03.000000000 +0000
+@@ -3,9 +3,10 @@
+ 
+ #include <linux/config.h>
+ 
++#define USER_HZ		100		/* for user interfaces in "ticks" */
++
+ #ifdef __KERNEL__
+ #define HZ		CONFIG_HZ	/* internal kernel timer frequency */
+-#define USER_HZ		100		/* for user interfaces in "ticks" */
+ #define CLOCKS_PER_SEC	(USER_HZ)	/* frequency at which times() counts */
+ #endif /* __KERNEL__ */
+ 
+--- linux-2.6.15.orig/include/asm-powerpc/sigcontext.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/sigcontext.h	2006-01-08 23:06:55.000000000 +0000
+@@ -44,8 +44,8 @@
+  * The entry with index 33 contains the vrsave as the first word (offset 0)
+  * within the quadword.
+  */
+-	elf_vrreg_t	__user *v_regs;
+-	long		vmx_reserve[ELF_NVRREG+ELF_NVRREG+1];
++	__vector128	__user *v_regs;
++	long		vmx_reserve[ELF_NVRREG_VMX];
+ #endif
+ };
+ 
+--- linux-2.6.15.orig/include/asm-powerpc/spinlock.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/spinlock.h	2006-01-09 01:38:21.000000000 +0000
+@@ -30,7 +30,7 @@
+ 
+ #ifdef CONFIG_PPC64
+ /* use 0x800000yy when locked, where yy == CPU number */
+-#define LOCK_TOKEN	(*(u32 *)(&get_paca()->lock_token))
++#define LOCK_TOKEN	(*(__u32 *)(&get_paca()->lock_token))
+ #else
+ #define LOCK_TOKEN	1
+ #endif
+--- linux-2.6.15.orig/include/asm-powerpc/thread_info.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/thread_info.h	2006-01-08 02:16:48.000000000 +0000
+@@ -8,8 +8,6 @@
+ #ifndef _ASM_POWERPC_THREAD_INFO_H
+ #define _ASM_POWERPC_THREAD_INFO_H
+ 
+-#ifdef __KERNEL__
+-
+ /* We have 8k stacks on ppc32 and 16k on ppc64 */
+ 
+ #ifdef CONFIG_PPC64
+@@ -141,6 +139,4 @@
+ #define _TIF_USER_WORK_MASK	(_TIF_NOTIFY_RESUME | _TIF_SIGPENDING | \
+ 				 _TIF_NEED_RESCHED)
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* _ASM_POWERPC_THREAD_INFO_H */
+--- linux-2.6.15.orig/include/asm-powerpc/timex.h	2006-01-09 01:46:00.000000000 +0000
++++ linux-2.6.15/include/asm-powerpc/timex.h	2006-01-08 03:13:49.000000000 +0000
+@@ -1,8 +1,6 @@
+ #ifndef _ASM_POWERPC_TIMEX_H
+ #define _ASM_POWERPC_TIMEX_H
+ 
+-#ifdef __KERNEL__
+-
+ /*
+  * PowerPC architecture timex specifications
+  */
+@@ -12,6 +12,8 @@
+ 
+ typedef unsigned long cycles_t;
+ 
++#ifdef __KERNEL__
++
+ static inline cycles_t get_cycles(void)
+ {
+ 	cycles_t ret;
+--- linux-2.6.15.orig/include/linux/list.h	2006-01-09 01:46:05.000000000 +0000
++++ linux-2.6.15/include/linux/list.h	2006-01-08 19:03:24.000000000 +0000
+@@ -23,9 +23,11 @@
+  * using the generic single-entry routines.
+  */
+ 
++#ifndef _LIST_H
+ struct list_head {
+ 	struct list_head *next, *prev;
+ };
++#endif /* _LIST_H */
+ 
+ #define LIST_HEAD_INIT(name) { &(name), &(name) }
+ 
+--- linux-2.6.16.orig/include/linux/irq.h	2006-01-09 01:46:05.000000000 +0000
++++ linux-2.6.16/include/linux/irq.h	2006-01-08 19:03:24.000000000 +0000
+@@ -1,5 +1,6 @@
+ #ifndef __irq_h
+ #define __irq_h
++#ifdef __KERNEL__
+ 
+ /*
+  * Please do not include this file in generic code.  There is currently
+@@ -238,4 +239,5 @@
+ 
+ #endif
+ 
++#endif /* __KERNEL__ */
+ #endif /* __irq_h */
+--- linux-2.6.16.orig/include/linux/interrupt.h	2006-03-23 00:10:57.000000000 +0000
++++ linux-2.6.16/include/linux/interrupt.h	2006-03-25 16:45:57.000000000 +0000
+@@ -34,6 +34,7 @@
+ #define IRQ_HANDLED	(1)
+ #define IRQ_RETVAL(x)	((x) != 0)
+ 
++#ifdef __KERNEL__
+ struct irqaction {
+ 	irqreturn_t (*handler)(int, void *, struct pt_regs *);
+ 	unsigned long flags;
+@@ -44,6 +45,7 @@
+ 	int irq;
+ 	struct proc_dir_entry *dir;
+ };
++#endif
+ 
+ extern irqreturn_t no_action(int cpl, void *dev_id, struct pt_regs *regs);
+ extern int request_irq(unsigned int,
+--- linux-2.6.16.orig/include/linux/timex.h	2006-03-23 00:10:57.000000000 +0000
++++ linux-2.6.16/include/linux/timex.h	2006-03-25 17:04:35.000000000 +0000
+@@ -132,6 +132,7 @@
+  * syscall interface - used (mainly by NTP daemon)
+  * to discipline kernel clock oscillator
+  */
++#ifndef _SYS_TIMEX_H
+ struct timex {
+ 	unsigned int modes;	/* mode selector */
+ 	long offset;		/* time offset (usec) */
+@@ -160,6 +161,7 @@
+ 	int  :32; int  :32; int  :32; int  :32;
+ 	int  :32; int  :32; int  :32; int  :32;
+ };
++#endif
+ 
+ /*
+  * Mode codes (timex.mode)
+--- linux-2.6.16.orig/include/linux/spinlock.h	2006-03-23 00:10:57.000000000 +0000
++++ linux-2.6.16/include/linux/spinlock.h	2006-03-25 17:24:40.000000000 +0000
+@@ -59,7 +59,7 @@
+ /*
+  * Must define these before including other files, inline functions need them
+  */
+-#define LOCK_SECTION_NAME ".text.lock."KBUILD_BASENAME
++#define LOCK_SECTION_NAME ".text.lock.gentoo_headers"
+ 
+ #define LOCK_SECTION_START(extra)               \
+         ".subsection 1\n\t"                     \
+--- linux-2.6.16.orig/include/linux/smp_lock.h	2006-03-23 00:10:57.000000000 +0000
++++ linux-2.6.16/include/linux/smp_lock.h	2006-03-25 17:24:40.000000000 +0000
+@@ -31,12 +31,14 @@
+ # define return_value_on_smp
+ #endif
+ 
+-static inline int reacquire_kernel_lock(struct task_struct *task)
++#ifdef __KERNEL__
++static __inline__ int reacquire_kernel_lock(struct task_struct *task)
+ {
+ 	if (unlikely(task->lock_depth >= 0))
+ 		return_value_on_smp __reacquire_kernel_lock();
+ 	return 0;
+ }
++#endif
+ 
+ extern void __lockfunc lock_kernel(void)	__acquires(kernel_lock);
+ extern void __lockfunc unlock_kernel(void)	__releases(kernel_lock);
+--- linux-2.6.16.orig/include/linux/ktime.h	2006-03-23 00:10:56.000000000 +0000
++++ linux-2.6.16/include/linux/ktime.h	2006-03-25 17:55:33.000000000 +0000
+@@ -186,7 +186,7 @@
+ 	 *   tv.sec ++;
+ 	 */
+ 	if (res.tv.nsec >= NSEC_PER_SEC)
+-		res.tv64 += (u32)-NSEC_PER_SEC;
++		res.tv64 += (__u32)-NSEC_PER_SEC;
+ 
+ 	return res;
+ }
+@@ -210,8 +210,8 @@
+  */
+ static __inline__ ktime_t timespec_to_ktime(const struct timespec ts)
+ {
+-	return (ktime_t) { .tv = { .sec = (s32)ts.tv_sec,
+-			   	   .nsec = (s32)ts.tv_nsec } };
++	return (ktime_t) { .tv = { .sec = (__s32)ts.tv_sec,
++			   	   .nsec = (__s32)ts.tv_nsec } };
+ }
+ 
+ /**
+@@ -223,8 +223,8 @@
+  */
+ static __inline__ ktime_t timeval_to_ktime(const struct timeval tv)
+ {
+-	return (ktime_t) { .tv = { .sec = (s32)tv.tv_sec,
+-				   .nsec = (s32)tv.tv_usec * 1000 } };
++	return (ktime_t) { .tv = { .sec = (__s32)tv.tv_sec,
++				   .nsec = (__s32)tv.tv_usec * 1000 } };
+ }
+ 
+ /**
+--- linux-2.6.16.orig/include/asm-generic/div64.h	2006-03-23 00:10:56.000000000 +0000
++++ linux-2.6.16/include/asm-generic/div64.h	2006-03-25 17:55:33.000000000 +0000
+@@ -50,9 +50,9 @@
+  })
+ 
+ #else /* BITS_PER_LONG == ?? */
+-
+-# error do_div() does not yet support the C64
+-
++# ifdef __KERNEL__
++#  error do_div() does not yet support the C64
++# endif
+ #endif /* BITS_PER_LONG */
+ 
+ #endif /* _ASM_GENERIC_DIV64_H */
+--- linux-2.6.16.orig/include/asm-x86_64/fixmap.h	2006-03-25 21:02:49.000000000 +0000
++++ linux-2.6.16/include/asm-x86_64/fixmap.h	2006-03-25 20:55:43.000000000 +0000
+@@ -48,8 +48,10 @@
+ 	__end_of_fixed_addresses
+ };
+ 
++#ifdef __KERNEL__
+ extern void __set_fixmap (enum fixed_addresses idx,
+ 					unsigned long phys, pgprot_t flags);
++#endif
+ 
+ #define set_fixmap(idx, phys) \
+ 		__set_fixmap(idx, phys, PAGE_KERNEL)
+--- linux-2.6.16.orig/include/asm-x86_64/param.h	2006-03-25 21:02:49.000000000 +0000
++++ linux-2.6.16/include/asm-x86_64/param.h	2006-03-25 20:52:23.000000000 +0000
+@@ -12,6 +12,14 @@
+ #define HZ 100
+ #endif
+ 
++#ifndef USER_HZ
++#define USER_HZ 100
++#endif
++
++#ifndef CLOCKS_PER_SEC
++#define CLOCKS_PER_SEC USER_HZ
++#endif
++
+ #define EXEC_PAGESIZE	4096
+ 
+ #ifndef NOGROUP
+--- linux-2.6.16.orig/include/asm-x86_64/thread_info.h	2006-03-25 21:02:49.000000000 +0000
++++ linux-2.6.16/include/asm-x86_64/thread_info.h	2006-03-25 20:51:21.000000000 +0000
+@@ -7,8 +7,6 @@
+ #ifndef _ASM_THREAD_INFO_H
+ #define _ASM_THREAD_INFO_H
+ 
+-#ifdef __KERNEL__
+-
+ #include <asm/page.h>
+ #include <asm/types.h>
+ #include <asm/pda.h>
+@@ -138,6 +136,4 @@
+ #define TS_USEDFPU		0x0001	/* FPU was used by this task this quantum (SMP) */
+ #define TS_COMPAT		0x0002	/* 32bit syscall active */
+ 
+-#endif /* __KERNEL__ */
+-
+ #endif /* _ASM_THREAD_INFO_H */
+--- linux-2.6.16.orig/include/asm-x86_64/timex.h	2006-03-25 21:02:49.000000000 +0000
++++ linux-2.6.16/include/asm-x86_64/timex.h	2006-03-25 20:51:50.000000000 +0000
+@@ -27,6 +27,7 @@
+ }
+ 
+ /* Like get_cycles, but make sure the CPU is synchronized. */
++#ifdef __KERNEL__
+ static __always_inline cycles_t get_cycles_sync(void)
+ {
+ 	unsigned long long ret;
+@@ -38,5 +39,6 @@
+ 	rdtscll(ret);
+ 	return ret;
+ }
++#endif
+ 
+ extern unsigned int cpu_khz;
+--- linux-2.6.16.orig/include/linux/compiler-gcc3.h      2006-04-18 16:35:47.000000000 +0100
++++ linux-2.6.16/include/linux/compiler-gcc3.h      2006-04-19 22:53:56.000000000 +0100
+@@ -13,4 +13,4 @@
+ #define __must_check		__attribute__((warn_unused_result))
+ #endif
+ 
+-#define __always_inline		inline __attribute__((always_inline))
++#define __always_inline		__inline__ __attribute__((always_inline))
+--- linux-2.6.16.orig/include/linux/compiler-gcc4.h      2006-04-18 16:35:47.000000000 +0100
++++ linux-2.6.16/include/linux/compiler-gcc4.h      2006-04-19 22:54:18.000000000 +0100
+@@ -15,4 +15,4 @@
+ #define __attribute_used__	__attribute__((__used__))
+ #define __must_check			__attribute__((warn_unused_result))
+ #define __compiler_offsetof(a,b) __builtin_offsetof(a,b)
+-#define __always_inline		inline __attribute__((always_inline))
++#define __always_inline		__inline__ __attribute__((always_inline))

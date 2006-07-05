@@ -1,0 +1,5 @@
+--- linux-2.6.16/include/asm-powerpc/memory.h        1970-01-01 01:00:00.000000000 +0100
++++ linux-2.6.16-gentoo/include/asm-powerpc/memory.h       2006-05-26 14:42:29.000000000 +0100
+@@ -0,0 +1 @@
++/* Gentoo dummy header... */
+
