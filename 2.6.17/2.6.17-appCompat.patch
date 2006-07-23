@@ -457,49 +457,6 @@ diff -ur linux-2.6.11/include/linux/jiffies.h linux-2.6.11/include/linux.gentoo/
  }
  #endif
  
-diff -ur linux-2.6.15/include/linux/i2c.h linux-2.6.15-gentoo/include/linux/i2c.h
---- linux-2.6.15/include/linux/i2c.h	2004-02-07 13:29:15.099504640 -0500
-+++ linux-2.6.15-gentoo/include/linux/i2c.h	2004-02-07 13:35:53.956869104 -0500
-@@ -26,13 +26,21 @@
- #ifndef _LINUX_I2C_H
- #define _LINUX_I2C_H
- 
--#include <linux/module.h>
--#include <linux/types.h>
-+#ifdef __KERNEL__
-+#	include <linux/module.h>
-+#	include <linux/types.h>
-+#else
-+#	define __KERNEL__
-+#	include <linux/types.h>
-+#	undef __KERNEL__
-+#endif
- #include <linux/i2c-id.h>
-+#ifdef __KERNEL__
- #include <linux/mod_devicetable.h>
- #include <linux/device.h>	/* for struct device */
- #include <linux/sched.h>	/* for completion */
- #include <linux/mutex.h>
-+#endif
- 
- /* --- For i2c-isa ---------------------------------------------------- */
- 
-@@ -109,6 +117,7 @@
-  * events.
-  */
- 
-+#ifdef __KERNEL__
- struct i2c_driver {
- 	struct module *owner;
- 	char name[32];
-@@ -268,6 +277,7 @@
- {
- 	dev_set_drvdata (&dev->dev, data);
- }
-+#endif
- 
- /*flags for the driver struct: */
- #define I2C_DF_NOTIFY	0x01		/* notify on bus (de/a)ttaches 	*/
 diff -ur linux-2.6.3/include/linux/usbdevice_fs.h linux-2.6.3/include/linux/usbdevice_fs.h
 --- linux-2.6.3/include/linux/usbdevice_fs.h	2004-02-22 16:52:07.000000000 +0000
 +++ linux-2.6.3/include/linux/usbdevice_fs.h	2004-02-22 22:10:45.000000000 +0000

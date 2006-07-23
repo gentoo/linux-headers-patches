@@ -1,0 +1,51 @@
+From: David Woodhouse <dwmw2@infradead.org>
+Date: Tue, 25 Apr 2006 13:14:52 +0000 (+0100)
+Subject: Sanitise linux/i2c.h for userspace consumption
+X-Git-Tag: v2.6.17-rc3
+X-Git-Url: http://www.kernel.org/git/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=a1b9298e55d2395be4ac25de3340b6eee01c6f67
+
+Sanitise linux/i2c.h for userspace consumption
+
+It was unconditionally including a whole bunch of headers which aren't
+user-visible, and also exposing a lot of private internal stuff of its
+own. Also fix some legacy character set to UTF-8 while we're at it.
+
+Signed-off-by: David Woodhouse <dwmw2@infradead.org>
+---
+
+--- a/include/linux/i2c.h
++++ b/include/linux/i2c.h
+@@ -26,8 +26,9 @@
+ #ifndef _LINUX_I2C_H
+ #define _LINUX_I2C_H
+ 
+-#include <linux/module.h>
+ #include <linux/types.h>
++#ifdef __KERNEL__ 
++#include <linux/module.h>
+ #include <linux/i2c-id.h>
+ #include <linux/mod_devicetable.h>
+ #include <linux/device.h>	/* for struct device */
+@@ -354,6 +355,7 @@ static inline int i2c_adapter_id(struct 
+ {
+ 	return adap->nr;
+ }
++#endif /* __KERNEL__ */
+ 
+ /*
+  * I2C Message - used for pure i2c transaction, also from /dev interface
+@@ -469,6 +471,7 @@ union i2c_smbus_data {
+ #define I2C_SMBUS	0x0720	/* SMBus-level access */
+ 
+ /* ----- I2C-DEV: char device interface stuff ------------------------- */
++#ifdef __KERNEL__
+ 
+ #define I2C_MAJOR	89		/* Device major number		*/
+ 
+@@ -646,5 +649,5 @@ static unsigned short *forces[] = { forc
+ 				    force_##chip6, force_##chip7,	\
+ 				    force_##chip8, NULL };		\
+ I2C_CLIENT_INSMOD_COMMON
+-
++#endif /* __KERNEL__ */
+ #endif /* _LINUX_I2C_H */
