@@ -1,0 +1,18 @@
+From Gentoo bug #143804:
+
+This may make sense for the kernel itself, but clearly does not belong in the
+headers programs should use, and no installed header file actually uses
+__builtin_warning. Would you please consider removing it? (I noticed it when a
+non-GCC compiler complained about the syntax used.)
+
+diff -ur linux-2.6.17/include/linux/compiler.h linux-2.6.17-gentoo/include/linux/compiler.h
+--- linux-2.6.17/include/linux/compiler.h	2006-08-07 16:41:34.000000000 +0100
++++ linux-2.6.17-gentoo/include/linux/compiler.h	2006-08-13 19:11:03.000000000 +0100
+@@ -26,7 +26,6 @@
+ # define __iomem
+ # define __chk_user_ptr(x) (void)0
+ # define __chk_io_ptr(x) (void)0
+-# define __builtin_warning(x, y...) (1)
+ # define __acquires(x)
+ # define __releases(x)
+ # define __acquire(x) (void)0

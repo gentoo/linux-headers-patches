@@ -1,0 +1,14 @@
+--- linux-2.6.17/include/linux/ext3_fs.h	2006-06-18 19:12:46.000000000 +0100
++++ linux-2.6.17-gentoo/include/linux/ext3_fs.h	2006-08-07 16:15:09.000000000 +0100
+@@ -17,9 +17,10 @@
+ #define _LINUX_EXT3_FS_H
+ 
+ #include <linux/types.h>
++#ifdef __KERNEL__
+ #include <linux/ext3_fs_i.h>
+ #include <linux/ext3_fs_sb.h>
+-
++#endif
+ 
+ struct statfs;
+ 

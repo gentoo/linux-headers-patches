@@ -1,0 +1,21 @@
+--- linux-2.6.17/include/linux/compat.h	2006-08-07 16:41:34.000000000 +0100
++++ linux-2.6.17-gentoo/include/linux/compat.h	2006-08-08 00:14:22.000000000 +0100
+@@ -11,6 +11,7 @@
+ #include <linux/stat.h>
+ #include <linux/param.h>	/* for HZ */
+ #include <linux/sem.h>
++#include <linux/linkage.h>
+ 
+ #ifdef __USE_MISC
+ #undef st_atime
+--- linux-2.6.17/include/asm-x86_64/compat.h	2006-03-20 05:53:29.000000000 +0000
++++ linux-2.6.17-gentoo/include/asm-x86_64/compat.h	2006-08-08 00:14:22.000000000 +0100
+@@ -5,68 +5,68 @@
+  * Architecture specific compatibility types
+  */
+ #include <linux/types.h>
+-#include <linux/sched.h>
++#include <linux/thread_info.h>
+ 
+ #define COMPAT_USER_HZ	100
+ 

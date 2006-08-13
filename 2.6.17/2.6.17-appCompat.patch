@@ -784,10 +784,10 @@ diff -ur linux-2.6.7/include/linux/pid.h linux-2.6.7-gentoo/include/linux/pid.h
  
 +#endif /* __KERNEL__ */
  #endif /* _LINUX_PID_H */
-diff -ur linux-2.6.15/include/linux/compiler.h linux-2.6.15-gentoo/include/linux/compiler.h
---- linux-2.6.15/include/linux/compiler.h	2004-06-12 12:11:54.000000000 +0100
-+++ linux-2.6.15-gentoo/include/linux/compiler.h	2004-06-24 09:48:32.478502752 +0100
-@@ -34,7 +34,14 @@
+diff -ur linux-2.6.17/include/linux/compiler.h linux-2.6.17-gentoo/include/linux/compiler.h
+--- linux-2.6.17/include/linux/compiler.h	2004-06-12 12:11:54.000000000 +0100
++++ linux-2.6.17-gentoo/include/linux/compiler.h	2004-06-24 09:48:32.478502752 +0100
+@@ -34,8 +34,16 @@
  # define __cond_lock(x) (x)
  #endif
  
@@ -801,49 +801,27 @@ diff -ur linux-2.6.15/include/linux/compiler.h linux-2.6.15-gentoo/include/linux
 +#endif
 +#endif
  
++#ifdef __KERNEL__
  #if __GNUC__ > 4
  #error no compiler-gcc.h file for this gcc version
-@@ -66,7 +73,11 @@
- 
- /* Optimization barrier */
- #ifndef barrier
--# define barrier() __memory_barrier()
-+# ifdef mb
-+#   define barrier() mb()
-+# else
-+#   define barrier() __asm__ __volatile__ ("" : : : "memory")
-+# endif
+ #elif __GNUC__ == 4
+@@ -145,9 +152,15 @@
+ #ifndef noinline
+ #define noinline
  #endif
- 
- #ifndef RELOC_HIDE
-@@ -76,8 +87,6 @@
-     (typeof(ptr)) (__ptr + (off)); })
- #endif
- 
--#endif /* __KERNEL__ */
--
- #endif /* __ASSEMBLY__ */
- 
- /*
-@@ -147,12 +156,14 @@
- # define __attribute_const__	/* unimplemented */
- #endif
- 
--#ifndef noinline
--#define noinline
--#endif
--
- #ifndef __always_inline
--#define __always_inline inline
++
++#ifndef __always_inline
 +#define __always_inline __inline__
- #endif
++#endif
  
+-#ifndef __always_inline
+-#define __always_inline inline
 +#ifdef __cplusplus
 +#define __cast__(_to) (_to)
 +#else
 +#define __cast__(_to)
-+#endif
-+
+ #endif
+ 
  #endif /* __LINUX_COMPILER_H */
 diff -ur linux-2.6.6/include/linux/hiddev.h linux-2.6.6-gentoo/include/linux/hiddev.h
 --- linux-2.6.6/include/linux/hiddev.h	2004-06-12 12:11:54.000000000 +0100
@@ -1548,15 +1526,6 @@ diff -ur linux-2.6.15/include/asm-powerpc/bitops.h linux-2.6.15-gentoo/include/a
  static __inline__ int __ffs(unsigned long x)
  {
  	return __ilog2(x & -x);
-@@ -299,6 +299,8 @@
- 	return __ilog2(i & -i) + 1;
- }
- 
-+#endif /* __KERNEL__ */
-+
- /*
-  * fls: find last (most-significant) bit set.
-  * Note fls(0) = 0, fls(1) = 1, fls(0x80000000) = 32.
 diff -ur linux-2.6.8.1/include/asm-alpha/signal.h linux-2.6.8.1-gentoo/include/asm-alpha/signal.h
 --- linux-2.6.8.1/include/asm-alpha/signal.h	2004-08-14 11:55:32.000000000 +0100
 +++ linux-2.6.8.1-gentoo/include/asm-alpha/signal.h	2004-12-26 19:58:15.881705760 +0000
