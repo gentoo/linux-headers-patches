@@ -1,0 +1,1445 @@
+hacked up version of
+http://cvs.parisc-linux.org/download/linux-2.4/patch-2.4.27-pa4.gz
+for use just with hppa kernel headers
+
+--- linux-2.4/Makefile
++++ linux-2.4/Makefile
+@@ -1,7 +1,7 @@
+ 
+ KERNELRELEASE=$(VERSION).$(PATCHLEVEL).$(SUBLEVEL)$(EXTRAVERSION)
+ 
+-ARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ -e s/arm.*/arm/ -e s/sa110/arm/)
++ARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ -e s/arm.*/arm/ -e s/sa110/arm/ -e s/parisc64/parisc/)
+ KERNELPATH=kernel-$(shell echo $(KERNELRELEASE) | sed -e "s/-//g")
+ 
+ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
+--- linux-2.4/arch/parisc/config.in
++++ linux-2.4/arch/parisc/config.in
+@@ -50,13 +50,11 @@
+ fi
+ 
+ bool 'Chassis LCD and LED support' CONFIG_CHASSIS_LCD_LED
+-
+-bool 'Kernel Debugger support' CONFIG_KWDB
+-# define_bool CONFIG_KWDB n
++bool 'PDC chassis panel support' CONFIG_PDC_CHASSIS
+ 
+ bool 'U2/Uturn I/O MMU' CONFIG_IOMMU_CCIO
+ bool 'VSC/GSC/HSC bus support' CONFIG_GSC
+-dep_bool '  Lasi I/O support' CONFIG_GSC_LASI $CONFIG_GSC
++dep_bool '  Asp/Lasi I/O support' CONFIG_GSC_LASI $CONFIG_GSC
+ dep_bool '  Wax I/O support' CONFIG_GSC_WAX $CONFIG_GSC
+ 
+ dep_bool 'EISA support' CONFIG_EISA $CONFIG_GSC
+@@ -82,6 +81,14 @@
+ 
+ bool 'Support for hot-pluggable devices' CONFIG_HOTPLUG
+ 
++if [ "$CONFIG_HOTPLUG" = "y" ] ; then
++   source drivers/pcmcia/Config.in
++   source drivers/hotplug/Config.in
++else
++   define_bool CONFIG_PCMCIA n
++   define_bool CONFIG_HOTPLUG_PCI n
++fi
++
+ bool 'Networking support' CONFIG_NET
+ 
+ bool 'System V IPC' CONFIG_SYSVIPC
+@@ -97,6 +104,8 @@
+ 
+ endmenu
+ 
++source drivers/mtd/Config.in
++
+ source drivers/parport/Config.in
+ 
+ source drivers/block/Config.in
+@@ -197,6 +206,8 @@
+ 
+ #bool 'Debug kmalloc/kfree' CONFIG_DEBUG_MALLOC
+ bool 'Magic SysRq key' CONFIG_MAGIC_SYSRQ
++bool 'Debug spinlocks' CONFIG_DEBUG_SPINLOCK
++bool 'Compile kernel with frame pointers' CONFIG_FRAME_POINTER
+ 
+ int 'Kernel messages buffer length shift (0 = default)' CONFIG_LOG_BUF_SHIFT 0
+ 
+--- linux-2.4/arch/parisc/defconfig
++++ linux-2.4/arch/parisc/defconfig
+@@ -21,17 +21,13 @@
+ #
+ # Processor type
+ #
+-# CONFIG_PA7100 is not set
+-# CONFIG_PA7200 is not set
+-# CONFIG_PA7100LC is not set
+-# CONFIG_PA8X00 is not set
+-# CONFIG_PA11 is not set
+ 
+ #
+ # General options
+ #
+ # CONFIG_SMP is not set
+ CONFIG_CHASSIS_LCD_LED=y
++CONFIG_PDC_CHASSIS=y
+ CONFIG_IOMMU_CCIO=y
+ CONFIG_GSC=y
+ CONFIG_GSC_LASI=y
+@@ -50,17 +46,34 @@
+ # General setup
+ #
+ CONFIG_HOTPLUG=y
++
++#
++# PCMCIA/CardBus support
++#
++# CONFIG_PCMCIA is not set
++
++#
++# PCI Hotplug Support
++#
++# CONFIG_HOTPLUG_PCI is not set
++# CONFIG_HOTPLUG_PCI_COMPAQ is not set
++# CONFIG_HOTPLUG_PCI_COMPAQ_NVRAM is not set
+ CONFIG_NET=y
+ CONFIG_SYSVIPC=y
+ # CONFIG_BSD_PROCESS_ACCT is not set
+ CONFIG_SYSCTL=y
+ CONFIG_KCORE_ELF=y
+ CONFIG_BINFMT_ELF=y
+-CONFIG_BINFMT_SOM=y
++# CONFIG_BINFMT_SOM is not set
+ # CONFIG_BINFMT_MISC is not set
+ # CONFIG_PM is not set
+ 
+ #
++# Memory Technology Devices (MTD)
++#
++# CONFIG_MTD is not set
++
++#
+ # Parallel port support
+ #
+ CONFIG_PARPORT=y
+@@ -69,7 +82,6 @@
+ # CONFIG_PARPORT_SERIAL is not set
+ # CONFIG_PARPORT_PC_FIFO is not set
+ # CONFIG_PARPORT_PC_SUPERIO is not set
+-# CONFIG_PARPORT_PC_PCMCIA is not set
+ # CONFIG_PARPORT_AMIGA is not set
+ # CONFIG_PARPORT_MFC3 is not set
+ # CONFIG_PARPORT_ATARI is not set
+@@ -87,6 +99,7 @@
+ # CONFIG_BLK_CPQ_DA is not set
+ # CONFIG_BLK_CPQ_CISS_DA is not set
+ # CONFIG_CISS_SCSI_TAPE is not set
++# CONFIG_CISS_MONITOR_THREAD is not set
+ # CONFIG_BLK_DEV_DAC960 is not set
+ # CONFIG_BLK_DEV_UMEM is not set
+ CONFIG_BLK_DEV_LOOP=y
+@@ -94,6 +107,7 @@
+ CONFIG_BLK_DEV_RAM=y
+ CONFIG_BLK_DEV_RAM_SIZE=4096
+ CONFIG_BLK_DEV_INITRD=y
++# CONFIG_BLK_STATS is not set
+ 
+ #
+ # Multi-device support (RAID and LVM)
+@@ -131,6 +145,12 @@
+ # CONFIG_SYN_COOKIES is not set
+ # CONFIG_IPV6 is not set
+ # CONFIG_KHTTPD is not set
++
++#
++#    SCTP Configuration (EXPERIMENTAL)
++#
++CONFIG_IPV6_SCTP__=y
++# CONFIG_IP_SCTP is not set
+ # CONFIG_ATM is not set
+ # CONFIG_VLAN_8021Q is not set
+ 
+@@ -183,15 +203,6 @@
+ # CONFIG_BLK_DEV_IDEDISK is not set
+ # CONFIG_IDEDISK_MULTI_MODE is not set
+ # CONFIG_IDEDISK_STROKE is not set
+-# CONFIG_BLK_DEV_IDEDISK_VENDOR is not set
+-# CONFIG_BLK_DEV_IDEDISK_FUJITSU is not set
+-# CONFIG_BLK_DEV_IDEDISK_IBM is not set
+-# CONFIG_BLK_DEV_IDEDISK_MAXTOR is not set
+-# CONFIG_BLK_DEV_IDEDISK_QUANTUM is not set
+-# CONFIG_BLK_DEV_IDEDISK_SEAGATE is not set
+-# CONFIG_BLK_DEV_IDEDISK_WD is not set
+-# CONFIG_BLK_DEV_COMMERIAL is not set
+-# CONFIG_BLK_DEV_TIVO is not set
+ # CONFIG_BLK_DEV_IDECS is not set
+ CONFIG_BLK_DEV_IDECD=y
+ # CONFIG_BLK_DEV_IDETAPE is not set
+@@ -205,8 +216,8 @@
+ # CONFIG_BLK_DEV_CMD640 is not set
+ # CONFIG_BLK_DEV_CMD640_ENHANCED is not set
+ # CONFIG_BLK_DEV_ISAPNP is not set
+-# CONFIG_BLK_DEV_RZ1000 is not set
+ CONFIG_BLK_DEV_IDEPCI=y
++# CONFIG_BLK_DEV_GENERIC is not set
+ # CONFIG_IDEPCI_SHARE_IRQ is not set
+ CONFIG_BLK_DEV_IDEDMA_PCI=y
+ # CONFIG_BLK_DEV_OFFBOARD is not set
+@@ -215,28 +226,29 @@
+ # CONFIG_IDEDMA_ONLYDISK is not set
+ CONFIG_BLK_DEV_IDEDMA=y
+ # CONFIG_IDEDMA_PCI_WIP is not set
+-# CONFIG_BLK_DEV_IDEDMA_TIMEOUT is not set
+-# CONFIG_IDEDMA_NEW_DRIVE_LISTINGS is not set
+-CONFIG_BLK_DEV_ADMA=y
++# CONFIG_BLK_DEV_ADMA100 is not set
+ # CONFIG_BLK_DEV_AEC62XX is not set
+-# CONFIG_AEC62XX_TUNING is not set
+ # CONFIG_BLK_DEV_ALI15X3 is not set
+ # CONFIG_WDC_ALI15X3 is not set
+ # CONFIG_BLK_DEV_AMD74XX is not set
+ # CONFIG_AMD74XX_OVERRIDE is not set
+ # CONFIG_BLK_DEV_CMD64X is not set
+-# CONFIG_BLK_DEV_CMD680 is not set
++# CONFIG_BLK_DEV_TRIFLEX is not set
+ # CONFIG_BLK_DEV_CY82C693 is not set
+ # CONFIG_BLK_DEV_CS5530 is not set
+ # CONFIG_BLK_DEV_HPT34X is not set
+ # CONFIG_HPT34X_AUTODMA is not set
+ # CONFIG_BLK_DEV_HPT366 is not set
++# CONFIG_BLK_DEV_PIIX is not set
+ CONFIG_BLK_DEV_NS87415=y
+ # CONFIG_BLK_DEV_OPTI621 is not set
+-# CONFIG_BLK_DEV_PDC202XX is not set
++# CONFIG_BLK_DEV_PDC202XX_OLD is not set
+ # CONFIG_PDC202XX_BURST is not set
+-# CONFIG_PDC202XX_FORCE is not set
++# CONFIG_BLK_DEV_PDC202XX_NEW is not set
++# CONFIG_BLK_DEV_RZ1000 is not set
++# CONFIG_BLK_DEV_SC1200 is not set
+ # CONFIG_BLK_DEV_SVWKS is not set
++# CONFIG_BLK_DEV_SIIMAGE is not set
+ # CONFIG_BLK_DEV_SIS5513 is not set
+ # CONFIG_BLK_DEV_SLC90E66 is not set
+ # CONFIG_BLK_DEV_TRM290 is not set
+@@ -245,9 +257,11 @@
+ # CONFIG_IDEDMA_AUTO is not set
+ # CONFIG_IDEDMA_IVB is not set
+ # CONFIG_DMA_NONPCI is not set
++CONFIG_BLK_DEV_IDE_MODES=y
+ # CONFIG_BLK_DEV_ATARAID is not set
+ # CONFIG_BLK_DEV_ATARAID_PDC is not set
+ # CONFIG_BLK_DEV_ATARAID_HPT is not set
++# CONFIG_BLK_DEV_ATARAID_SII is not set
+ 
+ #
+ # SCSI support
+@@ -285,12 +299,14 @@
+ # CONFIG_SCSI_AHA1740 is not set
+ # CONFIG_SCSI_AACRAID is not set
+ # CONFIG_SCSI_AIC7XXX is not set
++# CONFIG_SCSI_AIC79XX is not set
+ # CONFIG_SCSI_AIC7XXX_OLD is not set
+ # CONFIG_SCSI_DPT_I2O is not set
+ # CONFIG_SCSI_ADVANSYS is not set
+ # CONFIG_SCSI_IN2000 is not set
+ # CONFIG_SCSI_AM53C974 is not set
+ # CONFIG_SCSI_MEGARAID is not set
++# CONFIG_SCSI_MEGARAID2 is not set
+ # CONFIG_SCSI_BUSLOGIC is not set
+ # CONFIG_SCSI_CPQFCTS is not set
+ # CONFIG_SCSI_DMX3191D is not set
+@@ -334,19 +350,17 @@
+ # CONFIG_SCSI_QLOGIC_ISP is not set
+ # CONFIG_SCSI_QLOGIC_FC is not set
+ # CONFIG_SCSI_QLOGIC_1280 is not set
++# CONFIG_SCSI_QLOGIC_QLA2XXX is not set
++# CONFIG_SCSI_QLOGIC_QLA2100 is not set
+ # CONFIG_SCSI_SIM710 is not set
+ # CONFIG_SCSI_SYM53C416 is not set
+ # CONFIG_SCSI_DC390T is not set
+ # CONFIG_SCSI_T128 is not set
+ # CONFIG_SCSI_U14_34F is not set
++# CONFIG_SCSI_NSP32 is not set
+ # CONFIG_SCSI_DEBUG is not set
+ 
+ #
+-# PCMCIA SCSI adapter support
+-#
+-# CONFIG_SCSI_PCMCIA is not set
+-
+-#
+ # Network device support
+ #
+ CONFIG_NETDEVICES=y
+@@ -381,18 +395,21 @@
+ # CONFIG_NET_ISA is not set
+ CONFIG_NET_PCI=y
+ # CONFIG_PCNET32 is not set
++# CONFIG_AMD8111_ETH is not set
+ # CONFIG_ADAPTEC_STARFIRE is not set
+ # CONFIG_AC3200 is not set
+ # CONFIG_APRICOT is not set
++# CONFIG_B44 is not set
+ # CONFIG_CS89x0 is not set
+ CONFIG_TULIP=y
+-# CONFIG_TC35815 is not set
+ # CONFIG_TULIP_MWI is not set
+ # CONFIG_TULIP_MMIO is not set
+ # CONFIG_DE4X5 is not set
+ # CONFIG_DGRS is not set
+ # CONFIG_DM9102 is not set
+ # CONFIG_EEPRO100 is not set
++# CONFIG_EEPRO100_PIO is not set
++# CONFIG_E100 is not set
+ # CONFIG_LNE390 is not set
+ # CONFIG_FEALNX is not set
+ # CONFIG_NATSEMI is not set
+@@ -404,10 +421,11 @@
+ # CONFIG_8139TOO_PIO is not set
+ # CONFIG_8139TOO_TUNE_TWISTER is not set
+ # CONFIG_8139TOO_8129 is not set
+-# CONFIG_8139_NEW_RX_RESET is not set
++# CONFIG_8139_OLD_RX_RESET is not set
+ # CONFIG_SIS900 is not set
+ # CONFIG_EPIC100 is not set
+ # CONFIG_SUNDANCE is not set
++# CONFIG_SUNDANCE_MMIO is not set
+ # CONFIG_TLAN is not set
+ # CONFIG_VIA_RHINE is not set
+ # CONFIG_VIA_RHINE_MMIO is not set
+@@ -419,10 +437,12 @@
+ #
+ # CONFIG_ACENIC is not set
+ # CONFIG_DL2K is not set
++# CONFIG_E1000 is not set
+ # CONFIG_MYRI_SBUS is not set
+ # CONFIG_NS83820 is not set
+ # CONFIG_HAMACHI is not set
+ # CONFIG_YELLOWFIN is not set
++# CONFIG_R8169 is not set
+ # CONFIG_SK98LIN is not set
+ # CONFIG_TIGON3 is not set
+ # CONFIG_FDDI is not set
+@@ -450,11 +470,6 @@
+ # CONFIG_WAN is not set
+ 
+ #
+-# PCMCIA network device support
+-#
+-# CONFIG_NET_PCMCIA is not set
+-
+-#
+ # Input core support
+ #
+ CONFIG_INPUT=y
+@@ -474,6 +489,7 @@
+ CONFIG_SERIAL=y
+ CONFIG_SERIAL_CONSOLE=y
+ CONFIG_SERIAL_GSC=y
++CONFIG_HP_DIVA=y
+ # CONFIG_SERIAL_EXTENDED is not set
+ # CONFIG_SERIAL_NONSTANDARD is not set
+ CONFIG_UNIX98_PTYS=y
+@@ -481,6 +497,7 @@
+ CONFIG_PRINTER=y
+ # CONFIG_LP_CONSOLE is not set
+ # CONFIG_PPDEV is not set
++# CONFIG_TIPAR is not set
+ 
+ #
+ # I2C support
+@@ -532,12 +549,19 @@
+ # CONFIG_INPUT_GAMECON is not set
+ # CONFIG_INPUT_TURBOGRAFX is not set
+ # CONFIG_QIC02_TAPE is not set
++# CONFIG_IPMI_HANDLER is not set
++# CONFIG_IPMI_PANIC_EVENT is not set
++# CONFIG_IPMI_DEVICE_INTERFACE is not set
++# CONFIG_IPMI_KCS is not set
++# CONFIG_IPMI_WATCHDOG is not set
+ 
+ #
+ # Watchdog Cards
+ #
+ # CONFIG_WATCHDOG is not set
+-CONFIG_GENRTC=y
++CONFIG_GEN_RTC=y
++# CONFIG_SCx200_GPIO is not set
++# CONFIG_AMD_PM768 is not set
+ # CONFIG_NVRAM is not set
+ # CONFIG_RTC is not set
+ # CONFIG_DTLK is not set
+@@ -549,12 +573,11 @@
+ #
+ # CONFIG_FTAPE is not set
+ # CONFIG_AGP is not set
+-# CONFIG_DRM is not set
+ 
+ #
+-# PCMCIA character devices
++# Direct Rendering Manager (XFree86 DRI support)
+ #
+-# CONFIG_PCMCIA_SERIAL_CS is not set
++# CONFIG_DRM is not set
+ 
+ #
+ # HIL support
+@@ -585,6 +608,7 @@
+ # File systems
+ #
+ # CONFIG_QUOTA is not set
++# CONFIG_QFMT_V2 is not set
+ # CONFIG_AUTOFS_FS is not set
+ # CONFIG_AUTOFS4_FS is not set
+ # CONFIG_REISERFS_FS is not set
+@@ -594,6 +618,9 @@
+ # CONFIG_ADFS_FS_RW is not set
+ # CONFIG_AFFS_FS is not set
+ # CONFIG_HFS_FS is not set
++# CONFIG_HFSPLUS_FS is not set
++# CONFIG_BEFS_FS is not set
++# CONFIG_BEFS_DEBUG is not set
+ # CONFIG_BFS_FS is not set
+ CONFIG_EXT3_FS=y
+ CONFIG_JBD=y
+@@ -611,6 +638,9 @@
+ CONFIG_ISO9660_FS=y
+ CONFIG_JOLIET=y
+ # CONFIG_ZISOFS is not set
++# CONFIG_JFS_FS is not set
++# CONFIG_JFS_DEBUG is not set
++# CONFIG_JFS_STATISTICS is not set
+ # CONFIG_MINIX_FS is not set
+ # CONFIG_VXFS_FS is not set
+ # CONFIG_NTFS_FS is not set
+@@ -638,9 +668,11 @@
+ # CONFIG_INTERMEZZO_FS is not set
+ CONFIG_NFS_FS=y
+ CONFIG_NFS_V3=y
++# CONFIG_NFS_DIRECTIO is not set
+ CONFIG_ROOT_NFS=y
+ CONFIG_NFSD=y
+ CONFIG_NFSD_V3=y
++# CONFIG_NFSD_TCP is not set
+ CONFIG_SUNRPC=y
+ CONFIG_LOCKD=y
+ CONFIG_LOCKD_V4=y
+@@ -655,7 +687,6 @@
+ # CONFIG_NCPFS_NLS is not set
+ # CONFIG_NCPFS_EXTRAS is not set
+ # CONFIG_ZISOFS_FS is not set
+-# CONFIG_ZLIB_FS_INFLATE is not set
+ 
+ #
+ # Partition Types
+@@ -726,6 +757,7 @@
+ # CONFIG_FB_ATY is not set
+ # CONFIG_FB_RADEON is not set
+ # CONFIG_FB_ATY128 is not set
++# CONFIG_FB_INTEL is not set
+ # CONFIG_FB_SIS is not set
+ # CONFIG_FB_NEOMAGIC is not set
+ # CONFIG_FB_3DFX is not set
+@@ -754,6 +786,7 @@
+ # Sound
+ #
+ CONFIG_SOUND=y
++# CONFIG_SOUND_ALI5455 is not set
+ # CONFIG_SOUND_BT878 is not set
+ # CONFIG_SOUND_CMPCI is not set
+ # CONFIG_SOUND_EMU10K1 is not set
+@@ -765,6 +798,7 @@
+ # CONFIG_SOUND_ESSSOLO1 is not set
+ # CONFIG_SOUND_MAESTRO is not set
+ # CONFIG_SOUND_MAESTRO3 is not set
++# CONFIG_SOUND_FORTE is not set
+ # CONFIG_SOUND_ICH is not set
+ CONFIG_SOUND_HARMONY=y
+ # CONFIG_SOUND_RME96XX is not set
+@@ -776,6 +810,8 @@
+ # CONFIG_MIDI_VIA82CXXX is not set
+ # CONFIG_SOUND_OSS is not set
+ # CONFIG_SOUND_TVMIXER is not set
++# CONFIG_SOUND_AD1980 is not set
++# CONFIG_SOUND_WM97XX is not set
+ 
+ #
+ # USB support
+@@ -783,6 +819,42 @@
+ # CONFIG_USB is not set
+ 
+ #
++# Support for USB gadgets
++#
++# CONFIG_USB_GADGET is not set
++
++#
+ # Kernel hacking
+ #
+ CONFIG_MAGIC_SYSRQ=y
++# CONFIG_DEBUG_SPINLOCK is not set
++# CONFIG_FRAME_POINTER is not set
++CONFIG_LOG_BUF_SHIFT=0
++
++#
++# Cryptographic options
++#
++CONFIG_CRYPTO=y
++CONFIG_CRYPTO_HMAC=y
++CONFIG_CRYPTO_NULL=m
++CONFIG_CRYPTO_MD4=m
++CONFIG_CRYPTO_MD5=m
++CONFIG_CRYPTO_SHA1=m
++CONFIG_CRYPTO_SHA256=m
++CONFIG_CRYPTO_SHA512=m
++CONFIG_CRYPTO_DES=m
++CONFIG_CRYPTO_BLOWFISH=m
++CONFIG_CRYPTO_TWOFISH=m
++CONFIG_CRYPTO_SERPENT=m
++CONFIG_CRYPTO_AES=m
++CONFIG_CRYPTO_CAST5=m
++CONFIG_CRYPTO_DEFLATE=m
++CONFIG_CRYPTO_TEST=m
++
++#
++# Library routines
++#
++CONFIG_CRC32=m
++CONFIG_ZLIB_INFLATE=m
++CONFIG_ZLIB_DEFLATE=m
++# CONFIG_FW_LOADER is not set
+--- linux-2.4/include/asm-generic/xor.h
++++ linux-2.4/include/asm-generic/xor.h
+@@ -13,6 +13,8 @@
+  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+  */
+ 
++#include <asm/processor.h>
++
+ static void
+ xor_8regs_2(unsigned long bytes, unsigned long *p1, unsigned long *p2)
+ {
+@@ -299,6 +301,364 @@
+ 	} while (--lines > 0);
+ }
+ 
++static void
++xor_8regs_p_2(unsigned long bytes, unsigned long *p1, unsigned long *p2)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++	prefetchw(p1);
++	prefetch(p2);
++
++	do {
++		prefetchw(p1+8);
++		prefetch(p2+8);
++		p1[0] ^= p2[0];
++		p1[1] ^= p2[1];
++		p1[2] ^= p2[2];
++		p1[3] ^= p2[3];
++		p1[4] ^= p2[4];
++		p1[5] ^= p2[5];
++		p1[6] ^= p2[6];
++		p1[7] ^= p2[7];
++		p1 += 8;
++		p2 += 8;
++	} while (--lines > 0);
++}
++
++static void
++xor_8regs_p_3(unsigned long bytes, unsigned long *p1, unsigned long *p2,
++	    unsigned long *p3)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++	prefetchw(p1);
++	prefetch(p2);
++	prefetch(p3);
++
++	do {
++		prefetchw(p1+8);
++		prefetch(p2+8);
++		prefetch(p3+8);
++		p1[0] ^= p2[0] ^ p3[0];
++		p1[1] ^= p2[1] ^ p3[1];
++		p1[2] ^= p2[2] ^ p3[2];
++		p1[3] ^= p2[3] ^ p3[3];
++		p1[4] ^= p2[4] ^ p3[4];
++		p1[5] ^= p2[5] ^ p3[5];
++		p1[6] ^= p2[6] ^ p3[6];
++		p1[7] ^= p2[7] ^ p3[7];
++		p1 += 8;
++		p2 += 8;
++		p3 += 8;
++	} while (--lines > 0);
++}
++
++static void
++xor_8regs_p_4(unsigned long bytes, unsigned long *p1, unsigned long *p2,
++	    unsigned long *p3, unsigned long *p4)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++
++	prefetchw(p1);
++	prefetch(p2);
++	prefetch(p3);
++	prefetch(p4);
++
++	do {
++		prefetchw(p1+8);
++		prefetch(p2+8);
++		prefetch(p3+8);
++		prefetch(p4+8);
++
++		p1[0] ^= p2[0] ^ p3[0] ^ p4[0];
++		p1[1] ^= p2[1] ^ p3[1] ^ p4[1];
++		p1[2] ^= p2[2] ^ p3[2] ^ p4[2];
++		p1[3] ^= p2[3] ^ p3[3] ^ p4[3];
++		p1[4] ^= p2[4] ^ p3[4] ^ p4[4];
++		p1[5] ^= p2[5] ^ p3[5] ^ p4[5];
++		p1[6] ^= p2[6] ^ p3[6] ^ p4[6];
++		p1[7] ^= p2[7] ^ p3[7] ^ p4[7];
++		p1 += 8;
++		p2 += 8;
++		p3 += 8;
++		p4 += 8;
++	} while (--lines > 0);
++}
++
++static void
++xor_8regs_p_5(unsigned long bytes, unsigned long *p1, unsigned long *p2,
++	    unsigned long *p3, unsigned long *p4, unsigned long *p5)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++
++	prefetchw(p1);
++	prefetch(p2);
++	prefetch(p3);
++	prefetch(p4);
++	prefetch(p5);
++
++	do {
++		prefetchw(p1+8);
++		prefetch(p2+8);
++		prefetch(p3+8);
++		prefetch(p4+8);
++		prefetch(p5+8);
++
++		p1[0] ^= p2[0] ^ p3[0] ^ p4[0] ^ p5[0];
++		p1[1] ^= p2[1] ^ p3[1] ^ p4[1] ^ p5[1];
++		p1[2] ^= p2[2] ^ p3[2] ^ p4[2] ^ p5[2];
++		p1[3] ^= p2[3] ^ p3[3] ^ p4[3] ^ p5[3];
++		p1[4] ^= p2[4] ^ p3[4] ^ p4[4] ^ p5[4];
++		p1[5] ^= p2[5] ^ p3[5] ^ p4[5] ^ p5[5];
++		p1[6] ^= p2[6] ^ p3[6] ^ p4[6] ^ p5[6];
++		p1[7] ^= p2[7] ^ p3[7] ^ p4[7] ^ p5[7];
++		p1 += 8;
++		p2 += 8;
++		p3 += 8;
++		p4 += 8;
++		p5 += 8;
++	} while (--lines > 0);
++}
++
++static void
++xor_32regs_p_2(unsigned long bytes, unsigned long *p1, unsigned long *p2)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++
++	prefetchw(p1);
++	prefetch(p2);
++
++	do {
++		register long d0, d1, d2, d3, d4, d5, d6, d7;
++
++		prefetchw(p1+8);
++		prefetch(p2+8);
++
++		d0 = p1[0];	/* Pull the stuff into registers	*/
++		d1 = p1[1];	/*  ... in bursts, if possible.		*/
++		d2 = p1[2];
++		d3 = p1[3];
++		d4 = p1[4];
++		d5 = p1[5];
++		d6 = p1[6];
++		d7 = p1[7];
++		d0 ^= p2[0];
++		d1 ^= p2[1];
++		d2 ^= p2[2];
++		d3 ^= p2[3];
++		d4 ^= p2[4];
++		d5 ^= p2[5];
++		d6 ^= p2[6];
++		d7 ^= p2[7];
++		p1[0] = d0;	/* Store the result (in burts)		*/
++		p1[1] = d1;
++		p1[2] = d2;
++		p1[3] = d3;
++		p1[4] = d4;
++		p1[5] = d5;
++		p1[6] = d6;
++		p1[7] = d7;
++		p1 += 8;
++		p2 += 8;
++	} while (--lines > 0);
++}
++
++static void
++xor_32regs_p_3(unsigned long bytes, unsigned long *p1, unsigned long *p2,
++	    unsigned long *p3)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++
++	prefetchw(p1);
++	prefetch(p2);
++	prefetch(p3);
++
++	do {
++		register long d0, d1, d2, d3, d4, d5, d6, d7;
++
++		prefetchw(p1+8);
++		prefetch(p2+8);
++		prefetch(p3+8);
++
++		d0 = p1[0];	/* Pull the stuff into registers	*/
++		d1 = p1[1];	/*  ... in bursts, if possible.		*/
++		d2 = p1[2];
++		d3 = p1[3];
++		d4 = p1[4];
++		d5 = p1[5];
++		d6 = p1[6];
++		d7 = p1[7];
++		d0 ^= p2[0];
++		d1 ^= p2[1];
++		d2 ^= p2[2];
++		d3 ^= p2[3];
++		d4 ^= p2[4];
++		d5 ^= p2[5];
++		d6 ^= p2[6];
++		d7 ^= p2[7];
++		d0 ^= p3[0];
++		d1 ^= p3[1];
++		d2 ^= p3[2];
++		d3 ^= p3[3];
++		d4 ^= p3[4];
++		d5 ^= p3[5];
++		d6 ^= p3[6];
++		d7 ^= p3[7];
++		p1[0] = d0;	/* Store the result (in burts)		*/
++		p1[1] = d1;
++		p1[2] = d2;
++		p1[3] = d3;
++		p1[4] = d4;
++		p1[5] = d5;
++		p1[6] = d6;
++		p1[7] = d7;
++		p1 += 8;
++		p2 += 8;
++		p3 += 8;
++	} while (--lines > 0);
++}
++
++static void
++xor_32regs_p_4(unsigned long bytes, unsigned long *p1, unsigned long *p2,
++	    unsigned long *p3, unsigned long *p4)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++
++	prefetchw(p1);
++	prefetch(p2);
++	prefetch(p3);
++	prefetch(p4);
++
++	do {
++		register long d0, d1, d2, d3, d4, d5, d6, d7;
++
++		prefetchw(p1+8);
++		prefetch(p2+8);
++		prefetch(p3+8);
++		prefetch(p4+8);
++
++		d0 = p1[0];	/* Pull the stuff into registers	*/
++		d1 = p1[1];	/*  ... in bursts, if possible.		*/
++		d2 = p1[2];
++		d3 = p1[3];
++		d4 = p1[4];
++		d5 = p1[5];
++		d6 = p1[6];
++		d7 = p1[7];
++		d0 ^= p2[0];
++		d1 ^= p2[1];
++		d2 ^= p2[2];
++		d3 ^= p2[3];
++		d4 ^= p2[4];
++		d5 ^= p2[5];
++		d6 ^= p2[6];
++		d7 ^= p2[7];
++		d0 ^= p3[0];
++		d1 ^= p3[1];
++		d2 ^= p3[2];
++		d3 ^= p3[3];
++		d4 ^= p3[4];
++		d5 ^= p3[5];
++		d6 ^= p3[6];
++		d7 ^= p3[7];
++		d0 ^= p4[0];
++		d1 ^= p4[1];
++		d2 ^= p4[2];
++		d3 ^= p4[3];
++		d4 ^= p4[4];
++		d5 ^= p4[5];
++		d6 ^= p4[6];
++		d7 ^= p4[7];
++		p1[0] = d0;	/* Store the result (in burts)		*/
++		p1[1] = d1;
++		p1[2] = d2;
++		p1[3] = d3;
++		p1[4] = d4;
++		p1[5] = d5;
++		p1[6] = d6;
++		p1[7] = d7;
++		p1 += 8;
++		p2 += 8;
++		p3 += 8;
++		p4 += 8;
++	} while (--lines > 0);
++}
++
++static void
++xor_32regs_p_5(unsigned long bytes, unsigned long *p1, unsigned long *p2,
++	    unsigned long *p3, unsigned long *p4, unsigned long *p5)
++{
++	long lines = bytes / (sizeof (long)) / 8;
++
++	prefetchw(p1);
++	prefetch(p2);
++	prefetch(p3);
++	prefetch(p4);
++	prefetch(p5);
++
++	do {
++		register long d0, d1, d2, d3, d4, d5, d6, d7;
++
++		prefetchw(p1+8);
++		prefetch(p2+8);
++		prefetch(p3+8);
++		prefetch(p4+8);
++		prefetch(p5+8);
++
++		d0 = p1[0];	/* Pull the stuff into registers	*/
++		d1 = p1[1];	/*  ... in bursts, if possible.		*/
++		d2 = p1[2];
++		d3 = p1[3];
++		d4 = p1[4];
++		d5 = p1[5];
++		d6 = p1[6];
++		d7 = p1[7];
++		d0 ^= p2[0];
++		d1 ^= p2[1];
++		d2 ^= p2[2];
++		d3 ^= p2[3];
++		d4 ^= p2[4];
++		d5 ^= p2[5];
++		d6 ^= p2[6];
++		d7 ^= p2[7];
++		d0 ^= p3[0];
++		d1 ^= p3[1];
++		d2 ^= p3[2];
++		d3 ^= p3[3];
++		d4 ^= p3[4];
++		d5 ^= p3[5];
++		d6 ^= p3[6];
++		d7 ^= p3[7];
++		d0 ^= p4[0];
++		d1 ^= p4[1];
++		d2 ^= p4[2];
++		d3 ^= p4[3];
++		d4 ^= p4[4];
++		d5 ^= p4[5];
++		d6 ^= p4[6];
++		d7 ^= p4[7];
++		d0 ^= p5[0];
++		d1 ^= p5[1];
++		d2 ^= p5[2];
++		d3 ^= p5[3];
++		d4 ^= p5[4];
++		d5 ^= p5[5];
++		d6 ^= p5[6];
++		d7 ^= p5[7];
++		p1[0] = d0;	/* Store the result (in burts)		*/
++		p1[1] = d1;
++		p1[2] = d2;
++		p1[3] = d3;
++		p1[4] = d4;
++		p1[5] = d5;
++		p1[6] = d6;
++		p1[7] = d7;
++		p1 += 8;
++		p2 += 8;
++		p3 += 8;
++		p4 += 8;
++		p5 += 8;
++	} while (--lines > 0);
++}
++
+ static struct xor_block_template xor_block_8regs = {
+ 	name: "8regs",
+ 	do_2: xor_8regs_2,
+@@ -315,8 +675,26 @@
+ 	do_5: xor_32regs_5,
+ };
+ 
++static struct xor_block_template xor_block_8regs_p = {
++	name: "8regs_prefetch",
++	do_2: xor_8regs_p_2,
++	do_3: xor_8regs_p_3,
++	do_4: xor_8regs_p_4,
++	do_5: xor_8regs_p_5,
++};
++
++static struct xor_block_template xor_block_32regs_p = {
++	name: "32regs_prefetch",
++	do_2: xor_32regs_p_2,
++	do_3: xor_32regs_p_3,
++	do_4: xor_32regs_p_4,
++	do_5: xor_32regs_p_5,
++};
++
+ #define XOR_TRY_TEMPLATES			\
+ 	do {					\
+ 		xor_speed(&xor_block_8regs);	\
++		xor_speed(&xor_block_8regs_p);	\
+ 		xor_speed(&xor_block_32regs);	\
++		xor_speed(&xor_block_32regs_p);	\
+ 	} while (0)
+--- linux-2.4/include/asm-parisc/byteorder.h
++++ linux-2.4/include/asm-parisc/byteorder.h
+@@ -5,6 +5,25 @@
+ 
+ #ifdef __GNUC__
+ 
++static __inline__ __const__ __u16 ___arch__swab16(__u16 x)
++{
++	__asm__("dep %0, 15, 8, %0\n\t"		/* deposit 00ab -> 0bab */
++		"shd %%r0, %0, 8, %0"		/* shift 000000ab -> 00ba */
++		: "=r" (x)
++		: "0" (x));
++	return x;
++}
++
++static __inline__ __const__ __u32 ___arch__swab24(__u32 x)
++{
++	__asm__("shd %0, %0, 8, %0\n\t"		/* shift xabcxabc -> cxab */
++		"dep %0, 15, 8, %0\n\t"		/* deposit cxab -> cbab */
++		"shd %%r0, %0, 8, %0"		/* shift 0000cbab -> 0cba */
++		: "=r" (x)
++		: "0" (x));
++	return x;
++}
++
+ static __inline__ __const__ __u32 ___arch__swab32(__u32 x)
+ {
+ 	unsigned int temp;
+@@ -30,43 +49,30 @@
+ */
+ static __inline__ __const__ __u64 ___arch__swab64(__u64 x) {
+ 	__u64 temp;
+-	__asm__("permh 3210, %0, %0\n\t"
++	__asm__("permh,3210 %0, %0\n\t"
+ 		"hshl %0, 8, %1\n\t"
+-		"hshr u, %0, 8, %0\n\t"
++		"hshr,u %0, 8, %0\n\t"
+ 		"or %1, %0, %0"
+ 		: "=r" (x), "=&r" (temp)
+ 		: "0" (x));
+ 	return x;
+ }
+ #define __arch__swab64(x) ___arch__swab64(x)
+-#else
++#define __BYTEORDER_HAS_U64__
++#elif !defined(__STRICT_ANSI__)
+ static __inline__ __const__ __u64 ___arch__swab64(__u64 x)
+ {
+-	__u32 t1 = (__u32) x;
+-	__u32 t2 = (__u32) ((x) >> 32);
+-	___arch__swab32(t1);
+-	___arch__swab32(t2);
+-	return (((__u64) t1 << 32) + ((__u64) t2));
++	__u32 t1 = ___arch__swab32((__u32) x);
++	__u32 t2 = ___arch__swab32((__u32) (x >> 32));
++	return (((__u64) t1 << 32) | t2);
+ }
++#define __arch__swab64(x) ___arch__swab64(x)
++#define __BYTEORDER_HAS_U64__
+ #endif
+ 
+-
+-static __inline__ __const__ __u16 ___arch__swab16(__u16 x)
+-{
+-	__asm__("dep %0, 15, 8, %0\n\t"		/* deposit 00ab -> 0bab */
+-		"shd %r0, %0, 8, %0"		/* shift 000000ab -> 00ba */
+-		: "=r" (x)
+-		: "0" (x));
+-	return x;
+-}
+-
+-#define __arch__swab32(x) ___arch__swab32(x)
+ #define __arch__swab16(x) ___arch__swab16(x)
+-
+-#if !defined(__STRICT_ANSI__) || defined(__KERNEL__)
+-#  define __BYTEORDER_HAS_U64__
+-#  define __SWAB_64_THRU_32__
+-#endif
++#define __arch__swab24(x) ___arch__swab24(x)
++#define __arch__swab32(x) ___arch__swab32(x)
+ 
+ #endif /* __GNUC__ */
+ 
+--- linux-2.4/include/asm-parisc/elf.h
++++ linux-2.4/include/asm-parisc/elf.h
+@@ -109,6 +109,7 @@
+  */
+ #define ELF_DATA	ELFDATA2MSB
+ #define ELF_ARCH	EM_PARISC
++#define ELF_OSABI 	ELFOSABI_LINUX
+ 
+ /* %r23 is set by ld.so to a pointer to a function which might be 
+    registered using atexit.  This provides a mean for the dynamic
+--- linux-2.4/include/asm-parisc/io.h
++++ linux-2.4/include/asm-parisc/io.h
+@@ -44,7 +44,8 @@
+  * too lazy to ioremap first'.  kind of like isa_, except that there's
+  * no additional base address to add on.
+  */
+-extern __inline__ unsigned char __raw_readb(unsigned long addr)
++#define __raw_readb(a) ___raw_readb((unsigned long)(a))
++extern __inline__ unsigned char ___raw_readb(unsigned long addr)
+ {
+ 	long flags;
+ 	unsigned char ret;
+@@ -58,7 +59,8 @@
+ 	return ret;
+ }
+ 
+-extern __inline__ unsigned short __raw_readw(unsigned long addr)
++#define __raw_readw(a) ___raw_readw((unsigned long)(a))
++extern __inline__ unsigned short ___raw_readw(unsigned long addr)
+ {
+ 	long flags;
+ 	unsigned short ret;
+@@ -72,7 +74,8 @@
+ 	return ret;
+ }
+ 
+-extern __inline__ unsigned int __raw_readl(unsigned long addr)
++#define __raw_readl(a) ___raw_readl((unsigned long)(a))
++extern __inline__ unsigned int ___raw_readl(unsigned long addr)
+ {
+ 	u32 ret;
+ 
+@@ -83,7 +86,8 @@
+ 	return ret;
+ }
+ 
+-extern __inline__ unsigned long long __raw_readq(unsigned long addr)
++#define __raw_readq(a) ___raw_readq((unsigned long)(a))
++extern __inline__ unsigned long long ___raw_readq(unsigned long addr)
+ {
+ 	unsigned long long ret;
+ #ifdef __LP64__
+@@ -98,7 +102,8 @@
+ 	return ret;
+ }
+ 
+-extern __inline__ void __raw_writeb(unsigned char val, unsigned long addr)
++#define __raw_writeb(a,b) ___raw_writeb(a, (unsigned long)(b))
++extern __inline__ void ___raw_writeb(unsigned char val, unsigned long addr)
+ {
+ 	long flags;
+ 	__asm__ __volatile__(
+@@ -108,7 +113,8 @@
+ 	: "=&r" (flags) :  "r" (val), "r" (addr) );
+ }
+ 
+-extern __inline__ void __raw_writew(unsigned short val, unsigned long addr)
++#define __raw_writew(a,b) ___raw_writew(a, (unsigned long)(b))
++extern __inline__ void ___raw_writew(unsigned short val, unsigned long addr)
+ {
+ 	long flags;
+ 	__asm__ __volatile__(
+@@ -118,14 +124,16 @@
+ 	: "=&r" (flags) :  "r" (val), "r" (addr) );
+ }
+ 
+-extern __inline__ void __raw_writel(unsigned int val, unsigned long addr)
++#define __raw_writel(a,b) ___raw_writel(a, (unsigned long)(b))
++extern __inline__ void ___raw_writel(unsigned int val, unsigned long addr)
+ {
+ 	__asm__ __volatile__(
+ 	"	stwa,ma	%0,0(%1)\n"
+ 	: :  "r" (val), "r" (addr) );
+ }
+ 
+-extern __inline__ void __raw_writeq(unsigned long long val, unsigned long addr)
++#define __raw_writeq(a,b) ___raw_writeq(a, (unsigned long)(b))
++extern __inline__ void ___raw_writeq(unsigned long long val, unsigned long addr)
+ {
+ #ifdef __LP64__
+ 	__asm__ __volatile__(
+--- linux-2.4/include/asm-parisc/irq.h
++++ linux-2.4/include/asm-parisc/irq.h
+@@ -79,6 +79,8 @@
+ #define disable_irq_nosync(i) disable_irq(i)
+ extern void enable_irq(int);
+ 
++extern unsigned int probe_irq_mask(unsigned long val);
++
+ extern void do_irq(struct irqaction *a, int i, struct pt_regs *p);
+ extern void do_irq_mask(unsigned long mask, struct irq_region *region,
+ 	struct pt_regs *regs);
+--- linux-2.4/include/asm-parisc/kmap_types.h
++++ linux-2.4/include/asm-parisc/kmap_types.h
+@@ -0,0 +1,18 @@
++#ifdef __KERNEL__
++#ifndef _ASM_KMAP_TYPES_H
++#define _ASM_KMAP_TYPES_H
++
++enum km_type {
++	KM_BOUNCE_READ,
++	KM_SKB_SUNRPC_DATA,
++	KM_SKB_DATA_SOFTIRQ,
++	KM_USER0,
++	KM_USER1,
++	KM_BH_IRQ,
++	KM_SOFTIRQ0,
++	KM_SOFTIRQ1,
++	KM_TYPE_NR
++};
++
++#endif
++#endif /* __KERNEL__ */
+--- linux-2.4/include/asm-parisc/ptrace.h
++++ linux-2.4/include/asm-parisc/ptrace.h
+@@ -50,6 +50,7 @@
+ 
+ /* XXX should we use iaoq[1] or iaoq[0] ? */
+ #define user_mode(regs)			(((regs)->iaoq[0] &  3) ? 1 : 0)
++#define user_space(regs)                (((regs)->iasq[0] != 0) ? 1 : 0)
+ #define instruction_pointer(regs)	((regs)->iaoq[0] & ~3)
+ extern void show_regs(struct pt_regs *);
+ #endif
+--- linux-2.4/include/asm-parisc/spinlock.h
++++ linux-2.4/include/asm-parisc/spinlock.h
+@@ -14,7 +14,7 @@
+ 	volatile int counter;
+ } rwlock_t;
+ 
+-#define RW_LOCK_UNLOCKED (rwlock_t) { SPIN_LOCK_UNLOCKED, 0 }
++#define RW_LOCK_UNLOCKED (rwlock_t) { SPIN_LOCK_UNLOCKED_INIT, 0 }
+ 
+ #define rwlock_init(lp)	do { *(lp) = RW_LOCK_UNLOCKED; } while (0)
+ 
+--- linux-2.4/include/asm-parisc/spinlock_t.h
++++ linux-2.4/include/asm-parisc/spinlock_t.h
+@@ -6,29 +6,12 @@
+  * Note that PA-RISC has to use `1' to mean unlocked and `0' to mean locked
+  * since it only has load-and-zero.
+  */
+-#ifdef CONFIG_PA20
+-/* 
+-> From: "Jim Hull" <jim.hull of hp.com>
+-> Delivery-date: Wed, 29 Jan 2003 13:57:05 -0500
+-> I've attached a summary of the change, but basically, for PA 2.0, as
+-> long as the ",CO" (coherent operation) completer is specified, then the
+-> 16-byte alignment requirement for ldcw and ldcd is relaxed, and instead
+-> they only require "natural" alignment (4-byte for ldcw, 8-byte for
+-> ldcd).
+-*/
+-
+ #define __ldcw(a) ({ \
+ 	unsigned __ret; \
+-	__asm__ __volatile__("ldcw,co 0(%1),%0" : "=r" (__ret) : "r" (a)); \
++	__asm__ __volatile__("ldcw,ma 0(%1),%0" \
++                             : "=r" (__ret) : "r" (a) : "memory"); \
+ 	__ret; \
+ })
+-#else
+-#define __ldcw(a) ({ \
+-	unsigned __ret; \
+-	__asm__ __volatile__("ldcw 0(%1),%0" : "=r" (__ret) : "r" (a)); \
+-	__ret; \
+-})
+-#endif
+ 
+ /*
+  * Your basic SMP spinlocks, allowing only a single CPU anywhere
+@@ -47,7 +30,8 @@
+ } spinlock_t;
+ 
+ #ifndef CONFIG_DEBUG_SPINLOCK
+-#define SPIN_LOCK_UNLOCKED (spinlock_t) { 1 }
++#define SPIN_LOCK_UNLOCKED_INIT { 1 }
++#define SPIN_LOCK_UNLOCKED (spinlock_t) SPIN_LOCK_UNLOCKED_INIT
+ 
+ /* Define 6 spinlock primitives that don't depend on anything else. */
+ 
+@@ -67,19 +51,22 @@
+  * Writing this with asm also ensures that the unlock doesn't
+  * get reordered
+  */
+-#define spin_unlock(x) \
+-	__asm__ __volatile__ ("stw,ma  %%sp,0(%0)" : : "r" (&(x)->lock) : "memory" )
++#define spin_unlock(x) do { __asm__ __volatile__ ("stw,ma  %%sp,0(%0)" \
++                                    : : "r" (&(x)->lock) : "memory" ); \
++                       } while(0)
+ 
+-#define spin_unlock_wait(x)     do { barrier(); } while(((volatile spinlock_t *)(x))->lock == 0)
++#define spin_unlock_wait(x) do { barrier(); } \
++                            while(((volatile spinlock_t *)(x))->lock == 0)
+ 
+-#define spin_lock(x) do { \
++#define spin_lock(x) do {                \
+ 	while (__ldcw (&(x)->lock) == 0) \
+ 		while ((x)->lock == 0) ; \
+-} while (0)
++        } while (0)
+ 
+ #else
+ 
+-#define SPIN_LOCK_UNLOCKED (spinlock_t) { 1, 0, 0 }
++#define SPIN_LOCK_UNLOCKED_INIT { 1, 0L, 0L }
++#define SPIN_LOCK_UNLOCKED (spinlock_t) SPIN_LOCK_UNLOCKED_INIT
+ 
+ /* Define 6 spinlock primitives that don't depend on anything else. */
+ 
+--- linux-2.4/include/asm-parisc/system.h
++++ linux-2.4/include/asm-parisc/system.h
+@@ -142,6 +142,7 @@
+ #define rmb()		mb()
+ #define wmb()		mb()
+ #define smp_mb()	mb()
++#define smp_rmb()	mb()
+ #define smp_wmb()	mb()
+ 
+ #define set_mb(var, value) do { var = value; mb(); } while (0)
+--- linux-2.4/include/asm-parisc/system_irqsave.h
++++ linux-2.4/include/asm-parisc/system_irqsave.h
+@@ -7,21 +7,15 @@
+ #define __cli()	__asm__ __volatile__("rsm %0,%%r0\n" : : "i" (PSW_I) : "memory" )
+ #define __sti()	__asm__ __volatile__("ssm %0,%%r0\n" : : "i" (PSW_I) : "memory" )
+ 
+-#define __save_and_cli(x)  do { __save_flags(x); __cli(); } while(0);
+-#define __save_and_sti(x)  do { __save_flags(x); __sti(); } while(0);
+-
+-/* For spinlocks etc */
+-#if 0
+-#define local_irq_save(x) \
++#define __save_and_cli(x) \
+ 	__asm__ __volatile__("rsm %1,%0" : "=r" (x) :"i" (PSW_I) : "memory" )
+-#define local_irq_set(x) \
+-#       "Warning local_irq_set(x) is not yet defined"
+-#else
+-#define local_irq_save(x)  __save_and_cli(x)
+-#define local_irq_set(x)   __save_and_sti(x)
+-#endif
++#define __save_and_sti(x) \
++	__asm__ __volatile__("ssm %1,%0" : "=r" (x) : "i" (PSW_I) : "memory" )
+ 
+-#define local_irq_restore(x) __restore_flags(x)
++#define local_irq_save(x)	__save_and_cli(x)
++#define local_irq_set(x)	__save_and_sti(x)
++#define local_irq_restore(x) \
++	__asm__ __volatile__("mtsm %0" : : "r" (x) : "memory" )
+ #define local_irq_disable() __cli()
+ #define local_irq_enable()  __sti()
+ 
+--- linux-2.4/include/asm-parisc/uaccess.h
++++ linux-2.4/include/asm-parisc/uaccess.h
+@@ -28,6 +28,11 @@
+  * that put_user is the same as __put_user, etc.
+  */
+ 
++extern int __get_kernel_bad(void);
++extern int __get_user_bad(void);
++extern int __put_kernel_bad(void);
++extern int __put_user_bad(void);
++
+ #define access_ok(type,addr,size)   (1)
+ #define verify_area(type,addr,size) (0)
+ 
+@@ -35,8 +40,12 @@
+ #define get_user __get_user
+ 
+ #if BITS_PER_LONG == 32
+-#define LDD_KERNEL(ptr)		BUG()
+-#define LDD_USER(ptr)		BUG()
++#define LDD_KERNEL(ptr)		__get_kernel_bad();
++#define LDD_USER(ptr)		__get_user_bad();
++/*
++#define STD_KERNEL(x, ptr)	__put_kernel_bad();
++#define STD_USER(x, ptr)	__put_user_bad();
++*/
+ #define STD_KERNEL(x, ptr) __put_kernel_asm64(x,ptr)
+ #define STD_USER(x, ptr) __put_user_asm64(x,ptr)
+ #else
+@@ -75,7 +84,7 @@
+ 	    case 2: __get_kernel_asm("ldh",ptr); break; \
+ 	    case 4: __get_kernel_asm("ldw",ptr); break; \
+ 	    case 8: LDD_KERNEL(ptr); break;		\
+-	    default: BUG(); break;                      \
++	    default: __get_kernel_bad(); break;         \
+ 	    }                                           \
+ 	}                                               \
+ 	else {                                          \
+@@ -84,7 +93,7 @@
+ 	    case 2: __get_user_asm("ldh",ptr); break;   \
+ 	    case 4: __get_user_asm("ldw",ptr); break;   \
+ 	    case 8: LDD_USER(ptr);  break;		\
+-	    default: BUG(); break;                      \
++	    default: __get_user_bad(); break;           \
+ 	    }                                           \
+ 	}                                               \
+ 							\
+@@ -144,7 +153,7 @@
+ 	    case 2: __put_kernel_asm("sth",x,ptr); break;       \
+ 	    case 4: __put_kernel_asm("stw",x,ptr); break;       \
+ 	    case 8: STD_KERNEL(x,ptr); break;			\
+-	    default: BUG(); break;                              \
++	    default: __put_kernel_bad(); break;			\
+ 	    }                                                   \
+ 	}                                                       \
+ 	else {                                                  \
+@@ -153,7 +162,7 @@
+ 	    case 2: __put_user_asm("sth",x,ptr); break;         \
+ 	    case 4: __put_user_asm("stw",x,ptr); break;         \
+ 	    case 8: STD_USER(x,ptr); break;			\
+-	    default: BUG(); break;                              \
++	    default: __put_user_bad(); break;			\
+ 	    }                                                   \
+ 	}                                                       \
+ 								\
+--- linux-2.4/include/asm-parisc/unistd.h
++++ linux-2.4/include/asm-parisc/unistd.h
+@@ -701,8 +701,29 @@
+ #define __NR_gettid             (__NR_Linux + 206)
+ #define __NR_readahead          (__NR_Linux + 207)
+ #define __NR_tkill              (__NR_Linux + 208)
++/* Below here, reserved syscall numbers not implemented in 2.4 */
++#define __NR_sendfile64		(__NR_Linux + 209)
++#define __NR_futex		(__NR_Linux + 210)
++#define __NR_sched_setaffinity	(__NR_Linux + 211)
++#define __NR_sched_getaffinity	(__NR_Linux + 212)
++#define __NR_set_thread_area	(__NR_Linux + 213)
++#define __NR_get_thread_area	(__NR_Linux + 214)
++#define __NR_io_setup		(__NR_Linux + 215)
++#define __NR_io_destroy		(__NR_Linux + 216)
++#define __NR_io_getevents	(__NR_Linux + 217)
++#define __NR_io_submit		(__NR_Linux + 218)
++#define __NR_io_cancel		(__NR_Linux + 219)
++#define __NR_alloc_hugepages	(__NR_Linux + 220)
++#define __NR_free_hugepages	(__NR_Linux + 221)
++#define __NR_exit_group		(__NR_Linux + 222)
++#define __NR_lookup_dcookie	(__NR_Linux + 223)
++#define __NR_epoll_create	(__NR_Linux + 224)
++#define __NR_epoll_ctl		(__NR_Linux + 225)
++#define __NR_epoll_wait		(__NR_Linux + 226)
++#define __NR_remap_file_pages	(__NR_Linux + 227)
++#define __NR_semtimedop         (__NR_Linux + 228)
+ 
+-#define __NR_Linux_syscalls     208
++#define __NR_Linux_syscalls     229
+ 
+ #define HPUX_GATEWAY_ADDR       0xC0000004
+ #define LINUX_GATEWAY_ADDR      0x100
+--- linux-2.4/include/linux/fs_struct.h
++++ linux-2.4/include/linux/fs_struct.h
+@@ -2,6 +2,9 @@
+ #define _LINUX_FS_STRUCT_H
+ #ifdef __KERNEL__
+ 
++#include <linux/spinlock.h>	/* for RW_LOCK_* */
++#include <asm/atomic.h>		/* for atomic_t */
++
+ struct fs_struct {
+ 	atomic_t count;
+ 	rwlock_t lock;
+--- linux-2.4/include/linux/intermezzo_lib.h
++++ linux-2.4/include/linux/intermezzo_lib.h
+@@ -27,6 +27,7 @@
+ 
+ #ifdef __KERNEL__
+ # include <linux/types.h>
++# include <asm/byteorder.h>
+ #else
+ # include <string.h>
+ # include <sys/types.h>
+--- linux-2.4/include/linux/mm.h
++++ linux-2.4/include/linux/mm.h
+@@ -105,8 +105,12 @@
+ #define VM_RESERVED	0x00080000	/* Don't unmap it from swap_out */
+ 
+ #ifndef VM_STACK_FLAGS
++#ifdef ARCH_STACK_GROWSUP
++#define VM_STACK_FLAGS	0x00000277
++#else
+ #define VM_STACK_FLAGS	0x00000177
+ #endif
++#endif
+ 
+ #define VM_READHINTMASK			(VM_SEQ_READ | VM_RAND_READ)
+ #define VM_ClearReadHint(v)		(v)->vm_flags &= ~VM_READHINTMASK
+@@ -639,10 +643,36 @@
+ 	
+ /* vma is the first one with  address < vma->vm_end,
+  * and even  address < vma->vm_start. Have to extend vma. */
++#ifdef ARCH_STACK_GROWSUP
++static inline int expand_stack(struct vm_area_struct * vma, unsigned long address)
++{
++	unsigned long grow;
++
++	if (!(vma->vm_flags & VM_GROWSUP))
++		return -EFAULT;
++	address += 4 + PAGE_SIZE - 1;
++	address &= PAGE_MASK;
++ 	spin_lock(&vma->vm_mm->page_table_lock);
++	grow = (address - vma->vm_end) >> PAGE_SHIFT;
++	if (address - vma->vm_start > current->rlim[RLIMIT_STACK].rlim_cur ||
++	    ((vma->vm_mm->total_vm + grow) << PAGE_SHIFT) > current->rlim[RLIMIT_AS].rlim_cur) {
++		spin_unlock(&vma->vm_mm->page_table_lock);
++		return -ENOMEM;
++	}
++	vma->vm_end = address;
++	vma->vm_mm->total_vm += grow;
++	if (vma->vm_flags & VM_LOCKED)
++		vma->vm_mm->locked_vm += grow;
++	spin_unlock(&vma->vm_mm->page_table_lock);
++	return 0;
++}
++#else
+ static inline int expand_stack(struct vm_area_struct * vma, unsigned long address)
+ {
+ 	unsigned long grow;
+ 
++	if (!(vma->vm_flags & VM_GROWSDOWN))
++		return -EFAULT;
+ 	/*
+ 	 * vma->vm_start/vm_end cannot change under us because the caller is required
+ 	 * to hold the mmap_sem in write mode. We need to get the spinlock only
+@@ -664,6 +694,7 @@
+ 	spin_unlock(&vma->vm_mm->page_table_lock);
+ 	return 0;
+ }
++#endif
+ 
+ /* Look up the first VMA which satisfies  addr < vm_end,  NULL if none. */
+ extern struct vm_area_struct * find_vma(struct mm_struct * mm, unsigned long addr);
+--- linux-2.4/include/linux/tty.h
++++ linux-2.4/include/linux/tty.h
+@@ -23,6 +23,8 @@
+ #include <linux/tqueue.h>
+ #include <linux/tty_driver.h>
+ #include <linux/tty_ldisc.h>
++#include <linux/kdev_t.h>
++#include <linux/wait.h>
+ 
+ #include <asm/system.h>
+ 
