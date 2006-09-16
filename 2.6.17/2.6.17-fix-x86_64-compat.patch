@@ -8,9 +8,10 @@
  
  #ifdef __USE_MISC
  #undef st_atime
+ 
 --- linux-2.6.17/include/asm-x86_64/compat.h	2006-03-20 05:53:29.000000000 +0000
 +++ linux-2.6.17-gentoo/include/asm-x86_64/compat.h	2006-08-08 00:14:22.000000000 +0100
-@@ -5,68 +5,68 @@
+@@ -5,7 +5,7 @@
   * Architecture specific compatibility types
   */
  #include <linux/types.h>

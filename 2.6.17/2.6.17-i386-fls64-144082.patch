@@ -1,0 +1,15 @@
+--- linux-2.6.17/include/asm-i386/bitops.h	2006-08-13 20:12:14.000000000 +0100
++++ linux-2.6.17/include/asm-i386/bitops.h	2006-09-16 12:58:51.000000000 +0100
+@@ -403,11 +403,10 @@
+ }
+ 
+ #include <asm-generic/bitops/hweight.h>
++#include <asm-generic/bitops/fls64.h>
+ 
+ #endif /* __KERNEL__ */
+ 
+-#include <asm-generic/bitops/fls64.h>
+-
+ #ifdef __KERNEL__
+ 
+ #include <asm-generic/bitops/ext2-non-atomic.h>
