@@ -1597,20 +1597,6 @@ diff -ur linux-2.6.8.1/include/linux/blkpg.h linux-2.6.8.1-gentoo/include/linux/
  
  #define BLKPG      _IO(0x12,105)
  
-diff -urp linux-2.6.10/include/asm-i386/param.h linux-2.6.10-gentoo/include/asm-i386/param.h
---- linux-2.6.10/include/asm-i386/param.h	2005-02-08 21:01:47.000000000 +0000
-+++ linux-2.6.10-gentoo/include/asm-i386/param.h	2005-02-08 20:28:36.000000000 +0000
-@@ -11,6 +11,10 @@
- #define HZ 100
- #endif
- 
-+#ifndef USER_HZ
-+#define USER_HZ 100
-+#endif
-+
- #define EXEC_PAGESIZE	4096
- 
- #ifndef NOGROUP
 diff -urp linux-2.6.10/include/asm-i386/semaphore.h linux-2.6.10-gentoo/include/asm-i386/semaphore.h
 --- linux-2.6.10/include/asm-i386/semaphore.h	2005-02-08 21:01:47.000000000 +0000
 +++ linux-2.6.10-gentoo/include/asm-i386/semaphore.h	2005-02-08 20:46:02.000000000 +0000
@@ -2533,20 +2519,6 @@ diff -ur linux-2.6.11.orig/include/asm-ia64/signal.h linux-2.6.11/include/asm-ia
 -#endif /* __KERNEL__ */
 -
  #endif /* _ASM_POWERPC_PAGE_H */
---- linux-2.6.15.orig/include/asm-powerpc/param.h	2006-01-09 01:46:00.000000000 +0000
-+++ linux-2.6.15/include/asm-powerpc/param.h	2006-01-08 23:24:03.000000000 +0000
-@@ -3,9 +3,10 @@
- 
- #include <linux/config.h>
- 
-+#define USER_HZ		100		/* for user interfaces in "ticks" */
-+
- #ifdef __KERNEL__
- #define HZ		CONFIG_HZ	/* internal kernel timer frequency */
--#define USER_HZ		100		/* for user interfaces in "ticks" */
- #define CLOCKS_PER_SEC	(USER_HZ)	/* frequency at which times() counts */
- #endif /* __KERNEL__ */
- 
 --- linux-2.6.15.orig/include/asm-powerpc/sigcontext.h	2006-01-09 01:46:00.000000000 +0000
 +++ linux-2.6.15/include/asm-powerpc/sigcontext.h	2006-01-08 23:06:55.000000000 +0000
 @@ -44,8 +44,8 @@
@@ -2764,23 +2736,6 @@ diff -ur linux-2.6.11.orig/include/asm-ia64/signal.h linux-2.6.11/include/asm-ia
  
  #define set_fixmap(idx, phys) \
  		__set_fixmap(idx, phys, PAGE_KERNEL)
---- linux-2.6.16.orig/include/asm-x86_64/param.h	2006-03-25 21:02:49.000000000 +0000
-+++ linux-2.6.16/include/asm-x86_64/param.h	2006-03-25 20:52:23.000000000 +0000
-@@ -12,6 +12,14 @@
- #define HZ 100
- #endif
- 
-+#ifndef USER_HZ
-+#define USER_HZ 100
-+#endif
-+
-+#ifndef CLOCKS_PER_SEC
-+#define CLOCKS_PER_SEC USER_HZ
-+#endif
-+
- #define EXEC_PAGESIZE	4096
- 
- #ifndef NOGROUP
 --- linux-2.6.16.orig/include/asm-x86_64/thread_info.h	2006-03-25 21:02:49.000000000 +0000
 +++ linux-2.6.16/include/asm-x86_64/thread_info.h	2006-03-25 20:51:21.000000000 +0000
 @@ -7,8 +7,6 @@
