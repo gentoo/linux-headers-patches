@@ -1,0 +1,14 @@
+http://bugs.gentoo.org/150864
+
+--- a/include/linux/ipmi.h~	2006-09-26 16:21:12.000000000 -0700
++++ b/include/linux/ipmi.h	2006-11-23 13:40:31.000000000 -0800
+@@ -36,7 +36,9 @@
+ 
+ #include <linux/ipmi_msgdefs.h>
+ #include <linux/compiler.h>
++#ifdef __KERNEL__
+ #include <linux/device.h>
++#endif
+ 
+ /*
+  * This file describes an interface to an IPMI driver.  You have to
