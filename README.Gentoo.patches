@@ -23,6 +23,6 @@ For those with CVS access, you want the 'src/patchsets' dir inside of the
 'gentoo' cvs module.
 
 For those w/out CVS access, this URL should help you:
-http://viewcvs.gentoo.org/src/patchsets/?root=gentoo
+http://sources.gentoo.org/gentoo/src/patchsets/
 
 It should be pretty easy to find your way around, you're a big boy after all.
