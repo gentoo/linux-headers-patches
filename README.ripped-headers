@@ -1,0 +1,4 @@
+This is a minimal ripping of headers out of the kernel source tree and
+contains only what is needed in order to install headers for an architecture.
+
+See the rip-headers.sh script for exact details on what files were copied.
