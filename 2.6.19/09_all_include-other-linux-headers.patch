@@ -1,0 +1,869 @@
+diff --git a/include/linux/atalk.h b/include/linux/atalk.h
+index 75b8bac..c0b7727 100644
+--- a/include/linux/atalk.h
++++ b/include/linux/atalk.h
+@@ -2,6 +2,7 @@
+ #define __LINUX_ATALK_H__
+ 
+ #include <asm/byteorder.h>
++#include <linux/socket.h>
+ 
+ /*
+  * AppleTalk networking structures
+diff --git a/include/linux/atm.h b/include/linux/atm.h
+index 6013668..5e12916 100644
+--- a/include/linux/atm.h
++++ b/include/linux/atm.h
+@@ -16,10 +16,8 @@
+  * documentation. Do not change them.
+  */
+ 
+-#ifdef __KERNEL__
+ #include <linux/socket.h>
+ #include <linux/types.h>
+-#endif
+ #include <linux/compiler.h>
+ #include <linux/atmapi.h>
+ #include <linux/atmsap.h>
+diff --git a/include/linux/atm_tcp.h b/include/linux/atm_tcp.h
+index 18787f9..e1eba63 100644
+--- a/include/linux/atm_tcp.h
++++ b/include/linux/atm_tcp.h
+@@ -8,10 +8,8 @@
+ #define LINUX_ATM_TCP_H
+ 
+ #include <linux/atmapi.h>
+-
+-#ifdef __KERNEL__
+ #include <linux/types.h>
+-#endif
++#include <linux/atm.h>
+ #include <linux/atmioc.h>
+ 
+ 
+diff --git a/include/linux/atm_zatm.h b/include/linux/atm_zatm.h
+index 10f0fa2..ca03fef 100644
+--- a/include/linux/atm_zatm.h
++++ b/include/linux/atm_zatm.h
+@@ -12,6 +12,7 @@
+  * sys/types.h for struct timeval
+  */
+ 
++#include <linux/time.h>
+ #include <linux/atmapi.h>
+ #include <linux/atmioc.h>
+ 
+diff --git a/include/linux/atmarp.h b/include/linux/atmarp.h
+index ee108f9..231f4bd 100644
+--- a/include/linux/atmarp.h
++++ b/include/linux/atmarp.h
+@@ -6,9 +6,7 @@
+ #ifndef _LINUX_ATMARP_H
+ #define _LINUX_ATMARP_H
+ 
+-#ifdef __KERNEL__
+ #include <linux/types.h>
+-#endif
+ #include <linux/atmapi.h>
+ #include <linux/atmioc.h>
+ 
+diff --git a/include/linux/audit.h b/include/linux/audit.h
+index 0e07db6..97da74b 100644
+--- a/include/linux/audit.h
++++ b/include/linux/audit.h
+@@ -25,6 +25,7 @@
+ #define _LINUX_AUDIT_H_
+ 
+ #include <linux/elf-em.h>
++#include <linux/types.h>
+ 
+ /* The netlink messages for the audit system is divided into blocks:
+  * 1000 - 1099 are for commanding the audit system
+diff --git a/include/linux/auto_fs.h b/include/linux/auto_fs.h
+index c21e597..9a5c539 100644
+--- a/include/linux/auto_fs.h
++++ b/include/linux/auto_fs.h
+@@ -16,10 +16,10 @@
+ 
+ #ifdef __KERNEL__
+ #include <linux/fs.h>
+-#include <linux/limits.h>
+ #include <asm/types.h>
+ #endif /* __KERNEL__ */
+ 
++#include <linux/limits.h>
+ #include <linux/ioctl.h>
+ 
+ /* This file describes autofs v3 */
+diff --git a/include/linux/auto_fs4.h b/include/linux/auto_fs4.h
+index 0a6bc52..ce9c79c 100644
+--- a/include/linux/auto_fs4.h
++++ b/include/linux/auto_fs4.h
+@@ -11,6 +11,8 @@
+ #ifndef _LINUX_AUTO_FS4_H
+ #define _LINUX_AUTO_FS4_H
+ 
++#include <linux/types.h>
++
+ /* Include common v3 definitions */
+ #include <linux/auto_fs.h>
+ 
+diff --git a/include/linux/bfs_fs.h b/include/linux/bfs_fs.h
+index 8ed6dfd..2ca3e8f 100644
+--- a/include/linux/bfs_fs.h
++++ b/include/linux/bfs_fs.h
+@@ -6,6 +6,8 @@
+ #ifndef _LINUX_BFS_FS_H
+ #define _LINUX_BFS_FS_H
+ 
++#include <linux/types.h>
++
+ #define BFS_BSIZE_BITS		9
+ #define BFS_BSIZE		(1<<BFS_BSIZE_BITS)
+ 
+diff --git a/include/linux/byteorder/swab.h b/include/linux/byteorder/swab.h
+index 25f7f32..8fa33f2 100644
+--- a/include/linux/byteorder/swab.h
++++ b/include/linux/byteorder/swab.h
+@@ -15,6 +15,7 @@
+  *
+  */
+ 
++#include <linux/types.h>
+ #include <linux/compiler.h>
+ 
+ /* casts are necessary for constants, because we never know how for sure
+diff --git a/include/linux/byteorder/swabb.h b/include/linux/byteorder/swabb.h
+index ae5e5f9..b582ff5 100644
+--- a/include/linux/byteorder/swabb.h
++++ b/include/linux/byteorder/swabb.h
+@@ -13,6 +13,8 @@
+  *
+  */
+ 
++#include <linux/types.h>
++
+ /*
+  * Meaning of the names I chose (vaxlinux people feel free to correct them):
+  * swahw32	swap 16-bit half-words in a 32-bit word
+diff --git a/include/linux/cm4000_cs.h b/include/linux/cm4000_cs.h
+index 605ebe2..8d95b2f 100644
+--- a/include/linux/cm4000_cs.h
++++ b/include/linux/cm4000_cs.h
+@@ -1,6 +1,9 @@
+ #ifndef	_CM4000_H_
+ #define	_CM4000_H_
+ 
++#include <linux/types.h>
++#include <linux/ioctl.h>
++
+ #define	MAX_ATR			33
+ 
+ #define	CM4000_MAX_DEV		4
+diff --git a/include/linux/coda_psdev.h b/include/linux/coda_psdev.h
+index b541bb3..629a715 100644
+--- a/include/linux/coda_psdev.h
++++ b/include/linux/coda_psdev.h
+@@ -1,6 +1,7 @@
+ #ifndef __CODA_PSDEV_H
+ #define __CODA_PSDEV_H
+ 
++#include <linux/fs.h>
+ #include <linux/magic.h>
+ 
+ #define CODA_PSDEV_MAJOR 67
+@@ -8,11 +9,7 @@
+ 
+ struct kstatfs;
+ 
+-struct coda_sb_info
+-{
+-	struct venus_comm *sbi_vcomm;
+-};
+-
++#ifdef __KERNEL__
+ /* communication pending/processing queues */
+ struct venus_comm {
+ 	u_long		    vc_seq;
+@@ -23,6 +20,13 @@ struct venus_comm {
+ 	struct super_block *vc_sb;
+ };
+ 
++struct coda_sb_info
++{
++	struct venus_comm *sbi_vcomm;
++};
++
++#endif
++
+ 
+ static inline struct coda_sb_info *coda_sbp(struct super_block *sb)
+ {
+diff --git a/include/linux/cyclades.h b/include/linux/cyclades.h
+index 46d8254..7b3235b 100644
+--- a/include/linux/cyclades.h
++++ b/include/linux/cyclades.h
+@@ -67,6 +67,8 @@
+ #ifndef _LINUX_CYCLADES_H
+ #define _LINUX_CYCLADES_H
+ 
++#include <linux/time.h>
++
+ struct cyclades_monitor {
+         unsigned long           int_count;
+         unsigned long           char_count;
+diff --git a/include/linux/dirent.h b/include/linux/dirent.h
+index 5d6023b..d5b642d 100644
+--- a/include/linux/dirent.h
++++ b/include/linux/dirent.h
+@@ -1,6 +1,8 @@
+ #ifndef _LINUX_DIRENT_H
+ #define _LINUX_DIRENT_H
+ 
++#include <linux/types.h>
++
+ struct dirent {
+ 	long		d_ino;
+ 	__kernel_off_t	d_off;
+diff --git a/include/linux/dlm.h b/include/linux/dlm.h
+index 1b1dcb9..415c400 100644
+--- a/include/linux/dlm.h
++++ b/include/linux/dlm.h
+@@ -19,6 +19,8 @@
+  * routines and structures to use DLM lockspaces
+  */
+ 
++#include <linux/types.h>
++
+ /*
+  * Lock Modes
+  */
+diff --git a/include/linux/dlm_device.h b/include/linux/dlm_device.h
+index 2a2dd18..52544a0 100644
+--- a/include/linux/dlm_device.h
++++ b/include/linux/dlm_device.h
+@@ -11,10 +11,16 @@
+ *******************************************************************************
+ ******************************************************************************/
+ 
++#ifndef _LINUX_DLM_DEVICE_H
++#define _LINUX_DLM_DEVICE_H
++
+ /* This is the device interface for dlm, most users will use a library
+  * interface.
+  */
+ 
++#include <linux/dlm.h>
++#include <linux/types.h>
++
+ #define DLM_USER_LVB_LEN	32
+ 
+ /* Version of the device interface */
+@@ -84,3 +90,4 @@ struct dlm_lock_result {
+ #define DLM_USER_LSFLG_AUTOFREE   1
+ #define DLM_USER_LSFLG_FORCEFREE  2
+ 
++#endif
+diff --git a/include/linux/dn.h b/include/linux/dn.h
+index 10b6a6f..9a13dd6 100644
+--- a/include/linux/dn.h
++++ b/include/linux/dn.h
+@@ -7,6 +7,9 @@
+ 
+ */
+ 
++#include <linux/ioctl.h>
++#include <linux/types.h>
++
+ /* 
+  * DNPROTO_NSP can't be the same as SOL_SOCKET, 
+  * so increment each by one (compared to ULTRIX)
+diff --git a/include/linux/efs_fs_sb.h b/include/linux/efs_fs_sb.h
+index ff1945e..a742b29 100644
+--- a/include/linux/efs_fs_sb.h
++++ b/include/linux/efs_fs_sb.h
+@@ -10,6 +10,7 @@
+ #define __EFS_FS_SB_H__
+ 
+ #include <linux/magic.h>
++#include <linux/types.h>
+ 
+ /* EFS superblock magic numbers */
+ #define EFS_MAGIC	0x072959
+diff --git a/include/linux/elfcore.h b/include/linux/elfcore.h
+index 9631ddd..2d5484e 100644
+--- a/include/linux/elfcore.h
++++ b/include/linux/elfcore.h
+@@ -20,7 +20,6 @@ struct elf_siginfo
+ typedef elf_greg_t greg_t;
+ typedef elf_gregset_t gregset_t;
+ typedef elf_fpregset_t fpregset_t;
+-typedef elf_fpxregset_t fpxregset_t;
+ #define NGREG ELF_NGREG
+ #endif
+ 
+diff --git a/include/linux/errqueue.h b/include/linux/errqueue.h
+index 92f8d4f..ceb1454 100644
+--- a/include/linux/errqueue.h
++++ b/include/linux/errqueue.h
+@@ -1,6 +1,8 @@
+ #ifndef _LINUX_ERRQUEUE_H
+ #define _LINUX_ERRQUEUE_H 1
+ 
++#include <linux/types.h>
++
+ struct sock_extended_err
+ {
+ 	__u32	ee_errno;	
+diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
+index c6310ae..f6fd474 100644
+--- a/include/linux/ethtool.h
++++ b/include/linux/ethtool.h
+@@ -12,6 +12,7 @@
+ #ifndef _LINUX_ETHTOOL_H
+ #define _LINUX_ETHTOOL_H
+ 
++#include <linux/types.h>
+ 
+ /* This should work for both 32 and 64 bit userland. */
+ struct ethtool_cmd {
+diff --git a/include/linux/futex.h b/include/linux/futex.h
+index d097b5b..3f153b4 100644
+--- a/include/linux/futex.h
++++ b/include/linux/futex.h
+@@ -93,6 +93,7 @@ struct robust_list_head {
+  */
+ #define ROBUST_LIST_LIMIT	2048
+ 
++#ifdef __KERNEL__
+ long do_futex(u32 __user *uaddr, int op, u32 val, unsigned long timeout,
+ 	      u32 __user *uaddr2, u32 val2, u32 val3);
+ 
+@@ -110,6 +111,7 @@ static inline void exit_pi_state_list(struct task_struct *curr)
+ {
+ }
+ #endif
++#endif /* __KERNEL__ */
+ 
+ #define FUTEX_OP_SET		0	/* *(int *)UADDR2 = OPARG; */
+ #define FUTEX_OP_ADD		1	/* *(int *)UADDR2 += OPARG; */
+diff --git a/include/linux/gfs2_ondisk.h b/include/linux/gfs2_ondisk.h
+index 8b7e4c1..e707cb5 100644
+--- a/include/linux/gfs2_ondisk.h
++++ b/include/linux/gfs2_ondisk.h
+@@ -10,6 +10,8 @@
+ #ifndef __GFS2_ONDISK_DOT_H__
+ #define __GFS2_ONDISK_DOT_H__
+ 
++#include <linux/types.h>
++
+ #define GFS2_MAGIC		0x01161970
+ #define GFS2_BASIC_BLOCK	512
+ #define GFS2_BASIC_BLOCK_SHIFT	9
+diff --git a/include/linux/hdlc/ioctl.h b/include/linux/hdlc/ioctl.h
+index 5839723..09dc723 100644
+--- a/include/linux/hdlc/ioctl.h
++++ b/include/linux/hdlc/ioctl.h
+@@ -1,6 +1,7 @@
+ #ifndef __HDLC_IOCTL_H__
+ #define __HDLC_IOCTL_H__
+ 
++#include <linux/if.h>
+ 
+ #define GENERIC_HDLC_VERSION 4	/* For synchronization with sethdlc utility */
+ 
+diff --git a/include/linux/hiddev.h b/include/linux/hiddev.h
+index acbdae6..3b35f72 100644
+--- a/include/linux/hiddev.h
++++ b/include/linux/hiddev.h
+@@ -29,6 +29,8 @@
+  * Vojtech Pavlik, Ucitelska 1576, Prague 8, 182 00 Czech Republic
+  */
+ 
++#include <linux/types.h>
++
+ /*
+  * The event structure itself
+  */
+diff --git a/include/linux/i2o-dev.h b/include/linux/i2o-dev.h
+index c2519df..1697662 100644
+--- a/include/linux/i2o-dev.h
++++ b/include/linux/i2o-dev.h
+@@ -24,6 +24,7 @@
+ #define MAX_I2O_CONTROLLERS	32
+ 
+ #include <linux/ioctl.h>
++#include <linux/types.h>
+ 
+ /*
+  * I2O Control IOCTLs and structures
+diff --git a/include/linux/if_fc.h b/include/linux/if_fc.h
+index 376a34e..6ed7f1b 100644
+--- a/include/linux/if_fc.h
++++ b/include/linux/if_fc.h
+@@ -20,6 +20,7 @@
+ #ifndef _LINUX_IF_FC_H
+ #define _LINUX_IF_FC_H
+ 
++#include <linux/types.h>
+ 
+ #define FC_ALEN	6		/* Octets in one ethernet addr	 */
+ #define FC_HLEN   (sizeof(struct fch_hdr)+sizeof(struct fcllc))
+diff --git a/include/linux/if_fddi.h b/include/linux/if_fddi.h
+index e0a1500..58ada1f 100644
+--- a/include/linux/if_fddi.h
++++ b/include/linux/if_fddi.h
+@@ -24,6 +24,8 @@
+ #ifndef _LINUX_IF_FDDI_H
+ #define _LINUX_IF_FDDI_H
+ 
++#include <linux/types.h>
++
+ /*
+  *  Define max and min legal sizes.  The frame sizes do not include
+  *  4 byte FCS/CRC (frame check sequence).
+diff --git a/include/linux/if_ppp.h b/include/linux/if_ppp.h
+index 768372f..b8d05b8 100644
+--- a/include/linux/if_ppp.h
++++ b/include/linux/if_ppp.h
+@@ -36,6 +36,9 @@
+ #define _IF_PPP_H_
+ 
+ #include <linux/compiler.h>
++#include <linux/if.h>
++#include <linux/ppp_defs.h>
++#include <linux/types.h>
+ 
+ /*
+  * Packet sizes
+diff --git a/include/linux/ppp_defs.h b/include/linux/ppp_defs.h
+index c6b13ff..a71510a 100644
+--- a/include/linux/ppp_defs.h
++++ b/include/linux/ppp_defs.h
+@@ -42,6 +42,8 @@
+ #ifndef _PPP_DEFS_H_
+ #define _PPP_DEFS_H_
+ 
++#include <linux/types.h>
++
+ /*
+  * The basic PPP frame.
+  */
+diff --git a/include/linux/if_pppox.h b/include/linux/if_pppox.h
+index 4fab3d0..5f971f9 100644
+--- a/include/linux/if_pppox.h
++++ b/include/linux/if_pppox.h
+@@ -20,13 +20,13 @@
+ #include <asm/types.h>
+ #include <asm/byteorder.h>
+ 
+-#ifdef  __KERNEL__
+ #include <linux/if_ether.h>
+ #include <linux/if.h>
+ #include <linux/netdevice.h>
++#ifdef __KERNEL__
+ #include <asm/semaphore.h>
+ #include <linux/ppp_channel.h>
+-#endif /* __KERNEL__ */
++#endif
+ 
+ /* For user-space programs to pick up these definitions
+  * which they wouldn't get otherwise without defining __KERNEL__
+diff --git a/include/linux/if_shaper.h b/include/linux/if_shaper.h
+index 68c896a..6d5038e 100644
+--- a/include/linux/if_shaper.h
++++ b/include/linux/if_shaper.h
+@@ -1,6 +1,8 @@
+ #ifndef __LINUX_SHAPER_H
+ #define __LINUX_SHAPER_H
+ 
++#include <linux/types.h>
++
+ #ifdef __KERNEL__
+ 
+ #define SHAPER_QLEN	10
+diff --git a/include/linux/if_strip.h b/include/linux/if_strip.h
+index fb5c5c9..6526a62 100644
+--- a/include/linux/if_strip.h
++++ b/include/linux/if_strip.h
+@@ -18,6 +18,8 @@
+ #ifndef __LINUX_STRIP_H
+ #define __LINUX_STRIP_H
+ 
++#include <linux/types.h>
++
+ typedef struct {
+     __u8 c[6];
+ } MetricomAddress;
+diff --git a/include/linux/if_tunnel.h b/include/linux/if_tunnel.h
+index 8de079b..ecd1d42 100644
+--- a/include/linux/if_tunnel.h
++++ b/include/linux/if_tunnel.h
+@@ -1,6 +1,11 @@
+ #ifndef _IF_TUNNEL_H_
+ #define _IF_TUNNEL_H_
+ 
++#include <asm/byteorder.h>
++#include <linux/types.h>
++#include <linux/if.h>
++#include <linux/ip.h>
++
+ #define SIOCGETTUNNEL   (SIOCDEVPRIVATE + 0)
+ #define SIOCADDTUNNEL   (SIOCDEVPRIVATE + 1)
+ #define SIOCDELTUNNEL   (SIOCDEVPRIVATE + 2)
+diff --git a/include/linux/inet_diag.h b/include/linux/inet_diag.h
+index 6e8bc54..bc8c490 100644
+--- a/include/linux/inet_diag.h
++++ b/include/linux/inet_diag.h
+@@ -1,6 +1,8 @@
+ #ifndef _INET_DIAG_H_
+ #define _INET_DIAG_H_ 1
+ 
++#include <linux/types.h>
++
+ /* Just some random number */
+ #define TCPDIAG_GETSOCK 18
+ #define DCCPDIAG_GETSOCK 19
+diff --git a/include/linux/ipv6_route.h b/include/linux/ipv6_route.h
+index b323ff5..d5865f0 100644
+--- a/include/linux/ipv6_route.h
++++ b/include/linux/ipv6_route.h
+@@ -13,6 +13,8 @@
+ #ifndef _LINUX_IPV6_ROUTE_H
+ #define _LINUX_IPV6_ROUTE_H
+ 
++#include <linux/in6.h>
++
+ #define RTF_DEFAULT	0x00010000	/* default - learned via ND	*/
+ #define RTF_ALLONLINK	0x00020000	/* (deprecated and will be removed)
+ 					   fallback, no routers on link */
+diff --git a/include/linux/ipx.h b/include/linux/ipx.h
+index eb19b4e..22d379f 100644
+--- a/include/linux/ipx.h
++++ b/include/linux/ipx.h
+@@ -2,6 +2,7 @@
+ #define _IPX_H_
+ #include <linux/sockios.h>
+ #include <linux/socket.h>
++#include <linux/types.h>
+ #define IPX_NODE_LEN	6
+ #define IPX_MTU		576
+ 
+diff --git a/include/linux/irda.h b/include/linux/irda.h
+index 09d8f10..b41984f 100644
+--- a/include/linux/irda.h
++++ b/include/linux/irda.h
+@@ -31,6 +31,9 @@
+  * this one, or preferably to include <net/irda/irda.h> instead.
+  * Jean II */
+ 
++#include <linux/types.h>
++#include <linux/socket.h>
++
+ /* Hint bit positions for first hint byte */
+ #define HINT_PNP         0x01
+ #define HINT_PDA         0x02
+diff --git a/include/linux/llc.h b/include/linux/llc.h
+index 09f2e6d..f3a34ca 100644
+--- a/include/linux/llc.h
++++ b/include/linux/llc.h
+@@ -12,6 +12,10 @@
+  *
+  * See the GNU General Public License for more details.
+  */
++
++#include <linux/if.h>
++#include <linux/socket.h>
++
+ #define __LLC_SOCK_SIZE__ 16	/* sizeof(sockaddr_llc), word align. */
+ struct sockaddr_llc {
+ 	sa_family_t     sllc_family;	/* AF_LLC */
+diff --git a/include/linux/lock_dlm_plock.h b/include/linux/lock_dlm_plock.h
+index fc34151..d3c2a54 100644
+--- a/include/linux/lock_dlm_plock.h
++++ b/include/linux/lock_dlm_plock.h
+@@ -9,6 +9,8 @@
+ #ifndef __LOCK_DLM_PLOCK_DOT_H__
+ #define __LOCK_DLM_PLOCK_DOT_H__
+ 
++#include <linux/types.h>
++
+ #define GDLM_PLOCK_MISC_NAME		"lock_dlm_plock"
+ 
+ #define GDLM_PLOCK_VERSION_MAJOR	1
+diff --git a/include/linux/minix_fs.h b/include/linux/minix_fs.h
+index 916e8f7..bb33d11 100644
+--- a/include/linux/minix_fs.h
++++ b/include/linux/minix_fs.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_MINIX_FS_H
+ 
+ #include <linux/magic.h>
++#include <linux/types.h>
+ 
+ /*
+  * The minix filesystem constants/structures
+diff --git a/include/linux/netfilter/x_tables.h b/include/linux/netfilter/x_tables.h
+index 022edfa..175741c 100644
+--- a/include/linux/netfilter/x_tables.h
++++ b/include/linux/netfilter/x_tables.h
+@@ -1,6 +1,8 @@
+ #ifndef _X_TABLES_H
+ #define _X_TABLES_H
+ 
++#include <linux/types.h>
++
+ #define XT_FUNCTION_MAXNAMELEN 30
+ #define XT_TABLE_MAXNAMELEN 32
+ 
+diff --git a/include/linux/netrom.h b/include/linux/netrom.h
+index 6939b32..af7313c 100644
+--- a/include/linux/netrom.h
++++ b/include/linux/netrom.h
+@@ -7,6 +7,8 @@
+ #ifndef	NETROM_KERNEL_H
+ #define	NETROM_KERNEL_H
+ 
++#include <linux/ax25.h>
++
+ #define NETROM_MTU	236
+ 
+ #define NETROM_T1	1
+diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
+index 15a9f3b..91a1c24 100644
+--- a/include/linux/nfs_idmap.h
++++ b/include/linux/nfs_idmap.h
+@@ -37,6 +37,8 @@
+ #ifndef NFS_IDMAP_H
+ #define NFS_IDMAP_H
+ 
++#include <linux/types.h>
++
+ /* XXX from bits/utmp.h  */
+ #define IDMAP_NAMESZ  128
+ 
+diff --git a/include/linux/nubus.h b/include/linux/nubus.h
+index 870e66a..72c8774 100644
+--- a/include/linux/nubus.h
++++ b/include/linux/nubus.h
+@@ -12,6 +12,8 @@
+ #ifndef LINUX_NUBUS_H
+ #define LINUX_NUBUS_H
+ 
++#include <linux/types.h>
++
+ #ifdef __KERNEL__
+ #include <asm/nubus.h>
+ #endif
+diff --git a/include/linux/pkt_cls.h b/include/linux/pkt_cls.h
+index c3f01b3..762f048 100644
+--- a/include/linux/pkt_cls.h
++++ b/include/linux/pkt_cls.h
+@@ -2,6 +2,7 @@
+ #define __LINUX_PKT_CLS_H
+ 
+ #include <linux/pkt_sched.h>
++#include <linux/types.h>
+ 
+ /* I think i could have done better macros ; for now this is stolen from
+  * some arch/mips code - jhs
+diff --git a/include/linux/pkt_sched.h b/include/linux/pkt_sched.h
+index d10f353..2169d79 100644
+--- a/include/linux/pkt_sched.h
++++ b/include/linux/pkt_sched.h
+@@ -1,6 +1,8 @@
+ #ifndef __LINUX_PKT_SCHED_H
+ #define __LINUX_PKT_SCHED_H
+ 
++#include <linux/types.h>
++
+ /* Logical priority bands not depending on specific packet scheduler.
+    Every scheduler will map them to real traffic classes, if it has
+    no more precise mechanism to classify packets.
+diff --git a/include/linux/random.h b/include/linux/random.h
+index 01ad710..57195d0 100644
+--- a/include/linux/random.h
++++ b/include/linux/random.h
+@@ -8,6 +8,7 @@
+ #define _LINUX_RANDOM_H
+ 
+ #include <linux/ioctl.h>
++#include <linux/types.h>
+ 
+ /* ioctl()'s for the random number generator */
+ 
+diff --git a/include/linux/romfs_fs.h b/include/linux/romfs_fs.h
+index e20bbf9..1404f8d 100644
+--- a/include/linux/romfs_fs.h
++++ b/include/linux/romfs_fs.h
+@@ -1,6 +1,8 @@
+ #ifndef __LINUX_ROMFS_FS_H
+ #define __LINUX_ROMFS_FS_H
+ 
++#include <linux/types.h>
++
+ /* The basic structures of the romfs filesystem */
+ 
+ #define ROMBSIZE BLOCK_SIZE
+diff --git a/include/linux/rose.h b/include/linux/rose.h
+index c7b4b18..5bcbba1 100644
+--- a/include/linux/rose.h
++++ b/include/linux/rose.h
+@@ -7,6 +7,9 @@
+ #ifndef	ROSE_KERNEL_H
+ #define	ROSE_KERNEL_H
+ 
++#include <linux/socket.h>
++#include <linux/ax25.h>
++
+ #define ROSE_MTU	251
+ 
+ #define ROSE_MAX_DIGIS 6
+diff --git a/include/linux/scc.h b/include/linux/scc.h
+index 3495bd9..d5916e5 100644
+--- a/include/linux/scc.h
++++ b/include/linux/scc.h
+@@ -3,6 +3,7 @@
+ #ifndef	_SCC_H
+ #define	_SCC_H
+ 
++#include <linux/sockios.h>
+ 
+ /* selection of hardware types */
+ 
+diff --git a/include/linux/selinux_netlink.h b/include/linux/selinux_netlink.h
+index bbf489d..faf9675 100644
+--- a/include/linux/selinux_netlink.h
++++ b/include/linux/selinux_netlink.h
+@@ -12,6 +12,8 @@
+ #ifndef _LINUX_SELINUX_NETLINK_H
+ #define _LINUX_SELINUX_NETLINK_H
+ 
++#include <linux/types.h>
++
+ /* Message types. */
+ #define SELNL_MSG_BASE 0x10
+ enum {
+diff --git a/include/linux/synclink.h b/include/linux/synclink.h
+index c8b0426..ba59b6d 100644
+--- a/include/linux/synclink.h
++++ b/include/linux/synclink.h
+@@ -11,6 +11,9 @@
+ 
+ #ifndef _SYNCLINK_H_
+ #define _SYNCLINK_H_
++
++#include <linux/types.h>
++
+ #define SYNCLINK_H_VERSION 3.6
+ 
+ #define BOOLEAN int
+diff --git a/include/linux/un.h b/include/linux/un.h
+index 45561c5..77371f5 100644
+--- a/include/linux/un.h
++++ b/include/linux/un.h
+@@ -1,6 +1,8 @@
+ #ifndef _LINUX_UN_H
+ #define _LINUX_UN_H
+ 
++#include <linux/socket.h>
++
+ #define UNIX_PATH_MAX	108
+ 
+ struct sockaddr_un {
+diff --git a/include/linux/video_decoder.h b/include/linux/video_decoder.h
+index 121e26d..e26c0c8 100644
+--- a/include/linux/video_decoder.h
++++ b/include/linux/video_decoder.h
+@@ -1,6 +1,8 @@
+ #ifndef _LINUX_VIDEO_DECODER_H
+ #define _LINUX_VIDEO_DECODER_H
+ 
++#include <linux/types.h>
++
+ #define HAVE_VIDEO_DECODER 1
+ 
+ struct video_decoder_capability { /* this name is too long */
+diff --git a/include/linux/video_encoder.h b/include/linux/video_encoder.h
+index 4b0e690..b7b6423 100644
+--- a/include/linux/video_encoder.h
++++ b/include/linux/video_encoder.h
+@@ -1,6 +1,8 @@
+ #ifndef _LINUX_VIDEO_ENCODER_H
+ #define _LINUX_VIDEO_ENCODER_H
+ 
++#include <linux/types.h>
++
+ struct video_encoder_capability { /* this name is too long */
+ 	__u32	flags;
+ #define	VIDEO_ENCODER_PAL	1	/* can encode PAL signal */
+diff --git a/include/linux/videodev2.h b/include/linux/videodev2.h
+index 5cb380a..0342e56 100644
+--- a/include/linux/videodev2.h
++++ b/include/linux/videodev2.h
+@@ -14,12 +14,8 @@
+  */
+ #ifndef __LINUX_VIDEODEV2_H
+ #define __LINUX_VIDEODEV2_H
+-#ifdef __KERNEL__
+ #include <linux/time.h>     /* need struct timeval */
+ #include <linux/compiler.h> /* need __user */
+-#else
+-#define __user
+-#endif
+ #include <linux/types.h>
+ 
+ /*
+diff --git a/include/linux/wireless.h b/include/linux/wireless.h
+index 7c269f4..9ba6355 100644
+--- a/include/linux/wireless.h
++++ b/include/linux/wireless.h
+@@ -72,11 +72,9 @@
+ /* This header is used in user-space, therefore need to be sanitised
+  * for that purpose. Those includes are usually not compatible with glibc.
+  * To know which includes to use in user-space, check iwlib.h. */
+-#ifdef __KERNEL__
+ #include <linux/types.h>		/* for "caddr_t" et al		*/
+ #include <linux/socket.h>		/* for "struct sockaddr" et al	*/
+ #include <linux/if.h>			/* for IFNAMSIZ and co... */
+-#endif	/* __KERNEL__ */
+ 
+ /***************************** VERSION *****************************/
+ /*
+diff --git a/include/linux/x25.h b/include/linux/x25.h
+index d035e4e..00dcc34 100644
+--- a/include/linux/x25.h
++++ b/include/linux/x25.h
+@@ -12,6 +12,7 @@
+ #define	X25_KERNEL_H
+ 
+ #include <linux/types.h>
++#include <linux/socket.h>
+ 
+ #define	SIOCX25GSUBSCRIP	(SIOCPROTOPRIVATE + 0)
+ #define	SIOCX25SSUBSCRIP	(SIOCPROTOPRIVATE + 1)
+diff --git a/include/linux/times.h b/include/linux/times.h
+index e2d3020..813446f 100644
+--- a/include/linux/times.h
++++ b/include/linux/times.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_TIMES_H
+ 
+ #include <linux/types.h>
++#include <linux/time.h>
+ 
+ struct tms {
+ 	clock_t tms_utime;
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 35108fe..6be564a 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -53,7 +53,7 @@
+ 
+ #include <linux/in.h>		/* We need in_addr.  */
+ #include <linux/in6.h>		/* We need in6_addr.  */
+-
++#include <asm/byteorder.h>	/* We need __constant_htons.  */
+ 
+ /* Section 3.1.  SCTP Common Header Format */
+ typedef struct sctphdr {
