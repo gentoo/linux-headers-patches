@@ -385,18 +385,6 @@ index acbdae6..3b35f72 100644
  /*
   * The event structure itself
   */
-diff --git a/include/linux/i2o-dev.h b/include/linux/i2o-dev.h
-index c2519df..1697662 100644
---- a/include/linux/i2o-dev.h
-+++ b/include/linux/i2o-dev.h
-@@ -24,6 +24,7 @@
- #define MAX_I2O_CONTROLLERS	32
- 
- #include <linux/ioctl.h>
-+#include <linux/types.h>
- 
- /*
-  * I2O Control IOCTLs and structures
 diff --git a/include/linux/if_fc.h b/include/linux/if_fc.h
 index 376a34e..6ed7f1b 100644
 --- a/include/linux/if_fc.h
@@ -879,3 +867,70 @@ index 153d755..0f9cac0 100644
  
  /*
   * The second extended filesystem constants/structures
+diff --git a/include/linux/hdreg.h b/include/linux/hdreg.h
+index 2b54eac..818c6af 100644
+--- a/include/linux/hdreg.h
++++ b/include/linux/hdreg.h
+@@ -60,13 +60,15 @@
+ #define TAG_MASK		0xf8
+ #endif /* __KERNEL__ */
+ 
++#include <linux/types.h>
++
+ /*
+  * Command Header sizes for IOCTL commands
+  */
+ 
+-#define HDIO_DRIVE_CMD_HDR_SIZE		(4 * sizeof(u8))
+-#define HDIO_DRIVE_HOB_HDR_SIZE		(8 * sizeof(u8))
+-#define HDIO_DRIVE_TASK_HDR_SIZE	(8 * sizeof(u8))
++#define HDIO_DRIVE_CMD_HDR_SIZE		(4 * sizeof(__u8))
++#define HDIO_DRIVE_HOB_HDR_SIZE		(8 * sizeof(__u8))
++#define HDIO_DRIVE_TASK_HDR_SIZE	(8 * sizeof(__u8))
+ 
+ #define IDE_DRIVE_TASK_INVALID		-1
+ #define IDE_DRIVE_TASK_NO_DATA		0
+diff --git a/include/linux/i2o-dev.h b/include/linux/i2o-dev.h
+index c2519df..a0b23dd 100644
+--- a/include/linux/i2o-dev.h
++++ b/include/linux/i2o-dev.h
+@@ -24,12 +24,13 @@
+ #define MAX_I2O_CONTROLLERS	32
+ 
+ #include <linux/ioctl.h>
++#include <linux/types.h>
+ 
+ /*
+  * I2O Control IOCTLs and structures
+  */
+ #define I2O_MAGIC_NUMBER	'i'
+-#define I2OGETIOPS		_IOR(I2O_MAGIC_NUMBER,0,u8[MAX_I2O_CONTROLLERS])
++#define I2OGETIOPS		_IOR(I2O_MAGIC_NUMBER,0,__u8[MAX_I2O_CONTROLLERS])
+ #define I2OHRTGET		_IOWR(I2O_MAGIC_NUMBER,1,struct i2o_cmd_hrtlct)
+ #define I2OLCTGET		_IOWR(I2O_MAGIC_NUMBER,2,struct i2o_cmd_hrtlct)
+ #define I2OPARMSET		_IOWR(I2O_MAGIC_NUMBER,3,struct i2o_cmd_psetget)
+@@ -37,7 +38,7 @@
+ #define I2OSWDL 		_IOWR(I2O_MAGIC_NUMBER,5,struct i2o_sw_xfer)
+ #define I2OSWUL 		_IOWR(I2O_MAGIC_NUMBER,6,struct i2o_sw_xfer)
+ #define I2OSWDEL		_IOWR(I2O_MAGIC_NUMBER,7,struct i2o_sw_xfer)
+-#define I2OVALIDATE		_IOR(I2O_MAGIC_NUMBER,8,u32)
++#define I2OVALIDATE		_IOR(I2O_MAGIC_NUMBER,8,__u32)
+ #define I2OHTML 		_IOWR(I2O_MAGIC_NUMBER,9,struct i2o_html)
+ #define I2OEVTREG		_IOW(I2O_MAGIC_NUMBER,10,struct i2o_evt_id)
+ #define I2OEVTGET		_IOR(I2O_MAGIC_NUMBER,11,struct i2o_evt_info)
+diff --git a/include/linux/usbdevice_fs.h b/include/linux/usbdevice_fs.h
+index 617d8a1..342dd5a 100644
+--- a/include/linux/usbdevice_fs.h
++++ b/include/linux/usbdevice_fs.h
+@@ -159,9 +159,9 @@ struct usbdevfs_ioctl32 {
+ #define USBDEVFS_SUBMITURB32       _IOR('U', 10, struct usbdevfs_urb32)
+ #define USBDEVFS_DISCARDURB        _IO('U', 11)
+ #define USBDEVFS_REAPURB           _IOW('U', 12, void *)
+-#define USBDEVFS_REAPURB32         _IOW('U', 12, u32)
++#define USBDEVFS_REAPURB32         _IOW('U', 12, __u32)
+ #define USBDEVFS_REAPURBNDELAY     _IOW('U', 13, void *)
+-#define USBDEVFS_REAPURBNDELAY32   _IOW('U', 13, u32)
++#define USBDEVFS_REAPURBNDELAY32   _IOW('U', 13, __u32)
+ #define USBDEVFS_DISCSIGNAL        _IOR('U', 14, struct usbdevfs_disconnectsignal)
+ #define USBDEVFS_CLAIMINTERFACE    _IOR('U', 15, unsigned int)
+ #define USBDEVFS_RELEASEINTERFACE  _IOR('U', 16, unsigned int)
