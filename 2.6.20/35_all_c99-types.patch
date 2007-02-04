@@ -1,0 +1,191 @@
+C99 standard allows the use of the long long data type, both signed and
+unsigned. We should allow this to be used if defined.
+
+Signed-off-by: Roy Marples <uberlord@gentoo.org>
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -120,7 +123,7 @@ typedef		__u8		uint8_t;
+ typedef		__u16		uint16_t;
+ typedef		__u32		uint32_t;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef		__u64		uint64_t;
+ typedef		__u64		u_int64_t;
+ typedef		__s64		int64_t;
+@@ -182,7 +185,7 @@ typedef __u16 __bitwise __le16;
+ typedef __u16 __bitwise __be16;
+ typedef __u32 __bitwise __le32;
+ typedef __u32 __bitwise __be32;
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __u64 __bitwise __le64;
+ typedef __u64 __bitwise __be64;
+ #endif
+--- a/include/asm-arm/types.h
++++ b/include/asm-arm/types.h
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-avr32/types.h
++++ b/include/asm-avr32/types.h
+@@ -25,7 +25,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-cris/types.h
++++ b/include/asm-cris/types.h
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-frv/types.h
++++ b/include/asm-frv/types.h
+@@ -30,7 +30,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-h8300/types.h
++++ b/include/asm-h8300/types.h
+@@ -27,7 +27,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-i386/types.h
++++ b/include/asm-i386/types.h
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-m68k/types.h
++++ b/include/asm-m68k/types.h
+@@ -27,7 +27,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-mips/types.h
++++ b/include/asm-mips/types.h
+@@ -34,7 +34,7 @@
+ 
+ #else
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-parisc/types.h
++++ b/include/asm-parisc/types.h
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-powerpc/types.h
++++ b/include/asm-powerpc/types.h
+@@ -40,7 +40,7 @@
+ typedef __signed__ long __s64;
+ typedef unsigned long __u64;
+ #else
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-s390/types.h
++++ b/include/asm-s390/types.h
+@@ -28,7 +28,7 @@
+ typedef unsigned int __u32;
+ 
+ #ifndef __s390x__
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-sh/types.h
++++ b/include/asm-sh/types.h
+@@ -19,7 +19,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-sh64/types.h
++++ b/include/asm-sh64/types.h
+@@ -30,7 +30,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-v850/types.h
++++ b/include/asm-v850/types.h
+@@ -27,7 +27,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
+--- a/include/asm-xtensa/types.h
++++ b/include/asm-xtensa/types.h
+@@ -29,7 +29,7 @@
+ typedef __signed__ int __s32;
+ typedef unsigned int __u32;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__USE_ISOC99)
+ typedef __signed__ long long __s64;
+ typedef unsigned long long __u64;
+ #endif
