@@ -1,0 +1,16 @@
+Most arches stub these headers anyways, so lets just plain punt them
+
+diff --git a/include/asm-generic/Kbuild.asm b/include/asm-generic/Kbuild.asm
+index a37e95f..e5e574a 100644
+--- a/include/asm-generic/Kbuild.asm
++++ b/include/asm-generic/Kbuild.asm
+@@ -27,9 +27,7 @@ unifdef-y += termbits.h
+ unifdef-y += termios.h
+ unifdef-y += types.h
+ unifdef-y += unistd.h
+-unifdef-y += user.h
+ 
+ # These probably shouldn't be exported
+ unifdef-y += shmparam.h
+ unifdef-y += elf.h
+-unifdef-y += page.h
