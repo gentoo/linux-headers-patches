@@ -1,5 +1,17 @@
-pull in the libc versions of these headers so that the proper
-userspace defines/typedefs are utilized
+pull in the libc versions of these headers so that the proper userspace
+defines/typedefs are utilized.
+
+the trouble here is that some of the linux/ headers define structs that the
+libc net/ headers define (like the if.h header).  we cannot simply say
+"your program should not include linux/if.h when using net/if.h" because some
+of the other linux/ headers may correctly be utilized with net/if.h but they
+correctly include linux/if.h.  we also cannot say "just use the linux/ headers
+and not the libc net/ headers" because the libc headers include more
+definitions than its kernel equivalent.
+
+since there is no obvious (at least to me) answer here, we hack the linux/
+headers to simply pull in userspace headers and ignore the linux/ ones
+completely.  this seems to give a proper clean userspace experience.
 
 --- a/include/linux/socket.h
 +++ b/include/linux/socket.h
