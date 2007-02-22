@@ -44,8 +44,8 @@
 -#define	TIOCSTART	_IO('t', 110)		/* start output, like ^Q */
 -#define	TIOCSTOP	_IO('t', 111)		/* stop output, like ^S */
 -#define TIOCOUTQ        _IOR('t', 115, int)     /* output queue size */
-+#define TIOCSWINSZ	0x5414
-+#define TIOCGWINSZ	0x5413
++#define TIOCSWINSZ	0x40087467
++#define TIOCGWINSZ	0x80087468
 +#define	TIOCSTART	0x746E
 +#define	TIOCSTOP	0x746F
 +#define TIOCOUTQ        0x5411
