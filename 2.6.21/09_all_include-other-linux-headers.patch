@@ -95,31 +95,6 @@ index 8ed6dfd..2ca3e8f 100644
  #define BFS_BSIZE_BITS		9
  #define BFS_BSIZE		(1<<BFS_BSIZE_BITS)
  
-diff --git a/include/linux/byteorder/swab.h b/include/linux/byteorder/swab.h
-index 25f7f32..8fa33f2 100644
---- a/include/linux/byteorder/swab.h
-+++ b/include/linux/byteorder/swab.h
-@@ -15,6 +15,7 @@
-  *
-  */
- 
-+#include <linux/types.h>
- #include <linux/compiler.h>
- 
- /* casts are necessary for constants, because we never know how for sure
-diff --git a/include/linux/byteorder/swabb.h b/include/linux/byteorder/swabb.h
-index ae5e5f9..b582ff5 100644
---- a/include/linux/byteorder/swabb.h
-+++ b/include/linux/byteorder/swabb.h
-@@ -13,6 +13,8 @@
-  *
-  */
- 
-+#include <linux/types.h>
-+
- /*
-  * Meaning of the names I chose (vaxlinux people feel free to correct them):
-  * swahw32	swap 16-bit half-words in a 32-bit word
 diff --git a/include/linux/cm4000_cs.h b/include/linux/cm4000_cs.h
 index 605ebe2..8d95b2f 100644
 --- a/include/linux/cm4000_cs.h
@@ -794,19 +769,6 @@ index e2d3020..813446f 100644
  
  struct tms {
  	clock_t tms_utime;
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 35108fe..6be564a 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -53,7 +53,7 @@
- 
- #include <linux/in.h>		/* We need in_addr.  */
- #include <linux/in6.h>		/* We need in6_addr.  */
--
-+#include <asm/byteorder.h>	/* We need __constant_htons.  */
- 
- /* Section 3.1.  SCTP Common Header Format */
- typedef struct sctphdr {
 diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
 index 153d755..0f9cac0 100644
 --- a/include/linux/ext2_fs.h
