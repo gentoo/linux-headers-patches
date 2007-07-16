@@ -6,7 +6,7 @@ Signed-off-by: Mike Frysinger <vapier@gentoo.org>
 
 --- a/include/linux/types.h
 +++ b/include/linux/types.h
-@@ -120,7 +123,7 @@ typedef		__u8		uint8_t;
+@@ -120,7 +123,7 @@
  typedef		__u16		uint16_t;
  typedef		__u32		uint32_t;
  
@@ -15,7 +15,7 @@ Signed-off-by: Mike Frysinger <vapier@gentoo.org>
  typedef		__u64		uint64_t;
  typedef		__u64		u_int64_t;
  typedef		__s64		int64_t;
-@@ -182,7 +185,7 @@ typedef __u16 __bitwise __le16;
+@@ -182,7 +185,7 @@
  typedef __u16 __bitwise __be16;
  typedef __u32 __bitwise __le32;
  typedef __u32 __bitwise __be32;
@@ -189,3 +189,71 @@ Signed-off-by: Mike Frysinger <vapier@gentoo.org>
  typedef __signed__ long long __s64;
  typedef unsigned long long __u64;
  #endif
+--- a/include/linux/byteorder/big_endian.h
++++ b/include/linux/byteorder/big_endian.h
+@@ -40,6 +40,7 @@
+ #define __cpu_to_be16(x) ((__force __be16)(__u16)(x))
+ #define __be16_to_cpu(x) ((__force __u16)(__be16)(x))
+ 
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+ static inline __le64 __cpu_to_le64p(const __u64 *p)
+ {
+ 	return (__force __le64)__swab64p(p);
+@@ -48,6 +49,7 @@
+ {
+ 	return __swab64p((__u64 *)p);
+ }
++#endif
+ static inline __le32 __cpu_to_le32p(const __u32 *p)
+ {
+ 	return (__force __le32)__swab32p(p);
+@@ -64,6 +66,7 @@
+ {
+ 	return __swab16p((__u16 *)p);
+ }
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+ static inline __be64 __cpu_to_be64p(const __u64 *p)
+ {
+ 	return (__force __be64)*p;
+@@ -72,6 +75,7 @@
+ {
+ 	return (__force __u64)*p;
+ }
++#endif
+ static inline __be32 __cpu_to_be32p(const __u32 *p)
+ {
+ 	return (__force __be32)*p;
+--- a/include/linux/byteorder/little_endian.h
++++ b/include/linux/byteorder/little_endian.h
+@@ -40,6 +40,7 @@
+ #define __cpu_to_be16(x) ((__force __be16)__swab16((x)))
+ #define __be16_to_cpu(x) __swab16((__force __u16)(__be16)(x))
+ 
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+ static inline __le64 __cpu_to_le64p(const __u64 *p)
+ {
+ 	return (__force __le64)*p;
+@@ -48,6 +49,7 @@
+ {
+ 	return (__force __u64)*p;
+ }
++#endif
+ static inline __le32 __cpu_to_le32p(const __u32 *p)
+ {
+ 	return (__force __le32)*p;
+@@ -64,6 +66,7 @@
+ {
+ 	return (__force __u16)*p;
+ }
++#if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+ static inline __be64 __cpu_to_be64p(const __u64 *p)
+ {
+ 	return (__force __be64)__swab64p(p);
+@@ -72,6 +75,7 @@
+ {
+ 	return __swab64p((__u64 *)p);
+ }
++#endif
+ static inline __be32 __cpu_to_be32p(const __u32 *p)
+ {
+ 	return (__force __be32)__swab32p(p);
