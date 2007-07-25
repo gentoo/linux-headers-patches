@@ -810,3 +810,18 @@ index 8bcddcc..a84b922 100644
  #include <linux/posix_types.h>
  #include <linux/nfsd/const.h>
  #include <linux/nfsd/export.h>
+--- a/include/linux/dvb/video.h
++++ b/include/linux/dvb/video.h
+@@ -26,12 +26,9 @@
+ 
+ #include <linux/compiler.h>
+ 
+-#ifdef __KERNEL__
+ #include <linux/types.h>
+-#else
+ #include <stdint.h>
+ #include <time.h>
+-#endif
+ 
+ 
+ typedef enum {
