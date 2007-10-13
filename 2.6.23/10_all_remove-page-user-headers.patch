@@ -1,0 +1,114 @@
+Most arches stub these headers anyways, so lets just plain punt them
+
+diff --git a/include/asm-generic/Kbuild.asm b/include/asm-generic/Kbuild.asm
+index a37e95f..8731ae4 100644
+--- a/include/asm-generic/Kbuild.asm
++++ b/include/asm-generic/Kbuild.asm
+@@ -27,9 +27,6 @@ unifdef-y += termbits.h
+ unifdef-y += termios.h
+ unifdef-y += types.h
+ unifdef-y += unistd.h
+-unifdef-y += user.h
+ 
+ # These probably shouldn't be exported
+ unifdef-y += shmparam.h
+-unifdef-y += elf.h
+-unifdef-y += page.h
+diff --git a/include/linux/Kbuild b/include/linux/Kbuild
+index e81e301..43bc871 100644
+--- a/include/linux/Kbuild
++++ b/include/linux/Kbuild
+@@ -15,7 +15,6 @@ header-y += usb/
+ 
+ header-y += affs_hardblocks.h
+ header-y += aio_abi.h
+-header-y += a.out.h
+ header-y += arcfb.h
+ header-y += atmapi.h
+ header-y += atmbr2684.h
+@@ -54,8 +53,6 @@ header-y += dqblk_v1.h
+ header-y += dqblk_v2.h
+ header-y += dqblk_xfs.h
+ header-y += efs_fs_sb.h
+-header-y += elf-fdpic.h
+-header-y += elf.h
+ header-y += elf-em.h
+ header-y += fadvise.h
+ header-y += fd.h
+@@ -162,6 +159,7 @@ unifdef-y += acct.h
+ unifdef-y += adb.h
+ unifdef-y += adfs_fs.h
+ unifdef-y += agpgart.h
++unifdef-y += a.out.h
+ unifdef-y += apm_bios.h
+ unifdef-y += atalk.h
+ unifdef-y += atmarp.h
+@@ -185,7 +183,6 @@ unifdef-y += cyclades.h
+ unifdef-y += dccp.h
+ unifdef-y += dirent.h
+ unifdef-y += dlm.h
+-unifdef-y += elfcore.h
+ unifdef-y += errno.h
+ unifdef-y += errqueue.h
+ unifdef-y += ethtool.h
+@@ -328,7 +325,6 @@ unifdef-y += uinput.h
+ unifdef-y += uio.h
+ unifdef-y += unistd.h
+ unifdef-y += usbdevice_fs.h
+-unifdef-y += user.h
+ unifdef-y += utsname.h
+ unifdef-y += videodev2.h
+ unifdef-y += videodev.h
+diff --git a/include/linux/a.out.h b/include/linux/a.out.h
+index f913cc3..98210e6 100644
+--- a/include/linux/a.out.h
++++ b/include/linux/a.out.h
+@@ -128,12 +128,20 @@ enum machine_type {
+ #endif
+ 
+ #ifdef linux
++#ifdef __KERNEL__
+ #include <asm/page.h>
++#else
++#include <unistd.h>
++#endif
+ #if defined(__i386__) || defined(__mc68000__)
+ #define SEGMENT_SIZE	1024
+ #else
+ #ifndef SEGMENT_SIZE
++#ifdef __KERNEL__
+ #define SEGMENT_SIZE	PAGE_SIZE
++#else
++#define SEGMENT_SIZE	getpagesize()
++#endif
+ #endif
+ #endif
+ #endif
+diff --git a/include/linux/shm.h b/include/linux/shm.h
+index ad2e3af..b95ce87 100644
+--- a/include/linux/shm.h
++++ b/include/linux/shm.h
+@@ -3,7 +3,11 @@
+ 
+ #include <linux/ipc.h>
+ #include <linux/errno.h>
++#ifdef __KERNEL__
+ #include <asm/page.h>
++#else
++#include <unistd.h>
++#endif
+ 
+ /*
+  * SHMMAX, SHMMNI and SHMALL are upper limits are defaults which can
+@@ -13,7 +17,11 @@
+ #define SHMMAX 0x2000000		 /* max shared seg size (bytes) */
+ #define SHMMIN 1			 /* min shared seg size (bytes) */
+ #define SHMMNI 4096			 /* max num of segs system wide */
++#ifdef __KERNEL__
+ #define SHMALL (SHMMAX/PAGE_SIZE*(SHMMNI/16)) /* max shm system wide (pages) */
++#else
++#define SHMALL (SHMMAX/getpagesize()*(SHMMNI/16))
++#endif
+ #define SHMSEG SHMMNI			 /* max shared segs per process */
+ 
+ #include <asm/shmparam.h>
