@@ -750,3 +750,13 @@ index 8bcddcc..a84b922 100644
  #include <linux/posix_types.h>
  #include <linux/nfsd/const.h>
  #include <linux/nfsd/export.h>
+--- a/include/linux/mroute.h
++++ b/include/linux/mroute.h
+@@ -3,6 +3,7 @@
+ 
+ #include <linux/sockios.h>
+ #include <linux/in.h>
++#include <linux/types.h>
+ 
+ /*
+  *	Based on the MROUTING 3.5 defines primarily to keep
