@@ -760,3 +760,13 @@ index 8bcddcc..a84b922 100644
  
  /*
   *	Based on the MROUTING 3.5 defines primarily to keep
+--- a/include/asm-x86_64/msr.h
++++ b/include/asm-x86_64/msr.h
+@@ -5,6 +5,7 @@
+ 
+ #ifndef __ASSEMBLY__
+ #include <linux/errno.h>
++#include <linux/types.h>
+ /*
+  * Access to machine-specific registers (available on 586 and better only)
+  * Note: the rd* operations modify the parameters directly (without using
