@@ -1,0 +1,24 @@
+The asm-*/types.h no longer depend on STRICT_ANSI, so change linux/types.h as well
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -120,7 +123,7 @@
+ typedef		__u16		uint16_t;
+ typedef		__u32		uint32_t;
+ 
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if defined(__GNUC__)
+ typedef		__u64		uint64_t;
+ typedef		__u64		u_int64_t;
+ typedef		__s64		int64_t;
+@@ -182,7 +185,7 @@
+ typedef __u16 __bitwise __be16;
+ typedef __u32 __bitwise __le32;
+ typedef __u32 __bitwise __be32;
+-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
++#if defined(__GNUC__)
+ typedef __u64 __bitwise __le64;
+ typedef __u64 __bitwise __be64;
+ #endif
