@@ -12,8 +12,8 @@ if [[ ! -d $kver ]] ; then
 	exit 1
 fi
 
-tar=gentoo-headers-${kver}-${pver}.tar.bz2
-rm -f gentoo-headers-${kver}-*.tar.bz2
-tar -jcf ${tar} --exclude="$kver/CVS" ${kver}
+tar=gentoo-headers-${kver}-${pver}.tar.lzma
+rm -f gentoo-headers-${kver}-*.tar.lzma
+tar -cf - --exclude="$kver/CVS" $kver | lzma > ${tar}
 
-du -b *.bz2
+du -b *.lzma
