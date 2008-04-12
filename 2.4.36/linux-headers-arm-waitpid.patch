@@ -1,0 +1,13 @@
+http://bugs.gentoo.org/213690
+
+--- linux-2.4.26/include/asm-arm/unistd.h
++++ linux-2.4.26/include/asm-arm/unistd.h
+@@ -31,7 +31,7 @@
+ #define __NR_write			(__NR_SYSCALL_BASE+  4)
+ #define __NR_open			(__NR_SYSCALL_BASE+  5)
+ #define __NR_close			(__NR_SYSCALL_BASE+  6)
+-#define __NR_waitpid			(__NR_SYSCALL_BASE+  7)
++					/* waitpid would be 7 */
+ #define __NR_creat			(__NR_SYSCALL_BASE+  8)
+ #define __NR_link			(__NR_SYSCALL_BASE+  9)
+ #define __NR_unlink			(__NR_SYSCALL_BASE+ 10)
