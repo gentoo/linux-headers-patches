@@ -99,3 +99,30 @@ completely.  this seems to give a proper clean userspace experience.
  #include <asm/byteorder.h>
  
  /*******************************************************
+--- a/include/linux/in.h
++++ b/include/linux/in.h
+@@ -16,6 +16,11 @@
+  *		2 of the License, or (at your option) any later version.
+  */
+ #ifndef _LINUX_IN_H
++# include <netinet/in.h>
++# define _LINUX_IN_H
++#endif
++
++#ifndef _LINUX_IN_H
+ #define _LINUX_IN_H
+ 
+ #include <linux/types.h>
+--- a/include/linux/in6.h
++++ b/include/linux/in6.h
+@@ -17,6 +17,10 @@
+  *      as published by the Free Software Foundation; either version
+  *      2 of the License, or (at your option) any later version.
+  */
++#ifndef _LINUX_IN6_H
++# include <netinet/in.h>
++# define _LINUX_IN6_H
++#endif
+ 
+ #ifndef _LINUX_IN6_H
+ #define _LINUX_IN6_H
