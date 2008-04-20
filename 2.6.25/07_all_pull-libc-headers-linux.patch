@@ -60,32 +60,61 @@ completely.  this seems to give a proper clean userspace experience.
  
 --- a/include/linux/if.h
 +++ b/include/linux/if.h
-@@ -17,6 +17,11 @@
-  *		2 of the License, or (at your option) any later version.
-  */
+@@ -19,6 +19,8 @@
  #ifndef _LINUX_IF_H
-+# include <net/if.h>
-+# define _LINUX_IF_H
-+#endif
-+
-+#ifndef _LINUX_IF_H
  #define _LINUX_IF_H
  
++#include <net/if.h>
++
  #include <linux/types.h>		/* for "__kernel_caddr_t" et al	*/
+ #include <linux/socket.h>		/* for "struct sockaddr" et al	*/
+ #include <linux/compiler.h>		/* for "__user" et al           */
+@@ -119,7 +121,7 @@ enum {
+  *	being very small might be worth keeping for clean configuration.
+  */
+ 
+-struct ifmap 
++struct kernel_ifmap
+ {
+ 	unsigned long mem_start;
+ 	unsigned long mem_end;
+@@ -155,7 +157,7 @@ struct if_settings
+  * remainder may be interface specific.
+  */
+ 
+-struct ifreq 
++struct kernel_ifreq
+ {
+ #define IFHWADDRLEN	6
+ 	union
+@@ -205,7 +207,7 @@ struct ifreq
+  * must know all networks accessible).
+  */
+ 
+-struct ifconf 
++struct kernel_ifconf
+ {
+ 	int	ifc_len;			/* size of buffer	*/
+ 	union 
 --- a/include/linux/ip.h
 +++ b/include/linux/ip.h
-@@ -15,6 +15,11 @@
-  *		2 of the License, or (at your option) any later version.
+@@ -16,6 +16,7 @@
   */
  #ifndef _LINUX_IP_H
-+# include <netinet/ip.h>
-+# define _LINUX_IP_H
-+#endif
-+
-+#ifndef _LINUX_IP_H
  #define _LINUX_IP_H
++#include <netinet/ip.h>
  #include <linux/types.h>
  #include <asm/byteorder.h>
+ 
+@@ -82,7 +83,7 @@
+ 
+ #define IPV4_BEET_PHMAXLEN 8
+ 
+-struct iphdr {
++struct kernel_iphdr {
+ #if defined(__LITTLE_ENDIAN_BITFIELD)
+ 	__u8	ihl:4,
+ 		version:4;
 --- a/include/linux/cdrom.h
 +++ b/include/linux/cdrom.h
 @@ -11,6 +11,10 @@
@@ -99,30 +128,205 @@ completely.  this seems to give a proper clean userspace experience.
  #include <asm/byteorder.h>
  
  /*******************************************************
---- a/include/linux/in.h
-+++ b/include/linux/in.h
-@@ -16,6 +16,11 @@
-  *		2 of the License, or (at your option) any later version.
-  */
- #ifndef _LINUX_IN_H
-+# include <netinet/in.h>
-+# define _LINUX_IN_H
-+#endif
-+
-+#ifndef _LINUX_IN_H
- #define _LINUX_IN_H
- 
- #include <linux/types.h>
 --- a/include/linux/in6.h
 +++ b/include/linux/in6.h
-@@ -17,6 +17,10 @@
-  *      as published by the Free Software Foundation; either version
-  *      2 of the License, or (at your option) any later version.
-  */
-+#ifndef _LINUX_IN6_H
-+# include <netinet/in.h>
-+# define _LINUX_IN6_H
-+#endif
- 
+@@ -21,13 +21,15 @@
  #ifndef _LINUX_IN6_H
  #define _LINUX_IN6_H
+ 
++#include <netinet/in.h>
++
+ #include <linux/types.h>
+ 
+ /*
+  *	IPv6 address structure
+  */
+ 
+-struct in6_addr
++struct kernel_in6_addr
+ {
+ 	union 
+ 	{
+@@ -57,7 +59,7 @@ extern const struct in6_addr in6addr_linklocal_allrouters;
+ 		{ { { 0xff,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2 } } }
+ #endif
+ 
+-struct sockaddr_in6 {
++struct kernel_sockaddr_in6 {
+ 	unsigned short int	sin6_family;    /* AF_INET6 */
+ 	__be16			sin6_port;      /* Transport layer port # */
+ 	__be32			sin6_flowinfo;  /* IPv6 flow information */
+@@ -65,7 +67,7 @@ struct sockaddr_in6 {
+ 	__u32			sin6_scope_id;  /* scope id (new in RFC2553) */
+ };
+ 
+-struct ipv6_mreq {
++struct kernel_ipv6_mreq {
+ 	/* IPv6 multicast address of group */
+ 	struct in6_addr ipv6mr_multiaddr;
+ 
+--- a/include/linux/in.h
++++ b/include/linux/in.h
+@@ -18,42 +18,88 @@
+ #ifndef _LINUX_IN_H
+ #define _LINUX_IN_H
+ 
++#include <netinet/in.h>
++
+ #include <linux/types.h>
+ #include <linux/socket.h>
+ 
+ /* Standard well-defined IP protocols.  */
+ enum {
++#ifndef IPPROTO_IP
+   IPPROTO_IP = 0,		/* Dummy protocol for TCP		*/
++#endif
++#ifndef IPPROTO_ICMP
+   IPPROTO_ICMP = 1,		/* Internet Control Message Protocol	*/
++#endif
++#ifndef IPPROTO_IGMP
+   IPPROTO_IGMP = 2,		/* Internet Group Management Protocol	*/
++#endif
++#ifndef IPPROTO_IPIP
+   IPPROTO_IPIP = 4,		/* IPIP tunnels (older KA9Q tunnels use 94) */
++#endif
++#ifndef IPPROTO_TCP
+   IPPROTO_TCP = 6,		/* Transmission Control Protocol	*/
++#endif
++#ifndef IPPROTO_EGP
+   IPPROTO_EGP = 8,		/* Exterior Gateway Protocol		*/
++#endif
++#ifndef IPPROTO_PUP
+   IPPROTO_PUP = 12,		/* PUP protocol				*/
++#endif
++#ifndef IPPROTO_UDP
+   IPPROTO_UDP = 17,		/* User Datagram Protocol		*/
++#endif
++#ifndef IPPROTO_IDP
+   IPPROTO_IDP = 22,		/* XNS IDP protocol			*/
++#endif
++#ifndef IPPROTO_DCCP
+   IPPROTO_DCCP = 33,		/* Datagram Congestion Control Protocol */
++#endif
++#ifndef IPPROTO_RSVP
+   IPPROTO_RSVP = 46,		/* RSVP protocol			*/
++#endif
++#ifndef IPPROTO_GRE
+   IPPROTO_GRE = 47,		/* Cisco GRE tunnels (rfc 1701,1702)	*/
++#endif
+ 
++#ifndef IPPROTO_IPV6
+   IPPROTO_IPV6	 = 41,		/* IPv6-in-IPv4 tunnelling		*/
++#endif
+ 
++#ifndef IPPROTO_ESP
+   IPPROTO_ESP = 50,            /* Encapsulation Security Payload protocol */
++#endif
++#ifndef IPPROTO_AH
+   IPPROTO_AH = 51,             /* Authentication Header protocol       */
++#endif
++#ifndef IPPROTO_BEETPH
+   IPPROTO_BEETPH = 94,	       /* IP option pseudo header for BEET */
++#endif
++#ifndef IPPROTO_PIM
+   IPPROTO_PIM    = 103,		/* Protocol Independent Multicast	*/
++#endif
+ 
++#ifndef IPPROTO_COMP
+   IPPROTO_COMP   = 108,                /* Compression Header protocol */
++#endif
++#ifndef IPPROTO_SCTP
+   IPPROTO_SCTP   = 132,		/* Stream Control Transport Protocol	*/
++#endif
++#ifndef IPPROTO_UDPLITE
+   IPPROTO_UDPLITE = 136,	/* UDP-Lite (RFC 3828)			*/
++#endif
+ 
++#ifndef IPPROTO_RAW
+   IPPROTO_RAW	 = 255,		/* Raw IP packets			*/
++#endif
++#if 0
+   IPPROTO_MAX
++#endif
+ };
+ 
+ 
+ /* Internet address. */
+-struct in_addr {
++struct kernel_in_addr {
+ 	__be32	s_addr;
+ };
+ 
+@@ -112,26 +158,26 @@ struct in_addr {
+ 
+ /* Request struct for multicast socket ops */
+ 
+-struct ip_mreq 
++struct kernel_ip_mreq
+ {
+ 	struct in_addr imr_multiaddr;	/* IP multicast address of group */
+ 	struct in_addr imr_interface;	/* local IP address of interface */
+ };
+ 
+-struct ip_mreqn
++struct kernel_ip_mreqn
+ {
+ 	struct in_addr	imr_multiaddr;		/* IP multicast address of group */
+ 	struct in_addr	imr_address;		/* local IP address of interface */
+ 	int		imr_ifindex;		/* Interface index */
+ };
+ 
+-struct ip_mreq_source {
++struct kernel_ip_mreq_source {
+ 	__be32		imr_multiaddr;
+ 	__be32		imr_interface;
+ 	__be32		imr_sourceaddr;
+ };
+ 
+-struct ip_msfilter {
++struct kernel_ip_msfilter {
+ 	__be32		imsf_multiaddr;
+ 	__be32		imsf_interface;
+ 	__u32		imsf_fmode;
+@@ -143,20 +189,20 @@ struct ip_msfilter {
+ 	(sizeof(struct ip_msfilter) - sizeof(__u32) \
+ 	+ (numsrc) * sizeof(__u32))
+ 
+-struct group_req
++struct kernel_group_req
+ {
+ 	__u32				 gr_interface;	/* interface index */
+ 	struct __kernel_sockaddr_storage gr_group;	/* group address */
+ };
+ 
+-struct group_source_req
++struct kernel_group_source_req
+ {
+ 	__u32				 gsr_interface;	/* interface index */
+ 	struct __kernel_sockaddr_storage gsr_group;	/* group address */
+ 	struct __kernel_sockaddr_storage gsr_source;	/* source address */
+ };
+ 
+-struct group_filter
++struct kernel_group_filter
+ {
+ 	__u32				 gf_interface;	/* interface index */
+ 	struct __kernel_sockaddr_storage gf_group;	/* multicast address */
+@@ -169,7 +215,7 @@ struct group_filter
+ 	(sizeof(struct group_filter) - sizeof(struct __kernel_sockaddr_storage) \
+ 	+ (numsrc) * sizeof(struct __kernel_sockaddr_storage))
+ 
+-struct in_pktinfo
++struct kernel_in_pktinfo
+ {
+ 	int		ipi_ifindex;
+ 	struct in_addr	ipi_spec_dst;
+@@ -178,7 +224,7 @@ struct in_pktinfo
+ 
+ /* Structure describing an Internet (IP) socket address. */
+ #define __SOCK_SIZE__	16		/* sizeof(struct sockaddr)	*/
+-struct sockaddr_in {
++struct kernel_sockaddr_in {
+   sa_family_t		sin_family;	/* Address family		*/
+   __be16		sin_port;	/* Port number			*/
+   struct in_addr	sin_addr;	/* Internet address		*/
