@@ -13,6 +13,16 @@ since there is no obvious (at least to me) answer here, we hack the linux/
 headers to simply pull in userspace headers and ignore the linux/ ones
 completely.  this seems to give a proper clean userspace experience.
 
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -8,6 +8,7 @@
+ 
+ #endif
+ 
++#include <sys/types.h>
+ #include <linux/posix_types.h>
+ #include <asm/types.h>
+ 
 --- a/include/linux/socket.h
 +++ b/include/linux/socket.h
 @@ -303,4 +303,9 @@ extern int put_cmsg(struct msghdr*, int
