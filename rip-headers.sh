@@ -32,6 +32,6 @@ done
 
 cp README.ripped-headers rip-headers.sh ${dst}/
 
-tar jcf ${dst}.tar.bz2 ${dst}
+tar cf - ${dst} | lzma > ${dst}.tar.lzma
 rm -rf ${dst}
-ls -lh ${dst}.tar.bz2
+ls -lh ${dst}.tar.lzma
