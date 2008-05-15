@@ -11,7 +11,7 @@ index 0982f1d..d300950 100644
  #define HZ		CONFIG_HZ
  #define USER_HZ		HZ
 +#else
-+#define HZ		100
++#define HZ		1024
 +#endif
  
  #define EXEC_PAGESIZE	8192
