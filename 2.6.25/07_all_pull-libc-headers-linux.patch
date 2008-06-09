@@ -147,9 +147,19 @@ completely.  this seems to give a proper clean userspace experience.
  {
  	union 
  	{
+@@ -35,9 +37,6 @@ struct in6_addr
+ 		__be16		u6_addr16[8];
+ 		__be32		u6_addr32[4];
+ 	} in6_u;
+-#define s6_addr			in6_u.u6_addr8
+-#define s6_addr16		in6_u.u6_addr16
+-#define s6_addr32		in6_u.u6_addr32
+ };
+ 
+ /* IPv6 Wildcard Address (::) and Loopback Address (::1) defined in RFC2553
 @@ -57,7 +59,7 @@ extern const struct in6_addr in6addr_linklocal_allrouters;
- 		{ { { 0xff,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2 } } }
- #endif
+ extern const struct in6_addr in6addr_loopback;
+ #define IN6ADDR_LOOPBACK_INIT { { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 } } }
  
 -struct sockaddr_in6 {
 +struct kernel_sockaddr_in6 {
