@@ -1,0 +1,24 @@
+pull in the libc versions of these headers so that the proper
+userspace defines/typedefs are utilized
+
+--- a/include/asm-generic/siginfo.h
++++ b/include/asm-generic/siginfo.h
+@@ -1,6 +1,10 @@
+ #ifndef _ASM_GENERIC_SIGINFO_H
+ #define _ASM_GENERIC_SIGINFO_H
+ 
++#ifndef __KERNEL__
++# include <signal.h>
++#else
++
+ #include <linux/compiler.h>
+ #include <linux/types.h>
+ 
+@@ -267,7 +271,6 @@ typedef struct sigevent {
+ #define sigev_notify_attributes	_sigev_un._sigev_thread._attribute
+ #define sigev_notify_thread_id	 _sigev_un._tid
+ 
+-#ifdef __KERNEL__
+ 
+ struct siginfo;
+ void do_schedule_next_timer(struct siginfo *info);
