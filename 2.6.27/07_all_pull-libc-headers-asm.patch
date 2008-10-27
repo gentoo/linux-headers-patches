@@ -1,6 +1,20 @@
 pull in the libc versions of these headers so that the proper
 userspace defines/typedefs are utilized
 
+--- a/include/asm-generic/fcntl.h
++++ b/include/asm-generic/fcntl.h
+@@ -1,6 +1,11 @@
+ #ifndef _ASM_GENERIC_FCNTL_H
+ #define _ASM_GENERIC_FCNTL_H
+ 
++/* Pull in fcntl structs from the libc #244470 */
++#include <fcntl.h>
++#define HAVE_ARCH_STRUCT_FLOCK
++#define HAVE_ARCH_STRUCT_FLOCK64
++
+ #include <linux/types.h>
+ 
+ /* open/fcntl - O_SYNC is only implemented on blocks devices and on files
 --- a/include/asm-generic/siginfo.h
 +++ b/include/asm-generic/siginfo.h
 @@ -1,6 +1,10 @@
