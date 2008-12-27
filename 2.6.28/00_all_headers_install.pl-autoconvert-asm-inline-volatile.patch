@@ -1,0 +1,36 @@
+From 0f10ba9ecfc474b611d4b9109a2e8deb2644ae08 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sat, 27 Dec 2008 02:51:32 -0500
+Subject: [PATCH v2] headers_install.pl: autoconvert asm/inline/volatile to __xxx__
+
+Headers in userspace should be using the __xxx__ form of the asm, inline,
+and volatile keywords.  Since people like to revert these things without
+realizing what's going on, have the headers install step autoconvert these
+keywords.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+v2
+	- get asm/volatile to actually work ... i missed this due to other
+	  local patches.  "asm volatile" should get fixed now.
+
+ scripts/headers_install.pl |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/scripts/headers_install.pl b/scripts/headers_install.pl
+index 7d2b414..c6ae405 100644
+--- a/scripts/headers_install.pl
++++ b/scripts/headers_install.pl
+@@ -36,6 +36,9 @@ foreach my $file (@files) {
+ 		$line =~ s/\s__attribute_const__\s/ /g;
+ 		$line =~ s/\s__attribute_const__$//g;
+ 		$line =~ s/^#include <linux\/compiler.h>//;
++		$line =~ s/(^|\s)(inline)\b/$1__$2__/g;
++		$line =~ s/(^|\s)(asm)\b(\s|[(]|$)/$1__$2__$3/g;
++		$line =~ s/(^|\s|[(])(volatile)\b(\s|[(]|$)/$1__$2__$3/g;
+ 		printf OUTFILE "%s", $line;
+ 	}
+ 	close OUTFILE;
+-- 
+1.6.0.6
+

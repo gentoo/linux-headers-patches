@@ -15,15 +15,6 @@ diff --git a/include/linux/uio.h b/include/linux/uio.h
 index b7fe138..2faeea6 100644
 --- a/include/linux/uio.h
 +++ b/include/linux/uio.h
-@@ -42,7 +42,7 @@ struct kvec {
-  * segment lengths have been validated.  Because the individual lengths can
-  * overflow a size_t when added together.
-  */
--static inline size_t iov_length(const struct iovec *iov, unsigned long nr_segs)
-+static __inline__ size_t iov_length(const struct iovec *iov, unsigned long nr_segs)
- {
- 	unsigned long seg;
- 	size_t ret = 0;
 @@ -52,6 +52,8 @@ static inline size_t iov_length(const struct iovec *iov, unsigned long nr_segs)
  	return ret;
  }
