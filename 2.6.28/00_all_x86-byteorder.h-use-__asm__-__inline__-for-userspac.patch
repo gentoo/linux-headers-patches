@@ -1,0 +1,80 @@
+From 4f49d0faa817753e716040beccc339f8e320f047 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sat, 27 Dec 2008 01:25:13 -0500
+Subject: [PATCH] x86 byteorder.h: use __asm__/__inline__ for userspace
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ arch/x86/include/asm/byteorder.h |   20 ++++++++++----------
+ 1 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/arch/x86/include/asm/byteorder.h b/arch/x86/include/asm/byteorder.h
+index e02ae2d..16f7c01 100644
+--- a/arch/x86/include/asm/byteorder.h
++++ b/arch/x86/include/asm/byteorder.h
+@@ -8,12 +8,12 @@
+ 
+ #ifdef __i386__
+ 
+-static inline __attribute_const__ __u32 ___arch__swab32(__u32 x)
++static __inline__ __attribute_const__ __u32 ___arch__swab32(__u32 x)
+ {
+ #ifdef CONFIG_X86_BSWAP
+-	asm("bswap %0" : "=r" (x) : "0" (x));
++	__asm__("bswap %0" : "=r" (x) : "0" (x));
+ #else
+-	asm("xchgb %b0,%h0\n\t"	/* swap lower bytes	*/
++	__asm__("xchgb %b0,%h0\n\t"	/* swap lower bytes	*/
+ 	    "rorl $16,%0\n\t"	/* swap words		*/
+ 	    "xchgb %b0,%h0"	/* swap higher bytes	*/
+ 	    : "=q" (x)
+@@ -22,7 +22,7 @@ static inline __attribute_const__ __u32 ___arch__swab32(__u32 x)
+ 	return x;
+ }
+ 
+-static inline __attribute_const__ __u64 ___arch__swab64(__u64 val)
++static __inline__ __attribute_const__ __u64 ___arch__swab64(__u64 val)
+ {
+ 	union {
+ 		struct {
+@@ -33,13 +33,13 @@ static inline __attribute_const__ __u64 ___arch__swab64(__u64 val)
+ 	} v;
+ 	v.u = val;
+ #ifdef CONFIG_X86_BSWAP
+-	asm("bswapl %0 ; bswapl %1 ; xchgl %0,%1"
++	__asm__("bswapl %0 ; bswapl %1 ; xchgl %0,%1"
+ 	    : "=r" (v.s.a), "=r" (v.s.b)
+ 	    : "0" (v.s.a), "1" (v.s.b));
+ #else
+ 	v.s.a = ___arch__swab32(v.s.a);
+ 	v.s.b = ___arch__swab32(v.s.b);
+-	asm("xchgl %0,%1"
++	__asm__("xchgl %0,%1"
+ 	    : "=r" (v.s.a), "=r" (v.s.b)
+ 	    : "0" (v.s.a), "1" (v.s.b));
+ #endif
+@@ -48,17 +48,17 @@ static inline __attribute_const__ __u64 ___arch__swab64(__u64 val)
+ 
+ #else /* __i386__ */
+ 
+-static inline __attribute_const__ __u64 ___arch__swab64(__u64 x)
++static __inline__ __attribute_const__ __u64 ___arch__swab64(__u64 x)
+ {
+-	asm("bswapq %0"
++	__asm__("bswapq %0"
+ 	    : "=r" (x)
+ 	    : "0" (x));
+ 	return x;
+ }
+ 
+-static inline __attribute_const__ __u32 ___arch__swab32(__u32 x)
++static __inline__ __attribute_const__ __u32 ___arch__swab32(__u32 x)
+ {
+-	asm("bswapl %0"
++	__asm__("bswapl %0"
+ 	    : "=r" (x)
+ 	    : "0" (x));
+ 	return x;
+-- 
+1.6.0.6
+

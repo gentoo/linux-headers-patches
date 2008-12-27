@@ -1,0 +1,35 @@
+From 428c23f88c0ec9bd75945705ecc0c59501b07766 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sat, 27 Dec 2008 01:05:27 -0500
+Subject: [PATCH] linux/elf.h: remove kernel prototypes for userspace
+
+The internal elf notes funcs do are for the kernel-only, so hide them
+behind __KERNEL__.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/elf.h |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/elf.h b/include/linux/elf.h
+index 0b61ca4..1b6e350 100644
+--- a/include/linux/elf.h
++++ b/include/linux/elf.h
+@@ -395,6 +395,7 @@ extern Elf64_Dyn _DYNAMIC [];
+ 
+ #endif
+ 
++#ifdef __KERNEL__
+ /* Optional callbacks to write extra ELF notes. */
+ #ifndef ARCH_HAVE_EXTRA_ELF_NOTES
+ static inline int elf_coredump_extra_notes_size(void) { return 0; }
+@@ -404,5 +405,6 @@ static inline int elf_coredump_extra_notes_write(struct file *file,
+ extern int elf_coredump_extra_notes_size(void);
+ extern int elf_coredump_extra_notes_write(struct file *file, loff_t *foffset);
+ #endif
++#endif
+ 
+ #endif /* _LINUX_ELF_H */
+-- 
+1.6.0.6
+

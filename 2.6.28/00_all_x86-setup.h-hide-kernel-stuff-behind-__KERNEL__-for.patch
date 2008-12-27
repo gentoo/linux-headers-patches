@@ -1,0 +1,38 @@
+From e1609036c1d145b3e60bfc6ce68168f9cabeaff5 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sat, 27 Dec 2008 00:58:20 -0500
+Subject: [PATCH] x86/setup.h: hide kernel stuff behind __KERNEL__ for userspace
+
+The x86 setup.h bleeds a bunch of kernel functions/structs to userspace, so
+move them behind __KERNEL__.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ arch/x86/include/asm/setup.h |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/x86/include/asm/setup.h b/arch/x86/include/asm/setup.h
+index f12d372..e4c80fe 100644
+--- a/arch/x86/include/asm/setup.h
++++ b/arch/x86/include/asm/setup.h
+@@ -3,6 +3,8 @@
+ 
+ #define COMMAND_LINE_SIZE 2048
+ 
++#ifdef __KERNEL__
++
+ #ifndef __ASSEMBLY__
+ 
+ /* Interrupt control for vSMPowered x86_64 systems */
+@@ -49,8 +51,6 @@ extern unsigned long saved_video_mode;
+ #endif
+ #endif /* __ASSEMBLY__ */
+ 
+-#ifdef __KERNEL__
+-
+ #ifdef __i386__
+ 
+ #include <linux/pfn.h>
+-- 
+1.6.0.6
+
