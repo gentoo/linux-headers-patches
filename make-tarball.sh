@@ -14,6 +14,22 @@ fi
 
 tar=gentoo-headers-${kver}-${pver}.tar.lzma
 rm -f gentoo-headers-${kver}-*.tar.lzma
-tar -cf - --exclude="$kver/CVS" $kver | lzma > ${tar}
 
+if [[ -n $(find $kver -name '??_all_*') ]] ; then
+	ch=
+else
+	ch="-C .tmp"
+	rm -rf .tmp
+	mkdir .tmp
+	cp -r $kver .tmp/
+	pushd .tmp/$kver >/dev/null
+	for p in *.patch ; do
+		mv $p 00_all_$p
+	done
+	popd >/dev/null
+fi
+
+tar -cf - --exclude=CVS $ch $kver | lzma > ${tar}
+
+rm -rf .tmp
 du -b *.lzma
