@@ -1,0 +1,30 @@
+From d74d27ff7e4b014e1f8d43717703c9bace66aa74 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 04:27:02 -0500
+Subject: [PATCH] linux/serial.h: pull in linux/types.h for userspace
+
+Since the struct serial_rs485 is exported to userspace and uses __u##,
+types we need to include linux/types.h for it.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/serial.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/include/linux/serial.h b/include/linux/serial.h
+index 1ea8d92..fa72b39 100644
+--- a/include/linux/serial.h
++++ b/include/linux/serial.h
+@@ -10,8 +10,8 @@
+ #ifndef _LINUX_SERIAL_H
+ #define _LINUX_SERIAL_H
+ 
+-#ifdef __KERNEL__
+ #include <linux/types.h>
++#ifdef __KERNEL__
+ #include <asm/page.h>
+ 
+ /*
+-- 
+1.6.0.6
+
