@@ -1,41 +1,56 @@
-From dda9c6313a67d097283afde7b6b608b3c0920302 Mon Sep 17 00:00:00 2001
+From 9efc6c29b9bed6c054978068c078dc142b90609a Mon Sep 17 00:00:00 2001
 From: Mike Frysinger <vapier@gentoo.org>
 Date: Sat, 27 Dec 2008 01:11:46 -0500
-Subject: [PATCH v3] linux/uio.h: cleanup for userspace
+Subject: [PATCH] linux/uio.h: cleanup for userspace
 
 Hide iov_shorten() behind __KERNEL__ since it's a prototype only.  Use the
 __inline__ form for iov_length() since it's usable by userspace.
 
 Signed-off-by: Mike Frysinger <vapier@gentoo.org>
 ---
-v3
-	- keep all __KERNEL__ stuff in one place
-v2
-	- drop inline conversion stuff
-
- include/linux/uio.h |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ include/linux/uio.h |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/include/linux/uio.h b/include/linux/uio.h
-index b7fe138..3debd89 100644
+index b7fe138..31d75cd 100644
 --- a/include/linux/uio.h
 +++ b/include/linux/uio.h
-@@ -26,6 +26,8 @@ struct kvec {
+@@ -19,6 +19,13 @@ struct iovec
+ 	__kernel_size_t iov_len; /* Must be size_t (1003.1g) */
+ };
+ 
++/*
++ *	UIO_MAXIOV shall be at least 16 1003.1g (5.4.1.1)
++ */
++
++#define UIO_FASTIOV	8
++#define UIO_MAXIOV	1024
++
+ #ifdef __KERNEL__
+ 
+ struct kvec {
+@@ -26,15 +33,6 @@ struct kvec {
  	size_t iov_len;
  };
  
-+unsigned long iov_shorten(struct iovec *iov, unsigned long nr_segs, size_t to);
-+
- #endif
- 
- /*
-@@ -52,6 +54,4 @@ static inline size_t iov_length(const struct iovec *iov, unsigned long nr_segs)
- 	return ret;
- }
- 
--unsigned long iov_shorten(struct iovec *iov, unsigned long nr_segs, size_t to);
+-#endif
 -
+-/*
+- *	UIO_MAXIOV shall be at least 16 1003.1g (5.4.1.1)
+- */
+- 
+-#define UIO_FASTIOV	8
+-#define UIO_MAXIOV	1024
+-
+ /*
+  * Total number of bytes covered by an iovec.
+  *
+@@ -55,3 +53,5 @@ static inline size_t iov_length(const struct iovec *iov, unsigned long nr_segs)
+ unsigned long iov_shorten(struct iovec *iov, unsigned long nr_segs, size_t to);
+ 
  #endif
++
++#endif
 -- 
 1.6.0.6
 
