@@ -1,6 +1,19 @@
-pull in the libc versions of these headers so that the proper
-userspace defines/typedefs are utilized
+From 16aff1c4ce528abf63fa738307224ceb6421fbad Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 07:39:14 -0500
+Subject: [PATCH] HACK: asm/*: pull in C library headers
 
+Pull in the libc versions of these headers so that the proper
+userspace defines/typedefs are utilized.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/asm-generic/fcntl.h   |    5 +++++
+ include/asm-generic/siginfo.h |    5 ++++-
+ 2 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/include/asm-generic/fcntl.h b/include/asm-generic/fcntl.h
+index b847741..ab7fd64 100644
 --- a/include/asm-generic/fcntl.h
 +++ b/include/asm-generic/fcntl.h
 @@ -1,6 +1,11 @@
@@ -15,6 +28,8 @@ userspace defines/typedefs are utilized
  #include <linux/types.h>
  
  /* open/fcntl - O_SYNC is only implemented on blocks devices and on files
+diff --git a/include/asm-generic/siginfo.h b/include/asm-generic/siginfo.h
+index 9695701..6ec8983 100644
 --- a/include/asm-generic/siginfo.h
 +++ b/include/asm-generic/siginfo.h
 @@ -1,6 +1,10 @@
@@ -28,7 +43,7 @@ userspace defines/typedefs are utilized
  #include <linux/compiler.h>
  #include <linux/types.h>
  
-@@ -267,7 +271,6 @@ typedef struct sigevent {
+@@ -269,7 +273,6 @@ typedef struct sigevent {
  #define sigev_notify_attributes	_sigev_un._sigev_thread._attribute
  #define sigev_notify_thread_id	 _sigev_un._tid
  
@@ -36,3 +51,6 @@ userspace defines/typedefs are utilized
  
  struct siginfo;
  void do_schedule_next_timer(struct siginfo *info);
+-- 
+1.6.0.6
+

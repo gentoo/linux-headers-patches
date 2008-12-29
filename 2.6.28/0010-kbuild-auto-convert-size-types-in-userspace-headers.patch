@@ -1,4 +1,4 @@
-From ea0846459ffa765e23f0282f65282270decd1532 Mon Sep 17 00:00:00 2001
+From f2bf6639442caebb1810b3644b08a7d5236a0837 Mon Sep 17 00:00:00 2001
 From: Mike Frysinger <vapier@gentoo.org>
 Date: Mon, 29 Dec 2008 06:07:47 -0500
 Subject: [PATCH] kbuild: auto-convert size types in userspace headers

@@ -1,4 +1,4 @@
-From d74d27ff7e4b014e1f8d43717703c9bace66aa74 Mon Sep 17 00:00:00 2001
+From 04f79d4a95d3656bd7bf45281947eeee46bdf73c Mon Sep 17 00:00:00 2001
 From: Mike Frysinger <vapier@gentoo.org>
 Date: Mon, 29 Dec 2008 04:27:02 -0500
 Subject: [PATCH] linux/serial.h: pull in linux/types.h for userspace

@@ -1,0 +1,45 @@
+From 050a1d788a183addd15e5b1e8f0c992588ffc3e5 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 06:51:45 -0500
+Subject: [PATCH] linux/types.h: export aligned_{u,be,le}64 macros
+
+Some userspace headers rely on these aligned_* macros and they don't
+conflict with normal userspace / libc types, so always export them
+regardless of the define __KERNEL_STRICT_NAMES.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/types.h |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/include/linux/types.h b/include/linux/types.h
+index 1d98330..a999d0c 100644
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -125,11 +125,6 @@ typedef		__u64		u_int64_t;
+ typedef		__s64		int64_t;
+ #endif
+ 
+-/* this is a special 64bit data type that is 8-byte aligned */
+-#define aligned_u64 __u64 __attribute__((aligned(8)))
+-#define aligned_be64 __be64 __attribute__((aligned(8)))
+-#define aligned_le64 __le64 __attribute__((aligned(8)))
+-
+ /**
+  * The type used for indexing onto a disc or disc partition.
+  *
+@@ -161,6 +156,11 @@ typedef unsigned long blkcnt_t;
+ 
+ #endif /* __KERNEL_STRICT_NAMES */
+ 
++/* this is a special 64bit data type that is 8-byte aligned */
++#define aligned_u64 __u64 __attribute__((aligned(8)))
++#define aligned_be64 __be64 __attribute__((aligned(8)))
++#define aligned_le64 __le64 __attribute__((aligned(8)))
++
+ /*
+  * Below are truly Linux-specific types that should never collide with
+  * any application/library that wants linux/types.h.
+-- 
+1.6.0.6
+

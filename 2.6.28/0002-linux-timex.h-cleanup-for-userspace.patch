@@ -1,4 +1,4 @@
-From 148ba13b19b2d99db59aacb1e936157e9c6358b8 Mon Sep 17 00:00:00 2001
+From 6454cdad97da7776c0dcedf8c926382a778c52b5 Mon Sep 17 00:00:00 2001
 From: Mike Frysinger <vapier@gentoo.org>
 Date: Sun, 26 Oct 2008 06:31:48 -0400
 Subject: [PATCH] linux/timex.h: cleanup for userspace
@@ -111,5 +111,5 @@ index 9007313..4bbbab5 100644
   * Note: maximum error = NTP synch distance = dispersion + delay / 2;
   * estimated error = NTP dispersion.
 -- 
-1.6.0.2
+1.6.0.6
 

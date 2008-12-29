@@ -1,5 +1,18 @@
-only check KERNEL so we dont assume libc == glibc
+From d6f760ef3e59257d404b0d0b3c5879a14a95352c Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 06:52:59 -0500
+Subject: [PATCH] linux/{stat,socket}.h: remove __GLIBC__ checks
 
+Only check __KERNEL__ so we don't assume the C library is glibc.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/socket.h |    2 +-
+ include/linux/stat.h   |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/socket.h b/include/linux/socket.h
+index 20fc4bb..d9b4492 100644
 --- a/include/linux/socket.h
 +++ b/include/linux/socket.h
 @@ -16,7 +16,7 @@ struct __kernel_sockaddr_storage {
@@ -11,6 +24,8 @@ only check KERNEL so we dont assume libc == glibc
  
  #include <asm/socket.h>			/* arch-dependent defines	*/
  #include <linux/sockios.h>		/* the SIOCxxx I/O controls	*/
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index 611c398..5460344 100644
 --- a/include/linux/stat.h
 +++ b/include/linux/stat.h
 @@ -7,7 +7,7 @@
@@ -22,3 +37,6 @@ only check KERNEL so we dont assume libc == glibc
  
  #define S_IFMT  00170000
  #define S_IFSOCK 0140000
+-- 
+1.6.0.6
+

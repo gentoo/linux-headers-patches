@@ -1,0 +1,45 @@
+From 036aac737511413f1ae48342b69564b0ef5aec0c Mon Sep 17 00:00:00 2001
+From: Sam Ravnborg <sam@ravnborg.org>
+Date: Sat, 27 Dec 2008 19:54:15 +0100
+Subject: [PATCH] kbuild: check for leaked CONFIG_ symbols to userspace
+
+Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
+---
+ scripts/headers_check.pl |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/scripts/headers_check.pl b/scripts/headers_check.pl
+index 5bdd975..bdd9fb6 100644
+--- a/scripts/headers_check.pl
++++ b/scripts/headers_check.pl
+@@ -16,7 +16,7 @@
+ #
+ # 2) It is checked that prototypes does not use "extern"
+ #
+-# 3) TODO: check for leaked CONFIG_ symbols
++# 3) Check for leaked CONFIG_ symbols
+ 
+ use strict;
+ 
+@@ -36,6 +36,7 @@ foreach my $file (@files) {
+ 		$lineno++;
+ 		check_include();
+ 		check_prototypes();
++		check_config();
+ 	}
+ 	close FH;
+ }
+@@ -64,3 +65,10 @@ sub check_prototypes
+ 		printf STDERR "$filename:$lineno: extern's make no sense in userspace\n";
+ 	}
+ }
++
++sub check_config
++{
++	if ($line =~ m/[^a-zA-Z0-9_]+CONFIG_([a-zA-Z0-9]+)[^a-zA-Z0-9]/) {
++		printf STDERR "$filename:$lineno: leaks CONFIG_$1 to userspace where it is not valid\n";
++	}
++}
+-- 
+1.6.0.6
+

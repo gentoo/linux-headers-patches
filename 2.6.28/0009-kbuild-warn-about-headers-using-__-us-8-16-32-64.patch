@@ -1,0 +1,48 @@
+From 58ffae8a95e580e08be2d8f302fd9fcfca78a3f3 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 05:28:24 -0500
+Subject: [PATCH] kbuild: warn about headers using __[us]{8,16,32,64} types w/out linux/types.h
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ scripts/headers_check.pl |   20 ++++++++++++++++++++
+ 1 files changed, 20 insertions(+), 0 deletions(-)
+
+diff --git a/scripts/headers_check.pl b/scripts/headers_check.pl
+index bdd9fb6..5036319 100644
+--- a/scripts/headers_check.pl
++++ b/scripts/headers_check.pl
+@@ -37,6 +37,7 @@ foreach my $file (@files) {
+ 		check_include();
+ 		check_prototypes();
+ 		check_config();
++		check_sizetypes();
+ 	}
+ 	close FH;
+ }
+@@ -72,3 +73,22 @@ sub check_config
+ 		printf STDERR "$filename:$lineno: leaks CONFIG_$1 to userspace where it is not valid\n";
+ 	}
+ }
++
++my $linux_types;
++sub check_sizetypes
++{
++	if ($lineno == 1) {
++		$linux_types = 0;
++	} elsif ($linux_types) {
++		return;
++	}
++	if ($line =~ m/^\s*#\s*include\s+<linux\/types.h>/) {
++		$linux_types = 1;
++		return;
++	}
++	if ($line =~ m/__[us](8|16|32|64)\b/) {
++		printf STDERR "$filename:$lineno: found __[us]{8,16,32,64} type w/out #include <linux/types.h>\n";
++		# Warn until headers are all fixed
++		#$ret = 1;
++	}
++}
+-- 
+1.6.0.6
+

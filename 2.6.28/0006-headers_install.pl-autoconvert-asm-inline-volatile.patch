@@ -1,7 +1,7 @@
-From 0f10ba9ecfc474b611d4b9109a2e8deb2644ae08 Mon Sep 17 00:00:00 2001
+From dd2868d21c8b1cdfe7819d49607696a0569d6aa5 Mon Sep 17 00:00:00 2001
 From: Mike Frysinger <vapier@gentoo.org>
 Date: Sat, 27 Dec 2008 02:51:32 -0500
-Subject: [PATCH v2] headers_install.pl: autoconvert asm/inline/volatile to __xxx__
+Subject: [PATCH] headers_install.pl: autoconvert asm/inline/volatile to __xxx__
 
 Headers in userspace should be using the __xxx__ form of the asm, inline,
 and volatile keywords.  Since people like to revert these things without
@@ -10,10 +10,6 @@ keywords.
 
 Signed-off-by: Mike Frysinger <vapier@gentoo.org>
 ---
-v2
-	- get asm/volatile to actually work ... i missed this due to other
-	  local patches.  "asm volatile" should get fixed now.
-
  scripts/headers_install.pl |    3 +++
  1 files changed, 3 insertions(+), 0 deletions(-)
 

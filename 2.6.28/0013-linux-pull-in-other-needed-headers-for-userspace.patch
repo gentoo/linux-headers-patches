@@ -1,5 +1,61 @@
+From 4746067f2c53a4e84a8003d03c6943302bb11c98 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 07:41:01 -0500
+Subject: [PATCH] linux/*: pull in other needed headers for userspace
+
+mondo patch
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/atalk.h              |    1 +
+ include/linux/atm_zatm.h           |    1 +
+ include/linux/auto_fs.h            |    2 +-
+ include/linux/auto_fs4.h           |    2 ++
+ include/linux/bfs_fs.h             |    2 ++
+ include/linux/cm4000_cs.h          |    3 +++
+ include/linux/dn.h                 |    3 +++
+ include/linux/efs_fs_sb.h          |    1 +
+ include/linux/elfcore.h            |    1 -
+ include/linux/errqueue.h           |    2 ++
+ include/linux/ext2_fs.h            |    1 +
+ include/linux/gfs2_ondisk.h        |    2 ++
+ include/linux/hdlc/ioctl.h         |    1 +
+ include/linux/hiddev.h             |    2 ++
+ include/linux/if_fc.h              |    1 +
+ include/linux/if_ppp.h             |    3 +++
+ include/linux/if_pppol2tp.h        |    5 +----
+ include/linux/if_strip.h           |    2 ++
+ include/linux/if_tunnel.h          |    2 ++
+ include/linux/inet_diag.h          |    2 ++
+ include/linux/ipv6_route.h         |    2 ++
+ include/linux/ipx.h                |    1 +
+ include/linux/irda.h               |    3 +++
+ include/linux/isdn_divertif.h      |    1 +
+ include/linux/llc.h                |    4 ++++
+ include/linux/minix_fs.h           |    1 +
+ include/linux/netfilter/x_tables.h |    2 ++
+ include/linux/netrom.h             |    2 ++
+ include/linux/nfs_idmap.h          |    2 ++
+ include/linux/nfsd/syscall.h       |    6 ++----
+ include/linux/nubus.h              |    2 ++
+ include/linux/pkt_cls.h            |    1 +
+ include/linux/pkt_sched.h          |    2 ++
+ include/linux/ppp_defs.h           |    2 ++
+ include/linux/random.h             |    1 +
+ include/linux/romfs_fs.h           |    2 ++
+ include/linux/rose.h               |    3 +++
+ include/linux/scc.h                |    1 +
+ include/linux/selinux_netlink.h    |    2 ++
+ include/linux/synclink.h           |    3 +++
+ include/linux/times.h              |    1 +
+ include/linux/un.h                 |    2 ++
+ include/linux/video_decoder.h      |    2 ++
+ include/linux/video_encoder.h      |    2 ++
+ include/linux/x25.h                |    1 +
+ 45 files changed, 80 insertions(+), 10 deletions(-)
+
 diff --git a/include/linux/atalk.h b/include/linux/atalk.h
-index 75b8bac..c0b7727 100644
+index e9ebac2..ba61b9f 100644
 --- a/include/linux/atalk.h
 +++ b/include/linux/atalk.h
 @@ -2,6 +2,7 @@
@@ -39,7 +95,7 @@ index c21e597..9a5c539 100644
  
  /* This file describes autofs v3 */
 diff --git a/include/linux/auto_fs4.h b/include/linux/auto_fs4.h
-index 0a6bc52..ce9c79c 100644
+index 2253716..9c46e4c 100644
 --- a/include/linux/auto_fs4.h
 +++ b/include/linux/auto_fs4.h
 @@ -11,6 +11,8 @@
@@ -79,7 +135,7 @@ index 605ebe2..8d95b2f 100644
  
  #define	CM4000_MAX_DEV		4
 diff --git a/include/linux/dn.h b/include/linux/dn.h
-index 10b6a6f..9a13dd6 100644
+index 02bba04..5b5c587 100644
 --- a/include/linux/dn.h
 +++ b/include/linux/dn.h
 @@ -7,6 +7,9 @@
@@ -105,10 +161,10 @@ index ff1945e..a742b29 100644
  /* EFS superblock magic numbers */
  #define EFS_MAGIC	0x072959
 diff --git a/include/linux/elfcore.h b/include/linux/elfcore.h
-index 9631ddd..2d5484e 100644
+index 5ca54d7..1e9cfca 100644
 --- a/include/linux/elfcore.h
 +++ b/include/linux/elfcore.h
-@@ -20,7 +20,6 @@ struct elf_siginfo
+@@ -24,7 +24,6 @@ struct elf_siginfo
  typedef elf_greg_t greg_t;
  typedef elf_gregset_t gregset_t;
  typedef elf_fpregset_t fpregset_t;
@@ -129,8 +185,20 @@ index 92f8d4f..ceb1454 100644
  struct sock_extended_err
  {
  	__u32	ee_errno;	
+diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
+index 78c775a..8d5aaa2 100644
+--- a/include/linux/ext2_fs.h
++++ b/include/linux/ext2_fs.h
+@@ -18,6 +18,7 @@
+ 
+ #include <linux/types.h>
+ #include <linux/magic.h>
++#include <linux/fs.h>
+ 
+ /*
+  * The second extended filesystem constants/structures
 diff --git a/include/linux/gfs2_ondisk.h b/include/linux/gfs2_ondisk.h
-index 8b7e4c1..e707cb5 100644
+index 14d0df0..c56b4bc 100644
 --- a/include/linux/gfs2_ondisk.h
 +++ b/include/linux/gfs2_ondisk.h
 @@ -10,6 +10,8 @@
@@ -143,7 +211,7 @@ index 8b7e4c1..e707cb5 100644
  #define GFS2_BASIC_BLOCK	512
  #define GFS2_BASIC_BLOCK_SHIFT	9
 diff --git a/include/linux/hdlc/ioctl.h b/include/linux/hdlc/ioctl.h
-index 5839723..09dc723 100644
+index 5839723..79c4ef8 100644
 --- a/include/linux/hdlc/ioctl.h
 +++ b/include/linux/hdlc/ioctl.h
 @@ -1,6 +1,7 @@
@@ -155,10 +223,10 @@ index 5839723..09dc723 100644
  #define GENERIC_HDLC_VERSION 4	/* For synchronization with sethdlc utility */
  
 diff --git a/include/linux/hiddev.h b/include/linux/hiddev.h
-index acbdae6..3b35f72 100644
+index c760ae0..bb6f58b 100644
 --- a/include/linux/hiddev.h
 +++ b/include/linux/hiddev.h
-@@ -29,6 +29,8 @@
+@@ -27,6 +27,8 @@
   * Vojtech Pavlik, Ucitelska 1576, Prague 8, 182 00 Czech Republic
   */
  
@@ -180,10 +248,10 @@ index 376a34e..6ed7f1b 100644
  #define FC_ALEN	6		/* Octets in one ethernet addr	 */
  #define FC_HLEN   (sizeof(struct fch_hdr)+sizeof(struct fcllc))
 diff --git a/include/linux/if_ppp.h b/include/linux/if_ppp.h
-index 768372f..b8d05b8 100644
+index c3b1f85..50f8704 100644
 --- a/include/linux/if_ppp.h
 +++ b/include/linux/if_ppp.h
-@@ -36,6 +36,9 @@
+@@ -34,6 +34,9 @@
  #define _IF_PPP_H_
  
  #include <linux/compiler.h>
@@ -193,19 +261,23 @@ index 768372f..b8d05b8 100644
  
  /*
   * Packet sizes
-diff --git a/include/linux/ppp_defs.h b/include/linux/ppp_defs.h
-index c6b13ff..a71510a 100644
---- a/include/linux/ppp_defs.h
-+++ b/include/linux/ppp_defs.h
-@@ -42,6 +42,8 @@
- #ifndef _PPP_DEFS_H_
- #define _PPP_DEFS_H_
+diff --git a/include/linux/if_pppol2tp.h b/include/linux/if_pppol2tp.h
+index a7d6a22..223c09d 100644
+--- a/include/linux/if_pppol2tp.h
++++ b/include/linux/if_pppol2tp.h
+@@ -15,11 +15,8 @@
+ #ifndef __LINUX_IF_PPPOL2TP_H
+ #define __LINUX_IF_PPPOL2TP_H
  
+-#include <asm/types.h>
+-
+-#ifdef __KERNEL__
 +#include <linux/types.h>
-+
- /*
-  * The basic PPP frame.
-  */
+ #include <linux/in.h>
+-#endif
+ 
+ /* Structure used to connect() the socket to a particular tunnel UDP
+  * socket.
 diff --git a/include/linux/if_strip.h b/include/linux/if_strip.h
 index fb5c5c9..6526a62 100644
 --- a/include/linux/if_strip.h
@@ -220,7 +292,7 @@ index fb5c5c9..6526a62 100644
      __u8 c[6];
  } MetricomAddress;
 diff --git a/include/linux/if_tunnel.h b/include/linux/if_tunnel.h
-index 660b501..3331fc4 100644
+index aeab2cb..edd8799 100644
 --- a/include/linux/if_tunnel.h
 +++ b/include/linux/if_tunnel.h
 @@ -2,6 +2,8 @@
@@ -271,7 +343,7 @@ index eb19b4e..22d379f 100644
  #define IPX_MTU		576
  
 diff --git a/include/linux/irda.h b/include/linux/irda.h
-index 09d8f10..b41984f 100644
+index 28f88ec..5073b21 100644
 --- a/include/linux/irda.h
 +++ b/include/linux/irda.h
 @@ -31,6 +31,9 @@
@@ -284,8 +356,20 @@ index 09d8f10..b41984f 100644
  /* Hint bit positions for first hint byte */
  #define HINT_PNP         0x01
  #define HINT_PDA         0x02
+diff --git a/include/linux/isdn_divertif.h b/include/linux/isdn_divertif.h
+index 07821ca..363ab57 100644
+--- a/include/linux/isdn_divertif.h
++++ b/include/linux/isdn_divertif.h
+@@ -10,6 +10,7 @@
+  *
+  */
+ 
++#include <linux/types.h>
+ 
+ /***********************************************************/
+ /* magic value is also used to control version information */
 diff --git a/include/linux/llc.h b/include/linux/llc.h
-index 09f2e6d..f3a34ca 100644
+index 7733585..64ac7ed 100644
 --- a/include/linux/llc.h
 +++ b/include/linux/llc.h
 @@ -12,6 +12,10 @@
@@ -300,7 +384,7 @@ index 09f2e6d..f3a34ca 100644
  struct sockaddr_llc {
  	sa_family_t     sllc_family;	/* AF_LLC */
 diff --git a/include/linux/minix_fs.h b/include/linux/minix_fs.h
-index 916e8f7..bb33d11 100644
+index 0e39745..c12bf47 100644
 --- a/include/linux/minix_fs.h
 +++ b/include/linux/minix_fs.h
 @@ -2,6 +2,7 @@
@@ -312,7 +396,7 @@ index 916e8f7..bb33d11 100644
  /*
   * The minix filesystem constants/structures
 diff --git a/include/linux/netfilter/x_tables.h b/include/linux/netfilter/x_tables.h
-index 022edfa..175741c 100644
+index e52ce47..69bd9e0 100644
 --- a/include/linux/netfilter/x_tables.h
 +++ b/include/linux/netfilter/x_tables.h
 @@ -1,6 +1,8 @@
@@ -350,8 +434,25 @@ index 15a9f3b..91a1c24 100644
  /* XXX from bits/utmp.h  */
  #define IDMAP_NAMESZ  128
  
+diff --git a/include/linux/nfsd/syscall.h b/include/linux/nfsd/syscall.h
+index 4e43976..4639a89 100644
+--- a/include/linux/nfsd/syscall.h
++++ b/include/linux/nfsd/syscall.h
+@@ -10,10 +10,8 @@
+ #define NFSD_SYSCALL_H
+ 
+ #include <asm/types.h>
+-#ifdef __KERNEL__
+-# include <linux/types.h>
+-# include <linux/in.h>
+-#endif 
++#include <linux/types.h>
++#include <linux/in.h>
+ #include <linux/posix_types.h>
+ #include <linux/nfsd/const.h>
+ #include <linux/nfsd/export.h>
 diff --git a/include/linux/nubus.h b/include/linux/nubus.h
-index 870e66a..72c8774 100644
+index c435507..bd31554 100644
 --- a/include/linux/nubus.h
 +++ b/include/linux/nubus.h
 @@ -12,6 +12,8 @@
@@ -364,7 +465,7 @@ index 870e66a..72c8774 100644
  #include <asm/nubus.h>
  #endif
 diff --git a/include/linux/pkt_cls.h b/include/linux/pkt_cls.h
-index c3f01b3..762f048 100644
+index 7cf7824..aa4f39f 100644
 --- a/include/linux/pkt_cls.h
 +++ b/include/linux/pkt_cls.h
 @@ -2,6 +2,7 @@
@@ -376,7 +477,7 @@ index c3f01b3..762f048 100644
  /* I think i could have done better macros ; for now this is stolen from
   * some arch/mips code - jhs
 diff --git a/include/linux/pkt_sched.h b/include/linux/pkt_sched.h
-index d10f353..2169d79 100644
+index 5d921fa..41ead7a 100644
 --- a/include/linux/pkt_sched.h
 +++ b/include/linux/pkt_sched.h
 @@ -1,6 +1,8 @@
@@ -388,8 +489,21 @@ index d10f353..2169d79 100644
  /* Logical priority bands not depending on specific packet scheduler.
     Every scheduler will map them to real traffic classes, if it has
     no more precise mechanism to classify packets.
+diff --git a/include/linux/ppp_defs.h b/include/linux/ppp_defs.h
+index 6e8adc7..428017e 100644
+--- a/include/linux/ppp_defs.h
++++ b/include/linux/ppp_defs.h
+@@ -40,6 +40,8 @@
+ #ifndef _PPP_DEFS_H_
+ #define _PPP_DEFS_H_
+ 
++#include <linux/types.h>
++
+ /*
+  * The basic PPP frame.
+  */
 diff --git a/include/linux/random.h b/include/linux/random.h
-index 01ad710..57195d0 100644
+index 36f125c..aed58cf 100644
 --- a/include/linux/random.h
 +++ b/include/linux/random.h
 @@ -8,6 +8,7 @@
@@ -453,7 +567,7 @@ index bbf489d..faf9675 100644
  #define SELNL_MSG_BASE 0x10
  enum {
 diff --git a/include/linux/synclink.h b/include/linux/synclink.h
-index c8b0426..ba59b6d 100644
+index c844a22..510c2db 100644
 --- a/include/linux/synclink.h
 +++ b/include/linux/synclink.h
 @@ -11,6 +11,9 @@
@@ -465,7 +579,19 @@ index c8b0426..ba59b6d 100644
 +
  #define SYNCLINK_H_VERSION 3.6
  
- #define BOOLEAN int
+ #define BIT0	0x0001
+diff --git a/include/linux/times.h b/include/linux/times.h
+index e2d3020..813446f 100644
+--- a/include/linux/times.h
++++ b/include/linux/times.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_TIMES_H
+ 
+ #include <linux/types.h>
++#include <linux/time.h>
+ 
+ struct tms {
+ 	clock_t tms_utime;
 diff --git a/include/linux/un.h b/include/linux/un.h
 index 45561c5..77371f5 100644
 --- a/include/linux/un.h
@@ -517,73 +643,6 @@ index d035e4e..00dcc34 100644
  
  #define	SIOCX25GSUBSCRIP	(SIOCPROTOPRIVATE + 0)
  #define	SIOCX25SSUBSCRIP	(SIOCPROTOPRIVATE + 1)
-diff --git a/include/linux/times.h b/include/linux/times.h
-index e2d3020..813446f 100644
---- a/include/linux/times.h
-+++ b/include/linux/times.h
-@@ -2,6 +2,7 @@
- #define _LINUX_TIMES_H
- 
- #include <linux/types.h>
-+#include <linux/time.h>
- 
- struct tms {
- 	clock_t tms_utime;
-diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
-index 153d755..0f9cac0 100644
---- a/include/linux/ext2_fs.h
-+++ b/include/linux/ext2_fs.h
-@@ -18,6 +18,7 @@
- 
- #include <linux/types.h>
- #include <linux/magic.h>
-+#include <linux/fs.h>
- 
- /*
-  * The second extended filesystem constants/structures
-diff --git a/include/linux/isdn_divertif.h b/include/linux/isdn_divertif.h
-index 0e7e44c..ec61201 100644
---- a/include/linux/isdn_divertif.h
-+++ b/include/linux/isdn_divertif.h
-@@ -10,6 +10,7 @@
-  *
-  */
- 
-+#include <linux/types.h>
- 
- /***********************************************************/
- /* magic value is also used to control version information */
-diff --git a/include/linux/nfsd/syscall.h b/include/linux/nfsd/syscall.h
-index 8bcddcc..a84b922 100644
---- a/include/linux/nfsd/syscall.h
-+++ b/include/linux/nfsd/syscall.h
-@@ -10,10 +10,8 @@
- #define NFSD_SYSCALL_H
- 
- #include <asm/types.h>
--#ifdef __KERNEL__
--# include <linux/types.h>
--# include <linux/in.h>
--#endif 
-+#include <linux/types.h>
-+#include <linux/in.h>
- #include <linux/posix_types.h>
- #include <linux/nfsd/const.h>
- #include <linux/nfsd/export.h>
-diff --git a/include/linux/if_pppol2tp.h b/include/linux/if_pppol2tp.h
-index a7d6a22..223c09d 100644
---- a/include/linux/if_pppol2tp.h
-+++ b/include/linux/if_pppol2tp.h
-@@ -15,11 +15,8 @@
- #ifndef __LINUX_IF_PPPOL2TP_H
- #define __LINUX_IF_PPPOL2TP_H
- 
--#include <asm/types.h>
--
--#ifdef __KERNEL__
-+#include <linux/types.h>
- #include <linux/in.h>
--#endif
- 
- /* Structure used to connect() the socket to a particular tunnel UDP
-  * socket.
+-- 
+1.6.0.6
+
