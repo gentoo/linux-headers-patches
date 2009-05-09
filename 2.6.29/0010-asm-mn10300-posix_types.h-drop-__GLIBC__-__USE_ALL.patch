@@ -1,0 +1,47 @@
+From 6d660803bddcc1e7b85577139cab5eaf60c14777 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Fri, 2 Jan 2009 02:47:49 -0500
+Subject: [PATCH 10/11] asm-mn10300/posix_types.h: drop __GLIBC__/__USE_ALL usage
+
+Bring mn10300 in line with all the other ports.  I think mn10300 missed
+this because it was merged while every one else was getting fixed.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+CC: David Howells <dhowells@redhat.com>
+CC: Koichi Yasutake <yasutake.koichi@jp.panasonic.com>
+CC: linux-am33-list@redhat.com
+---
+ include/asm-mn10300/posix_types.h |    8 ++------
+ 1 files changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/include/asm-mn10300/posix_types.h b/include/asm-mn10300/posix_types.h
+index 077567c..df2b6d9 100644
+--- a/include/asm-mn10300/posix_types.h
++++ b/include/asm-mn10300/posix_types.h
+@@ -49,14 +49,10 @@ typedef long long	__kernel_loff_t;
+ #endif
+ 
+ typedef struct {
+-#if defined(__KERNEL__) || defined(__USE_ALL)
+ 	int	val[2];
+-#else /* !defined(__KERNEL__) && !defined(__USE_ALL) */
+-	int	__val[2];
+-#endif /* !defined(__KERNEL__) && !defined(__USE_ALL) */
+ } __kernel_fsid_t;
+ 
+-#if defined(__KERNEL__) || !defined(__GLIBC__) || (__GLIBC__ < 2)
++#if defined(__KERNEL__)
+ 
+ #undef	__FD_SET
+ static inline void __FD_SET(unsigned long __fd, __kernel_fd_set *__fdsetp)
+@@ -127,6 +123,6 @@ static inline void __FD_ZERO(__kernel_fd_set *__p)
+ 	}
+ }
+ 
+-#endif /* defined(__KERNEL__) || !defined(__GLIBC__) || (__GLIBC__ < 2) */
++#endif /* defined(__KERNEL__) */
+ 
+ #endif /* _ASM_POSIX_TYPES_H */
+-- 
+1.6.2.3
+

@@ -1,0 +1,28 @@
+From 27fb835ab6188cb96a75accd92a29443d4279f43 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sat, 9 May 2009 17:30:35 -0400
+Subject: [PATCH 11/11] netfilter: pull in limits.h
+
+A few netfilter sub-headers use INT_MAX which is in limits.h.
+
+URL: http://bugs.gentoo.org/246160
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/netfilter.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/netfilter.h b/include/linux/netfilter.h
+index 48cfe51..1ba6967 100644
+--- a/include/linux/netfilter.h
++++ b/include/linux/netfilter.h
+@@ -13,6 +13,7 @@
+ #endif
+ #include <linux/types.h>
+ #include <linux/compiler.h>
++#include <limits.h>
+ 
+ /* Responses from hook functions. */
+ #define NF_DROP 0
+-- 
+1.6.2.3
+
