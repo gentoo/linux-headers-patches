@@ -1,0 +1,35 @@
+From 20ea8936f6a69726e8e95f2d145e8004b5cf4751 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Fri, 2 Jan 2009 02:34:03 -0500
+Subject: [PATCH 5/9] linux/stddef.h: export offsetof() to userspace
+
+Some userspace headers (like fuse.h) utilize the offsetof() macro.  Some
+userspace packages (like lkcd) expect linux/stddef.h to provide this as
+well.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/stddef.h |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/stddef.h b/include/linux/stddef.h
+index 6a40c76..37139a7 100644
+--- a/include/linux/stddef.h
++++ b/include/linux/stddef.h
+@@ -20,9 +20,11 @@ enum {
+ #undef offsetof
+ #ifdef __compiler_offsetof
+ #define offsetof(TYPE,MEMBER) __compiler_offsetof(TYPE,MEMBER)
+-#else
+-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+ #endif
+ #endif /* __KERNEL__ */
+ 
++#ifndef offsetof
++#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
++#endif
++
+ #endif
+-- 
+1.6.3.3
+
