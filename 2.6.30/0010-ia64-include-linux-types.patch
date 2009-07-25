@@ -1,0 +1,30 @@
+From: Aurelien Jarno <aurelien@aurel32.net>
+Date: Fri, 17 Jul 2009 13:35:05 +0000 (-0700)
+Subject: Revert "Neither asm/types.h nor linux/types.h is required for arch/ia64/include/asm ...
+X-Git-Tag: v2.6.31-rc4~30^2
+X-Git-Url: http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Fstable%2Flinux-2.6-stable.git;a=commitdiff_plain;h=18282b36d742347abd9a4bc74fe9fd2432a8335b
+
+Revert "Neither asm/types.h nor linux/types.h is required for arch/ia64/include/asm/fpu.h"
+
+asm/fpu.h uses the __IA64_UL macro which is declared in asm/types.h, so
+this include is really required. Without it, GNU libc fails to build.
+
+This reverts commit 2678c07b07ac2076675e5d57653bdf02e9af1950.
+
+Signed-off-by: Aurelien Jarno <aurelien@aurel32.net>
+Acked-by: Fenghua Yu <fenghua.yu@intel.com>
+---
+
+diff --git a/arch/ia64/include/asm/fpu.h b/arch/ia64/include/asm/fpu.h
+index 0c26157..b6395ad 100644
+--- a/arch/ia64/include/asm/fpu.h
++++ b/arch/ia64/include/asm/fpu.h
+@@ -6,6 +6,8 @@
+  *	David Mosberger-Tang <davidm@hpl.hp.com>
+  */
+ 
++#include <linux/types.h>
++
+ /* floating point status register: */
+ #define FPSR_TRAP_VD	(1 << 0)	/* invalid op trap disabled */
+ #define FPSR_TRAP_DD	(1 << 1)	/* denormal trap disabled */
