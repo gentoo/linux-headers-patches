@@ -8,6 +8,16 @@ ver=${ver%/}
 src=linux-${ver}
 dst=gentoo-headers-base-${ver}
 
+if [ ! -d ${src} ] ; then
+	for srctar in . /usr/portage/distfiles ; do
+		srctar=${srctar}/${src}.tar.bz2
+		if [ -e ${srctar} ] ; then
+			tar xf ${srctar}
+			break
+		fi
+	done
+fi
+
 rm -rf ${dst}
 mkdir ${dst}
 cp ${src}/Makefile ${dst}/
