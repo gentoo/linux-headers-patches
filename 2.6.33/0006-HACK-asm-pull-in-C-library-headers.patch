@@ -1,0 +1,56 @@
+From a6230682eb43fbd07df06cdd6aad4ae23bc92966 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 07:39:14 -0500
+Subject: [PATCH 6/9] HACK: asm/*: pull in C library headers
+
+Pull in the libc versions of these headers so that the proper
+userspace defines/typedefs are utilized.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/asm-generic/fcntl.h   |    5 +++++
+ include/asm-generic/siginfo.h |    5 ++++-
+ 2 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/include/asm-generic/fcntl.h b/include/asm-generic/fcntl.h
+index fcd268c..aa54f91 100644
+--- a/include/asm-generic/fcntl.h
++++ b/include/asm-generic/fcntl.h
+@@ -1,6 +1,11 @@
+ #ifndef _ASM_GENERIC_FCNTL_H
+ #define _ASM_GENERIC_FCNTL_H
+ 
++/* Pull in fcntl structs from the libc #244470 */
++#include <fcntl.h>
++#define HAVE_ARCH_STRUCT_FLOCK
++#define HAVE_ARCH_STRUCT_FLOCK64
++
+ #include <linux/types.h>
+ 
+ #define O_ACCMODE	00000003
+diff --git a/include/asm-generic/siginfo.h b/include/asm-generic/siginfo.h
+index 942d30b..cd9ed99 100644
+--- a/include/asm-generic/siginfo.h
++++ b/include/asm-generic/siginfo.h
+@@ -1,6 +1,10 @@
+ #ifndef _ASM_GENERIC_SIGINFO_H
+ #define _ASM_GENERIC_SIGINFO_H
+ 
++#ifndef __KERNEL__
++# include <signal.h>
++#else
++
+ #include <linux/compiler.h>
+ #include <linux/types.h>
+ 
+@@ -275,7 +279,6 @@ typedef struct sigevent {
+ #define sigev_notify_attributes	_sigev_un._sigev_thread._attribute
+ #define sigev_notify_thread_id	 _sigev_un._tid
+ 
+-#ifdef __KERNEL__
+ 
+ struct siginfo;
+ void do_schedule_next_timer(struct siginfo *info);
+-- 
+1.7.0
+
