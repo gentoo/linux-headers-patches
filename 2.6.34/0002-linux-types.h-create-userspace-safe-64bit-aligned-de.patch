@@ -1,0 +1,150 @@
+From ad0a08cad1fed72999fdb4efdcc5586a220af29e Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 06:51:45 -0500
+Subject: [PATCH 2/9] linux/types.h: create userspace safe 64bit aligned defines
+
+Some kernel headers exported to userspace rely on these 64bit aligned
+defines.  However, they are hidden behind __KERNEL_STRICT_NAMES at the
+moment which means most of the time, they're never actually available.
+These these defines dont actually conflict with normal userspace / C
+library types, there's no reason to hide them behind the
+__KERNEL_STRICT_NAMES define.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+Cc: Sam Ravnborg <sam@ravnborg.org>
+Cc: David Woodhouse <dwmw2@infradead.org>
+Cc: Jan Engelhardt <jengelh@computergmbh.de>
+Cc: Patrick McHardy <kaber@trash.net>
+Cc: David S. Miller <davem@davemloft.net>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+ include/linux/if_ppp.h                    |   16 ++++++++--------
+ include/linux/netfilter/nfnetlink_log.h   |    4 ++--
+ include/linux/netfilter/nfnetlink_queue.h |    4 ++--
+ include/linux/netfilter/xt_connbytes.h    |    4 ++--
+ include/linux/netfilter/xt_quota.h        |    2 +-
+ include/linux/types.h                     |   14 +++++++++-----
+ 6 files changed, 24 insertions(+), 20 deletions(-)
+
+diff --git a/include/linux/if_ppp.h b/include/linux/if_ppp.h
+index fcef103..c9ad383 100644
+--- a/include/linux/if_ppp.h
++++ b/include/linux/if_ppp.h
+@@ -114,14 +114,14 @@ struct pppol2tp_ioc_stats {
+ 	__u16		tunnel_id;	/* redundant */
+ 	__u16		session_id;	/* if zero, get tunnel stats */
+ 	__u32		using_ipsec:1;	/* valid only for session_id == 0 */
+-	aligned_u64	tx_packets;
+-	aligned_u64	tx_bytes;
+-	aligned_u64	tx_errors;
+-	aligned_u64	rx_packets;
+-	aligned_u64	rx_bytes;
+-	aligned_u64	rx_seq_discards;
+-	aligned_u64	rx_oos_packets;
+-	aligned_u64	rx_errors;
++	__aligned_u64	tx_packets;
++	__aligned_u64	tx_bytes;
++	__aligned_u64	tx_errors;
++	__aligned_u64	rx_packets;
++	__aligned_u64	rx_bytes;
++	__aligned_u64	rx_seq_discards;
++	__aligned_u64	rx_oos_packets;
++	__aligned_u64	rx_errors;
+ };
+ 
+ #define ifr__name       b.ifr_ifrn.ifrn_name
+diff --git a/include/linux/netfilter/nfnetlink_log.h b/include/linux/netfilter/nfnetlink_log.h
+index d3bab7a..1c37f87 100644
+--- a/include/linux/netfilter/nfnetlink_log.h
++++ b/include/linux/netfilter/nfnetlink_log.h
+@@ -28,8 +28,8 @@ struct nfulnl_msg_packet_hw {
+ };
+ 
+ struct nfulnl_msg_packet_timestamp {
+-	aligned_be64	sec;
+-	aligned_be64	usec;
++	__aligned_be64	sec;
++	__aligned_be64	usec;
+ };
+ 
+ enum nfulnl_attr_type {
+diff --git a/include/linux/netfilter/nfnetlink_queue.h b/include/linux/netfilter/nfnetlink_queue.h
+index 2455fe5..af94e00 100644
+--- a/include/linux/netfilter/nfnetlink_queue.h
++++ b/include/linux/netfilter/nfnetlink_queue.h
+@@ -25,8 +25,8 @@ struct nfqnl_msg_packet_hw {
+ };
+ 
+ struct nfqnl_msg_packet_timestamp {
+-	aligned_be64	sec;
+-	aligned_be64	usec;
++	__aligned_be64	sec;
++	__aligned_be64	usec;
+ };
+ 
+ enum nfqnl_attr_type {
+diff --git a/include/linux/netfilter/xt_connbytes.h b/include/linux/netfilter/xt_connbytes.h
+index 92fcbb0..f1d6c15 100644
+--- a/include/linux/netfilter/xt_connbytes.h
++++ b/include/linux/netfilter/xt_connbytes.h
+@@ -17,8 +17,8 @@ enum xt_connbytes_direction {
+ 
+ struct xt_connbytes_info {
+ 	struct {
+-		aligned_u64 from;	/* count to be matched */
+-		aligned_u64 to;		/* count to be matched */
++		__aligned_u64 from;	/* count to be matched */
++		__aligned_u64 to;	/* count to be matched */
+ 	} count;
+ 	__u8 what;		/* ipt_connbytes_what */
+ 	__u8 direction;	/* ipt_connbytes_direction */
+diff --git a/include/linux/netfilter/xt_quota.h b/include/linux/netfilter/xt_quota.h
+index 8dc89df..417ab17 100644
+--- a/include/linux/netfilter/xt_quota.h
++++ b/include/linux/netfilter/xt_quota.h
+@@ -13,7 +13,7 @@ struct xt_quota_info {
+ 	u_int32_t		pad;
+ 
+ 	/* Used internally by the kernel */
+-	aligned_u64		quota;
++	__aligned_u64		quota;
+ 	struct xt_quota_priv	*master;
+ };
+ 
+diff --git a/include/linux/types.h b/include/linux/types.h
+index c42724f..7a13ab4 100644
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -118,11 +118,6 @@ typedef		__u64		u_int64_t;
+ typedef		__s64		int64_t;
+ #endif
+ 
+-/* this is a special 64bit data type that is 8-byte aligned */
+-#define aligned_u64 __u64 __attribute__((aligned(8)))
+-#define aligned_be64 __be64 __attribute__((aligned(8)))
+-#define aligned_le64 __le64 __attribute__((aligned(8)))
+-
+ /**
+  * The type used for indexing onto a disc or disc partition.
+  *
+@@ -147,8 +142,17 @@ typedef unsigned long blkcnt_t;
+ #define pgoff_t unsigned long
+ #endif
+ 
++#define aligned_u64 __aligned_u64
++#define aligned_be64 __aligned_be64
++#define aligned_le64 __aligned_le64
++
+ #endif /* __KERNEL__ */
+ 
++/* this is a special 64bit data type that is 8-byte aligned */
++#define __aligned_u64 __u64 __attribute__((aligned(8)))
++#define __aligned_be64 __be64 __attribute__((aligned(8)))
++#define __aligned_le64 __le64 __attribute__((aligned(8)))
++
+ /*
+  * Below are truly Linux-specific types that should never collide with
+  * any application/library that wants linux/types.h.
+-- 
+1.7.1
+
