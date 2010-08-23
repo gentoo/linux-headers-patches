@@ -1,0 +1,32 @@
+From f584d2e43e78eebce9ca7e28576532d811115bde Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 07:39:14 -0500
+Subject: [PATCH 8/9] HACK: asm/*: pull in C library headers
+
+Pull in the libc versions of these headers so that the proper
+userspace defines/typedefs are utilized.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/asm-generic/fcntl.h |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/include/asm-generic/fcntl.h b/include/asm-generic/fcntl.h
+index fcd268c..aa54f91 100644
+--- a/include/asm-generic/fcntl.h
++++ b/include/asm-generic/fcntl.h
+@@ -1,6 +1,11 @@
+ #ifndef _ASM_GENERIC_FCNTL_H
+ #define _ASM_GENERIC_FCNTL_H
+ 
++/* Pull in fcntl structs from the libc #244470 */
++#include <fcntl.h>
++#define HAVE_ARCH_STRUCT_FLOCK
++#define HAVE_ARCH_STRUCT_FLOCK64
++
+ #include <linux/types.h>
+ 
+ #define O_ACCMODE	00000003
+-- 
+1.7.2
+
