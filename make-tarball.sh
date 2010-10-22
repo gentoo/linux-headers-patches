@@ -12,8 +12,8 @@ if [[ ! -d $kver ]] ; then
 	exit 1
 fi
 
-tar=gentoo-headers-${kver}-${pver}.tar.lzma
-rm -f gentoo-headers-${kver}-*.tar.lzma
+tar=gentoo-headers-${kver}-${pver}.tar.xz
+rm -f gentoo-headers-${kver}-*.tar.xz
 
 if [[ -n $(find $kver -name '??_all_*') ]] ; then
 	ch=
@@ -29,7 +29,7 @@ else
 	popd >/dev/null
 fi
 
-tar -cf - --exclude=CVS $ch $kver | lzma > ${tar}
+tar -cf - --exclude=CVS $ch $kver | xz > ${tar}
 
 rm -rf .tmp
-du -b *.lzma
+du -b *.xz

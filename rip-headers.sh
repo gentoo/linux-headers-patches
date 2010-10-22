@@ -48,7 +48,7 @@ done
 
 cp README.ripped-headers rip-headers.sh ${dst}/
 
-compress=lzma
-tar cf - ${dst} | ${compress} > ${dst}.tar.lzma
+compress=xz
+tar cf - ${dst} | ${compress} > ${dst}.tar.${compress}
 rm -rf ${dst}
-ls -lh ${dst}.tar.lzma
+ls -lh ${dst}.tar.${compress}
