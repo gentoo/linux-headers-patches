@@ -1,0 +1,94 @@
+From 9c371b45b96cba660e39d74d2a7c9e22562dfe55 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 07:41:01 -0500
+Subject: [PATCH] linux/*: pull in other needed headers for userspace
+
+mondo patch
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/cm4000_cs.h |    1 +
+ include/linux/dn.h        |    1 +
+ include/linux/ext2_fs.h   |    1 +
+ include/linux/if_ppp.h    |    1 +
+ include/linux/netrom.h    |    2 ++
+ include/linux/rose.h      |    2 ++
+ 6 files changed, 8 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/cm4000_cs.h b/include/linux/cm4000_cs.h
+index 72bfefd..b179b68 100644
+--- a/include/linux/cm4000_cs.h
++++ b/include/linux/cm4000_cs.h
+@@ -2,6 +2,7 @@
+ #define	_CM4000_H_
+ 
+ #include <linux/types.h>
++#include <linux/ioctl.h>
+ 
+ #define	MAX_ATR			33
+ 
+diff --git a/include/linux/dn.h b/include/linux/dn.h
+index 9c50445..dc9f005 100644
+--- a/include/linux/dn.h
++++ b/include/linux/dn.h
+@@ -1,6 +1,7 @@
+ #ifndef _LINUX_DN_H
+ #define _LINUX_DN_H
+ 
++#include <linux/ioctl.h>
+ #include <linux/types.h>
+ 
+ /*
+diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
+index 2dfa707..53792bf 100644
+--- a/include/linux/ext2_fs.h
++++ b/include/linux/ext2_fs.h
+@@ -18,6 +18,7 @@
+ 
+ #include <linux/types.h>
+ #include <linux/magic.h>
++#include <linux/fs.h>
+ 
+ /*
+  * The second extended filesystem constants/structures
+diff --git a/include/linux/if_ppp.h b/include/linux/if_ppp.h
+index c9ad383..4d70e16 100644
+--- a/include/linux/if_ppp.h
++++ b/include/linux/if_ppp.h
+@@ -35,6 +35,7 @@
+ 
+ #include <linux/types.h>
+ #include <linux/compiler.h>
++#include <linux/ppp_defs.h>
+ 
+ /*
+  * Packet sizes
+diff --git a/include/linux/netrom.h b/include/linux/netrom.h
+index 6939b32..af7313c 100644
+--- a/include/linux/netrom.h
++++ b/include/linux/netrom.h
+@@ -7,6 +7,8 @@
+ #ifndef	NETROM_KERNEL_H
+ #define	NETROM_KERNEL_H
+ 
++#include <linux/ax25.h>
++
+ #define NETROM_MTU	236
+ 
+ #define NETROM_T1	1
+diff --git a/include/linux/rose.h b/include/linux/rose.h
+index c7b4b18..e8289cd 100644
+--- a/include/linux/rose.h
++++ b/include/linux/rose.h
+@@ -7,6 +7,8 @@
+ #ifndef	ROSE_KERNEL_H
+ #define	ROSE_KERNEL_H
+ 
++#include <linux/ax25.h>
++
+ #define ROSE_MTU	251
+ 
+ #define ROSE_MAX_DIGIS 6
+-- 
+1.7.3.1
+

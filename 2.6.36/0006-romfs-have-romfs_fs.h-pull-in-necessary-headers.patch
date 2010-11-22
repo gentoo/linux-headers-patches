@@ -1,0 +1,31 @@
+From 69f34a2df826a9146d77b696f6eae770e5497bea Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sun, 21 Nov 2010 19:21:55 -0500
+Subject: [PATCH] romfs: have romfs_fs.h pull in necessary headers
+
+This header uses things like __be32, so pull in linux/types.h.
+
+Further, it uses BLOCK_SIZE, so pull in linux/fs.h.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/romfs_fs.h |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/romfs_fs.h b/include/linux/romfs_fs.h
+index c490fbc..5f57f93 100644
+--- a/include/linux/romfs_fs.h
++++ b/include/linux/romfs_fs.h
+@@ -1,6 +1,9 @@
+ #ifndef __LINUX_ROMFS_FS_H
+ #define __LINUX_ROMFS_FS_H
+ 
++#include <linux/types.h>
++#include <linux/fs.h>
++
+ /* The basic structures of the romfs filesystem */
+ 
+ #define ROMBSIZE BLOCK_SIZE
+-- 
+1.7.3.1
+
