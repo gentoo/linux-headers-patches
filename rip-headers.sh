@@ -40,11 +40,20 @@ for a in ${arches} ; do
 	if [[ -e ${src}/include/asm-${a}/Kbuild ]] || [[ -e ${src}/arch/${a}/include/asm/Kbuild ]] ; then
 		mkdir -p ${dst}/arch/${a}
 		cp ${src}/arch/${a}/Makefile* ${dst}/arch/${a}/
+		cp ${src}/arch/${a}/Kbuild* ${dst}/arch/${a}/ 2>/dev/null || :
 		if [[ -e ${src}/arch/${a}/include ]] ; then
 			cp -r ${src}/arch/${a}/include ${dst}/arch/${a}/
 		fi
 	fi
 done
+# mips has some stupid unique bs
+if [[ -e ${src}/arch/mips/Kbuild.platforms ]] ; then
+	for f in "${src}"/arch/mips/*/Platform ; do
+		f=${f#${src}}
+		mkdir ${dst}/${f%/*}
+		cp ${src}/${f} ${dst}/${f}
+	done
+fi
 
 cp README.ripped-headers rip-headers.sh ${dst}/
 
