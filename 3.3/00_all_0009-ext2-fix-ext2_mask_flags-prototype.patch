@@ -1,0 +1,28 @@
+From cebf7b58f43040a68b20e0b18a7ce68fce285ef5 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Thu, 22 Mar 2012 18:01:53 -0400
+Subject: [PATCH] ext2: fix ext2_mask_flags prototype
+
+Let upstream sort out what to do.  Just make it work again.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/ext2_fs.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
+index ce1b719..5d073a3 100644
+--- a/include/linux/ext2_fs.h
++++ b/include/linux/ext2_fs.h
+@@ -209,7 +209,7 @@ struct ext2_group_desc
+ #define EXT2_OTHER_FLMASK (EXT2_NODUMP_FL | EXT2_NOATIME_FL)
+ 
+ /* Mask out flags that are inappropriate for the given type of inode. */
+-static inline __u32 ext2_mask_flags(umode_t mode, __u32 flags)
++static inline __u32 ext2_mask_flags(__le16 mode, __u32 flags)
+ {
+ 	if (S_ISDIR(mode))
+ 		return flags;
+-- 
+1.7.8.5
+
