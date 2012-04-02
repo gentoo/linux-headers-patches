@@ -41,9 +41,11 @@ for a in ${arches} ; do
 		mkdir -p ${dst}/arch/${a}
 		cp ${src}/arch/${a}/Makefile* ${dst}/arch/${a}/
 		cp ${src}/arch/${a}/Kbuild* ${dst}/arch/${a}/ 2>/dev/null || :
-		if [[ -e ${src}/arch/${a}/include ]] ; then
-			cp -r ${src}/arch/${a}/include ${dst}/arch/${a}/
-		fi
+		for d in include syscalls ; do
+			if [[ -e ${src}/arch/${a}/${d} ]] ; then
+				cp -r ${src}/arch/${a}/${d} ${dst}/arch/${a}/
+			fi
+		done
 	fi
 done
 # mips has some stupid unique bs
