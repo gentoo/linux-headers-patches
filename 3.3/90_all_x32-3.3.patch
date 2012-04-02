@@ -1,0 +1,5182 @@
+created via filtering:
+	git diff v3.3...v3.4-rc1 arch/x86/
+
+diff --git a/arch/x86/Makefile b/arch/x86/Makefile
+index 209ba12..968dbe2 100644
+--- a/arch/x86/Makefile
++++ b/arch/x86/Makefile
+@@ -82,6 +82,22 @@ ifdef CONFIG_CC_STACKPROTECTOR
+         endif
+ endif
+ 
++ifdef CONFIG_X86_X32
++	x32_ld_ok := $(call try-run,\
++			/bin/echo -e '1: .quad 1b' | \
++			$(CC) $(KBUILD_AFLAGS) -c -xassembler -o "$$TMP" - && \
++			$(OBJCOPY) -O elf32-x86-64 "$$TMP" "$$TMPO" && \
++			$(LD) -m elf32_x86_64 "$$TMPO" -o "$$TMP",y,n)
++        ifeq ($(x32_ld_ok),y)
++                CONFIG_X86_X32_ABI := y
++                KBUILD_AFLAGS += -DCONFIG_X86_X32_ABI
++                KBUILD_CFLAGS += -DCONFIG_X86_X32_ABI
++        else
++                $(warning CONFIG_X86_X32 enabled but no binutils support)
++        endif
++endif
++export CONFIG_X86_X32_ABI
++
+ # Don't unroll struct assignments with kmemcheck enabled
+ ifeq ($(CONFIG_KMEMCHECK),y)
+ 	KBUILD_CFLAGS += $(call cc-option,-fno-builtin-memcpy)
+diff --git a/arch/x86/Makefile.um b/arch/x86/Makefile.um
+index 36ddec6..4be406a 100644
+--- a/arch/x86/Makefile.um
++++ b/arch/x86/Makefile.um
+@@ -8,15 +8,11 @@ ELF_ARCH		:= i386
+ ELF_FORMAT 		:= elf32-i386
+ CHECKFLAGS	+= -D__i386__
+ 
+-ifeq ("$(origin SUBARCH)", "command line")
+-ifneq ("$(shell uname -m | sed -e s/i.86/i386/)", "$(SUBARCH)")
+ KBUILD_CFLAGS		+= $(call cc-option,-m32)
+ KBUILD_AFLAGS		+= $(call cc-option,-m32)
+ LINK-y			+= $(call cc-option,-m32)
+ 
+ export LDFLAGS
+-endif
+-endif
+ 
+ # First of all, tune CFLAGS for the specific CPU. This actually sets cflags-y.
+ include $(srctree)/arch/x86/Makefile_32.cpu
+diff --git a/arch/x86/include/asm/Kbuild b/arch/x86/include/asm/Kbuild
+index b57e6a4..f9c0d3b 100644
+--- a/arch/x86/include/asm/Kbuild
++++ b/arch/x86/include/asm/Kbuild
+@@ -14,6 +14,7 @@ header-y += msr.h
+ header-y += mtrr.h
+ header-y += posix_types_32.h
+ header-y += posix_types_64.h
++header-y += posix_types_x32.h
+ header-y += prctl.h
+ header-y += processor-flags.h
+ header-y += ptrace-abi.h
+@@ -24,3 +25,4 @@ header-y += vsyscall.h
+ 
+ genhdr-y += unistd_32.h
+ genhdr-y += unistd_64.h
++genhdr-y += unistd_x32.h
+diff --git a/arch/x86/include/asm/alternative.h b/arch/x86/include/asm/alternative.h
+index 37ad100..49331be 100644
+--- a/arch/x86/include/asm/alternative.h
++++ b/arch/x86/include/asm/alternative.h
+@@ -145,6 +145,12 @@ static inline int alternatives_text_reserved(void *start, void *end)
+  */
+ #define ASM_OUTPUT2(a...) a
+ 
++/*
++ * use this macro if you need clobbers but no inputs in
++ * alternative_{input,io,call}()
++ */
++#define ASM_NO_INPUT_CLOBBER(clbr...) "i" (0) : clbr
++
+ struct paravirt_patch_site;
+ #ifdef CONFIG_PARAVIRT
+ void apply_paravirt(struct paravirt_patch_site *start,
+diff --git a/arch/x86/include/asm/apic.h b/arch/x86/include/asm/apic.h
+index 3ab9bdd..d854101 100644
+--- a/arch/x86/include/asm/apic.h
++++ b/arch/x86/include/asm/apic.h
+@@ -11,7 +11,6 @@
+ #include <linux/atomic.h>
+ #include <asm/fixmap.h>
+ #include <asm/mpspec.h>
+-#include <asm/system.h>
+ #include <asm/msr.h>
+ 
+ #define ARCH_APICTIMER_STOPS_ON_C3	1
+@@ -288,6 +287,7 @@ struct apic {
+ 
+ 	int (*probe)(void);
+ 	int (*acpi_madt_oem_check)(char *oem_id, char *oem_table_id);
++	int (*apic_id_valid)(int apicid);
+ 	int (*apic_id_registered)(void);
+ 
+ 	u32 irq_delivery_mode;
+@@ -532,6 +532,11 @@ static inline unsigned int read_apic_id(void)
+ 	return apic->get_apic_id(reg);
+ }
+ 
++static inline int default_apic_id_valid(int apicid)
++{
++	return (apicid < 255);
++}
++
+ extern void default_setup_apic_routing(void);
+ 
+ extern struct apic apic_noop;
+diff --git a/arch/x86/include/asm/atomic64_32.h b/arch/x86/include/asm/atomic64_32.h
+index fa13f0e..1981199 100644
+--- a/arch/x86/include/asm/atomic64_32.h
++++ b/arch/x86/include/asm/atomic64_32.h
+@@ -14,13 +14,52 @@ typedef struct {
+ 
+ #define ATOMIC64_INIT(val)	{ (val) }
+ 
++#define __ATOMIC64_DECL(sym) void atomic64_##sym(atomic64_t *, ...)
++#ifndef ATOMIC64_EXPORT
++#define ATOMIC64_DECL_ONE __ATOMIC64_DECL
++#else
++#define ATOMIC64_DECL_ONE(sym) __ATOMIC64_DECL(sym); \
++	ATOMIC64_EXPORT(atomic64_##sym)
++#endif
++
+ #ifdef CONFIG_X86_CMPXCHG64
+-#define ATOMIC64_ALTERNATIVE_(f, g) "call atomic64_" #g "_cx8"
++#define __alternative_atomic64(f, g, out, in...) \
++	asm volatile("call %P[func]" \
++		     : out : [func] "i" (atomic64_##g##_cx8), ## in)
++
++#define ATOMIC64_DECL(sym) ATOMIC64_DECL_ONE(sym##_cx8)
+ #else
+-#define ATOMIC64_ALTERNATIVE_(f, g) ALTERNATIVE("call atomic64_" #f "_386", "call atomic64_" #g "_cx8", X86_FEATURE_CX8)
++#define __alternative_atomic64(f, g, out, in...) \
++	alternative_call(atomic64_##f##_386, atomic64_##g##_cx8, \
++			 X86_FEATURE_CX8, ASM_OUTPUT2(out), ## in)
++
++#define ATOMIC64_DECL(sym) ATOMIC64_DECL_ONE(sym##_cx8); \
++	ATOMIC64_DECL_ONE(sym##_386)
++
++ATOMIC64_DECL_ONE(add_386);
++ATOMIC64_DECL_ONE(sub_386);
++ATOMIC64_DECL_ONE(inc_386);
++ATOMIC64_DECL_ONE(dec_386);
+ #endif
+ 
+-#define ATOMIC64_ALTERNATIVE(f) ATOMIC64_ALTERNATIVE_(f, f)
++#define alternative_atomic64(f, out, in...) \
++	__alternative_atomic64(f, f, ASM_OUTPUT2(out), ## in)
++
++ATOMIC64_DECL(read);
++ATOMIC64_DECL(set);
++ATOMIC64_DECL(xchg);
++ATOMIC64_DECL(add_return);
++ATOMIC64_DECL(sub_return);
++ATOMIC64_DECL(inc_return);
++ATOMIC64_DECL(dec_return);
++ATOMIC64_DECL(dec_if_positive);
++ATOMIC64_DECL(inc_not_zero);
++ATOMIC64_DECL(add_unless);
++
++#undef ATOMIC64_DECL
++#undef ATOMIC64_DECL_ONE
++#undef __ATOMIC64_DECL
++#undef ATOMIC64_EXPORT
+ 
+ /**
+  * atomic64_cmpxchg - cmpxchg atomic64 variable
+@@ -50,11 +89,9 @@ static inline long long atomic64_xchg(atomic64_t *v, long long n)
+ 	long long o;
+ 	unsigned high = (unsigned)(n >> 32);
+ 	unsigned low = (unsigned)n;
+-	asm volatile(ATOMIC64_ALTERNATIVE(xchg)
+-		     : "=A" (o), "+b" (low), "+c" (high)
+-		     : "S" (v)
+-		     : "memory"
+-		     );
++	alternative_atomic64(xchg, "=&A" (o),
++			     "S" (v), "b" (low), "c" (high)
++			     : "memory");
+ 	return o;
+ }
+ 
+@@ -69,11 +106,9 @@ static inline void atomic64_set(atomic64_t *v, long long i)
+ {
+ 	unsigned high = (unsigned)(i >> 32);
+ 	unsigned low = (unsigned)i;
+-	asm volatile(ATOMIC64_ALTERNATIVE(set)
+-		     : "+b" (low), "+c" (high)
+-		     : "S" (v)
+-		     : "eax", "edx", "memory"
+-		     );
++	alternative_atomic64(set, /* no output */,
++			     "S" (v), "b" (low), "c" (high)
++			     : "eax", "edx", "memory");
+ }
+ 
+ /**
+@@ -85,10 +120,7 @@ static inline void atomic64_set(atomic64_t *v, long long i)
+ static inline long long atomic64_read(const atomic64_t *v)
+ {
+ 	long long r;
+-	asm volatile(ATOMIC64_ALTERNATIVE(read)
+-		     : "=A" (r), "+c" (v)
+-		     : : "memory"
+-		     );
++	alternative_atomic64(read, "=&A" (r), "c" (v) : "memory");
+ 	return r;
+  }
+ 
+@@ -101,10 +133,9 @@ static inline long long atomic64_read(const atomic64_t *v)
+  */
+ static inline long long atomic64_add_return(long long i, atomic64_t *v)
+ {
+-	asm volatile(ATOMIC64_ALTERNATIVE(add_return)
+-		     : "+A" (i), "+c" (v)
+-		     : : "memory"
+-		     );
++	alternative_atomic64(add_return,
++			     ASM_OUTPUT2("+A" (i), "+c" (v)),
++			     ASM_NO_INPUT_CLOBBER("memory"));
+ 	return i;
+ }
+ 
+@@ -113,32 +144,25 @@ static inline long long atomic64_add_return(long long i, atomic64_t *v)
+  */
+ static inline long long atomic64_sub_return(long long i, atomic64_t *v)
+ {
+-	asm volatile(ATOMIC64_ALTERNATIVE(sub_return)
+-		     : "+A" (i), "+c" (v)
+-		     : : "memory"
+-		     );
++	alternative_atomic64(sub_return,
++			     ASM_OUTPUT2("+A" (i), "+c" (v)),
++			     ASM_NO_INPUT_CLOBBER("memory"));
+ 	return i;
+ }
+ 
+ static inline long long atomic64_inc_return(atomic64_t *v)
+ {
+ 	long long a;
+-	asm volatile(ATOMIC64_ALTERNATIVE(inc_return)
+-		     : "=A" (a)
+-		     : "S" (v)
+-		     : "memory", "ecx"
+-		     );
++	alternative_atomic64(inc_return, "=&A" (a),
++			     "S" (v) : "memory", "ecx");
+ 	return a;
+ }
+ 
+ static inline long long atomic64_dec_return(atomic64_t *v)
+ {
+ 	long long a;
+-	asm volatile(ATOMIC64_ALTERNATIVE(dec_return)
+-		     : "=A" (a)
+-		     : "S" (v)
+-		     : "memory", "ecx"
+-		     );
++	alternative_atomic64(dec_return, "=&A" (a),
++			     "S" (v) : "memory", "ecx");
+ 	return a;
+ }
+ 
+@@ -151,10 +175,9 @@ static inline long long atomic64_dec_return(atomic64_t *v)
+  */
+ static inline long long atomic64_add(long long i, atomic64_t *v)
+ {
+-	asm volatile(ATOMIC64_ALTERNATIVE_(add, add_return)
+-		     : "+A" (i), "+c" (v)
+-		     : : "memory"
+-		     );
++	__alternative_atomic64(add, add_return,
++			       ASM_OUTPUT2("+A" (i), "+c" (v)),
++			       ASM_NO_INPUT_CLOBBER("memory"));
+ 	return i;
+ }
+ 
+@@ -167,10 +190,9 @@ static inline long long atomic64_add(long long i, atomic64_t *v)
+  */
+ static inline long long atomic64_sub(long long i, atomic64_t *v)
+ {
+-	asm volatile(ATOMIC64_ALTERNATIVE_(sub, sub_return)
+-		     : "+A" (i), "+c" (v)
+-		     : : "memory"
+-		     );
++	__alternative_atomic64(sub, sub_return,
++			       ASM_OUTPUT2("+A" (i), "+c" (v)),
++			       ASM_NO_INPUT_CLOBBER("memory"));
+ 	return i;
+ }
+ 
+@@ -196,10 +218,8 @@ static inline int atomic64_sub_and_test(long long i, atomic64_t *v)
+  */
+ static inline void atomic64_inc(atomic64_t *v)
+ {
+-	asm volatile(ATOMIC64_ALTERNATIVE_(inc, inc_return)
+-		     : : "S" (v)
+-		     : "memory", "eax", "ecx", "edx"
+-		     );
++	__alternative_atomic64(inc, inc_return, /* no output */,
++			       "S" (v) : "memory", "eax", "ecx", "edx");
+ }
+ 
+ /**
+@@ -210,10 +230,8 @@ static inline void atomic64_inc(atomic64_t *v)
+  */
+ static inline void atomic64_dec(atomic64_t *v)
+ {
+-	asm volatile(ATOMIC64_ALTERNATIVE_(dec, dec_return)
+-		     : : "S" (v)
+-		     : "memory", "eax", "ecx", "edx"
+-		     );
++	__alternative_atomic64(dec, dec_return, /* no output */,
++			       "S" (v) : "memory", "eax", "ecx", "edx");
+ }
+ 
+ /**
+@@ -263,15 +281,15 @@ static inline int atomic64_add_negative(long long i, atomic64_t *v)
+  * @u: ...unless v is equal to u.
+  *
+  * Atomically adds @a to @v, so long as it was not @u.
+- * Returns the old value of @v.
++ * Returns non-zero if the add was done, zero otherwise.
+  */
+ static inline int atomic64_add_unless(atomic64_t *v, long long a, long long u)
+ {
+ 	unsigned low = (unsigned)u;
+ 	unsigned high = (unsigned)(u >> 32);
+-	asm volatile(ATOMIC64_ALTERNATIVE(add_unless) "\n\t"
+-		     : "+A" (a), "+c" (v), "+S" (low), "+D" (high)
+-		     : : "memory");
++	alternative_atomic64(add_unless,
++			     ASM_OUTPUT2("+A" (a), "+c" (low), "+D" (high)),
++			     "S" (v) : "memory");
+ 	return (int)a;
+ }
+ 
+@@ -279,26 +297,20 @@ static inline int atomic64_add_unless(atomic64_t *v, long long a, long long u)
+ static inline int atomic64_inc_not_zero(atomic64_t *v)
+ {
+ 	int r;
+-	asm volatile(ATOMIC64_ALTERNATIVE(inc_not_zero)
+-		     : "=a" (r)
+-		     : "S" (v)
+-		     : "ecx", "edx", "memory"
+-		     );
++	alternative_atomic64(inc_not_zero, "=&a" (r),
++			     "S" (v) : "ecx", "edx", "memory");
+ 	return r;
+ }
+ 
+ static inline long long atomic64_dec_if_positive(atomic64_t *v)
+ {
+ 	long long r;
+-	asm volatile(ATOMIC64_ALTERNATIVE(dec_if_positive)
+-		     : "=A" (r)
+-		     : "S" (v)
+-		     : "ecx", "memory"
+-		     );
++	alternative_atomic64(dec_if_positive, "=&A" (r),
++			     "S" (v) : "ecx", "memory");
+ 	return r;
+ }
+ 
+-#undef ATOMIC64_ALTERNATIVE
+-#undef ATOMIC64_ALTERNATIVE_
++#undef alternative_atomic64
++#undef __alternative_atomic64
+ 
+ #endif /* _ASM_X86_ATOMIC64_32_H */
+diff --git a/arch/x86/include/asm/auxvec.h b/arch/x86/include/asm/auxvec.h
+index 1316b4c..77203ac 100644
+--- a/arch/x86/include/asm/auxvec.h
++++ b/arch/x86/include/asm/auxvec.h
+@@ -9,4 +9,11 @@
+ #endif
+ #define AT_SYSINFO_EHDR		33
+ 
++/* entries in ARCH_DLINFO: */
++#if defined(CONFIG_IA32_EMULATION) || !defined(CONFIG_X86_64)
++# define AT_VECTOR_SIZE_ARCH 2
++#else /* else it's non-compat x86-64 */
++# define AT_VECTOR_SIZE_ARCH 1
++#endif
++
+ #endif /* _ASM_X86_AUXVEC_H */
+diff --git a/arch/x86/include/asm/barrier.h b/arch/x86/include/asm/barrier.h
+new file mode 100644
+index 0000000..c6cd358
+--- /dev/null
++++ b/arch/x86/include/asm/barrier.h
+@@ -0,0 +1,116 @@
++#ifndef _ASM_X86_BARRIER_H
++#define _ASM_X86_BARRIER_H
++
++#include <asm/alternative.h>
++#include <asm/nops.h>
++
++/*
++ * Force strict CPU ordering.
++ * And yes, this is required on UP too when we're talking
++ * to devices.
++ */
++
++#ifdef CONFIG_X86_32
++/*
++ * Some non-Intel clones support out of order store. wmb() ceases to be a
++ * nop for these.
++ */
++#define mb() alternative("lock; addl $0,0(%%esp)", "mfence", X86_FEATURE_XMM2)
++#define rmb() alternative("lock; addl $0,0(%%esp)", "lfence", X86_FEATURE_XMM2)
++#define wmb() alternative("lock; addl $0,0(%%esp)", "sfence", X86_FEATURE_XMM)
++#else
++#define mb() 	asm volatile("mfence":::"memory")
++#define rmb()	asm volatile("lfence":::"memory")
++#define wmb()	asm volatile("sfence" ::: "memory")
++#endif
++
++/**
++ * read_barrier_depends - Flush all pending reads that subsequents reads
++ * depend on.
++ *
++ * No data-dependent reads from memory-like regions are ever reordered
++ * over this barrier.  All reads preceding this primitive are guaranteed
++ * to access memory (but not necessarily other CPUs' caches) before any
++ * reads following this primitive that depend on the data return by
++ * any of the preceding reads.  This primitive is much lighter weight than
++ * rmb() on most CPUs, and is never heavier weight than is
++ * rmb().
++ *
++ * These ordering constraints are respected by both the local CPU
++ * and the compiler.
++ *
++ * Ordering is not guaranteed by anything other than these primitives,
++ * not even by data dependencies.  See the documentation for
++ * memory_barrier() for examples and URLs to more information.
++ *
++ * For example, the following code would force ordering (the initial
++ * value of "a" is zero, "b" is one, and "p" is "&a"):
++ *
++ * <programlisting>
++ *	CPU 0				CPU 1
++ *
++ *	b = 2;
++ *	memory_barrier();
++ *	p = &b;				q = p;
++ *					read_barrier_depends();
++ *					d = *q;
++ * </programlisting>
++ *
++ * because the read of "*q" depends on the read of "p" and these
++ * two reads are separated by a read_barrier_depends().  However,
++ * the following code, with the same initial values for "a" and "b":
++ *
++ * <programlisting>
++ *	CPU 0				CPU 1
++ *
++ *	a = 2;
++ *	memory_barrier();
++ *	b = 3;				y = b;
++ *					read_barrier_depends();
++ *					x = a;
++ * </programlisting>
++ *
++ * does not enforce ordering, since there is no data dependency between
++ * the read of "a" and the read of "b".  Therefore, on some CPUs, such
++ * as Alpha, "y" could be set to 3 and "x" to 0.  Use rmb()
++ * in cases like this where there are no data dependencies.
++ **/
++
++#define read_barrier_depends()	do { } while (0)
++
++#ifdef CONFIG_SMP
++#define smp_mb()	mb()
++#ifdef CONFIG_X86_PPRO_FENCE
++# define smp_rmb()	rmb()
++#else
++# define smp_rmb()	barrier()
++#endif
++#ifdef CONFIG_X86_OOSTORE
++# define smp_wmb() 	wmb()
++#else
++# define smp_wmb()	barrier()
++#endif
++#define smp_read_barrier_depends()	read_barrier_depends()
++#define set_mb(var, value) do { (void)xchg(&var, value); } while (0)
++#else
++#define smp_mb()	barrier()
++#define smp_rmb()	barrier()
++#define smp_wmb()	barrier()
++#define smp_read_barrier_depends()	do { } while (0)
++#define set_mb(var, value) do { var = value; barrier(); } while (0)
++#endif
++
++/*
++ * Stop RDTSC speculation. This is needed when you need to use RDTSC
++ * (or get_cycles or vread that possibly accesses the TSC) in a defined
++ * code region.
++ *
++ * (Could use an alternative three way for this if there was one.)
++ */
++static __always_inline void rdtsc_barrier(void)
++{
++	alternative(ASM_NOP3, "mfence", X86_FEATURE_MFENCE_RDTSC);
++	alternative(ASM_NOP3, "lfence", X86_FEATURE_LFENCE_RDTSC);
++}
++
++#endif /* _ASM_X86_BARRIER_H */
+diff --git a/arch/x86/include/asm/bug.h b/arch/x86/include/asm/bug.h
+index f654d1b..11e1152 100644
+--- a/arch/x86/include/asm/bug.h
++++ b/arch/x86/include/asm/bug.h
+@@ -36,4 +36,8 @@ do {								\
+ #endif /* !CONFIG_BUG */
+ 
+ #include <asm-generic/bug.h>
++
++
++extern void show_regs_common(void);
++
+ #endif /* _ASM_X86_BUG_H */
+diff --git a/arch/x86/include/asm/cacheflush.h b/arch/x86/include/asm/cacheflush.h
+index 4e12668..9863ee3 100644
+--- a/arch/x86/include/asm/cacheflush.h
++++ b/arch/x86/include/asm/cacheflush.h
+@@ -3,6 +3,7 @@
+ 
+ /* Caches aren't brain-dead on the intel. */
+ #include <asm-generic/cacheflush.h>
++#include <asm/special_insns.h>
+ 
+ #ifdef CONFIG_X86_PAT
+ /*
+diff --git a/arch/x86/include/asm/compat.h b/arch/x86/include/asm/compat.h
+index 30d737e..d680579 100644
+--- a/arch/x86/include/asm/compat.h
++++ b/arch/x86/include/asm/compat.h
+@@ -6,7 +6,9 @@
+  */
+ #include <linux/types.h>
+ #include <linux/sched.h>
++#include <asm/processor.h>
+ #include <asm/user32.h>
++#include <asm/unistd.h>
+ 
+ #define COMPAT_USER_HZ		100
+ #define COMPAT_UTS_MACHINE	"i686\0\0"
+@@ -186,7 +188,20 @@ struct compat_shmid64_ds {
+ /*
+  * The type of struct elf_prstatus.pr_reg in compatible core dumps.
+  */
++#ifdef CONFIG_X86_X32_ABI
++typedef struct user_regs_struct compat_elf_gregset_t;
++
++#define PR_REG_SIZE(S) (test_thread_flag(TIF_IA32) ? 68 : 216)
++#define PRSTATUS_SIZE(S) (test_thread_flag(TIF_IA32) ? 144 : 296)
++#define SET_PR_FPVALID(S,V) \
++  do { *(int *) (((void *) &((S)->pr_reg)) + PR_REG_SIZE(0)) = (V); } \
++  while (0)
++
++#define COMPAT_USE_64BIT_TIME \
++	(!!(task_pt_regs(current)->orig_ax & __X32_SYSCALL_BIT))
++#else
+ typedef struct user_regs_struct32 compat_elf_gregset_t;
++#endif
+ 
+ /*
+  * A pointer passed in from user mode. This should not
+@@ -208,13 +223,30 @@ static inline compat_uptr_t ptr_to_compat(void __user *uptr)
+ 
+ static inline void __user *arch_compat_alloc_user_space(long len)
+ {
+-	struct pt_regs *regs = task_pt_regs(current);
+-	return (void __user *)regs->sp - len;
++	compat_uptr_t sp;
++
++	if (test_thread_flag(TIF_IA32)) {
++		sp = task_pt_regs(current)->sp;
++	} else {
++		/* -128 for the x32 ABI redzone */
++		sp = percpu_read(old_rsp) - 128;
++	}
++
++	return (void __user *)round_down(sp - len, 16);
++}
++
++static inline bool is_x32_task(void)
++{
++#ifdef CONFIG_X86_X32_ABI
++	if (task_pt_regs(current)->orig_ax & __X32_SYSCALL_BIT)
++		return true;
++#endif
++	return false;
+ }
+ 
+-static inline int is_compat_task(void)
++static inline bool is_compat_task(void)
+ {
+-	return current_thread_info()->status & TS_COMPAT;
++	return is_ia32_task() || is_x32_task();
+ }
+ 
+ #endif /* _ASM_X86_COMPAT_H */
+diff --git a/arch/x86/include/asm/cpu_device_id.h b/arch/x86/include/asm/cpu_device_id.h
+new file mode 100644
+index 0000000..ff501e5
+--- /dev/null
++++ b/arch/x86/include/asm/cpu_device_id.h
+@@ -0,0 +1,13 @@
++#ifndef _CPU_DEVICE_ID
++#define _CPU_DEVICE_ID 1
++
++/*
++ * Declare drivers belonging to specific x86 CPUs
++ * Similar in spirit to pci_device_id and related PCI functions
++ */
++
++#include <linux/mod_devicetable.h>
++
++extern const struct x86_cpu_id *x86_match_cpu(const struct x86_cpu_id *match);
++
++#endif
+diff --git a/arch/x86/include/asm/cpufeature.h b/arch/x86/include/asm/cpufeature.h
+index 8d67d42..340ee49 100644
+--- a/arch/x86/include/asm/cpufeature.h
++++ b/arch/x86/include/asm/cpufeature.h
+@@ -177,6 +177,7 @@
+ #define X86_FEATURE_PLN		(7*32+ 5) /* Intel Power Limit Notification */
+ #define X86_FEATURE_PTS		(7*32+ 6) /* Intel Package Thermal Status */
+ #define X86_FEATURE_DTS		(7*32+ 7) /* Digital Thermal Sensor */
++#define X86_FEATURE_HW_PSTATE	(7*32+ 8) /* AMD HW-PState */
+ 
+ /* Virtualization flags: Linux defined, word 8 */
+ #define X86_FEATURE_TPR_SHADOW  (8*32+ 0) /* Intel TPR Shadow */
+@@ -199,10 +200,13 @@
+ /* Intel-defined CPU features, CPUID level 0x00000007:0 (ebx), word 9 */
+ #define X86_FEATURE_FSGSBASE	(9*32+ 0) /* {RD/WR}{FS/GS}BASE instructions*/
+ #define X86_FEATURE_BMI1	(9*32+ 3) /* 1st group bit manipulation extensions */
++#define X86_FEATURE_HLE		(9*32+ 4) /* Hardware Lock Elision */
+ #define X86_FEATURE_AVX2	(9*32+ 5) /* AVX2 instructions */
+ #define X86_FEATURE_SMEP	(9*32+ 7) /* Supervisor Mode Execution Protection */
+ #define X86_FEATURE_BMI2	(9*32+ 8) /* 2nd group bit manipulation extensions */
+ #define X86_FEATURE_ERMS	(9*32+ 9) /* Enhanced REP MOVSB/STOSB */
++#define X86_FEATURE_INVPCID	(9*32+10) /* Invalidate Processor Context ID */
++#define X86_FEATURE_RTM		(9*32+11) /* Restricted Transactional Memory */
+ 
+ #if defined(__KERNEL__) && !defined(__ASSEMBLY__)
+ 
+diff --git a/arch/x86/include/asm/debugreg.h b/arch/x86/include/asm/debugreg.h
+index b903d5e..2d91580 100644
+--- a/arch/x86/include/asm/debugreg.h
++++ b/arch/x86/include/asm/debugreg.h
+@@ -78,8 +78,75 @@
+  */
+ #ifdef __KERNEL__
+ 
++#include <linux/bug.h>
++
+ DECLARE_PER_CPU(unsigned long, cpu_dr7);
+ 
++#ifndef CONFIG_PARAVIRT
++/*
++ * These special macros can be used to get or set a debugging register
++ */
++#define get_debugreg(var, register)				\
++	(var) = native_get_debugreg(register)
++#define set_debugreg(value, register)				\
++	native_set_debugreg(register, value)
++#endif
++
++static inline unsigned long native_get_debugreg(int regno)
++{
++	unsigned long val = 0;	/* Damn you, gcc! */
++
++	switch (regno) {
++	case 0:
++		asm("mov %%db0, %0" :"=r" (val));
++		break;
++	case 1:
++		asm("mov %%db1, %0" :"=r" (val));
++		break;
++	case 2:
++		asm("mov %%db2, %0" :"=r" (val));
++		break;
++	case 3:
++		asm("mov %%db3, %0" :"=r" (val));
++		break;
++	case 6:
++		asm("mov %%db6, %0" :"=r" (val));
++		break;
++	case 7:
++		asm("mov %%db7, %0" :"=r" (val));
++		break;
++	default:
++		BUG();
++	}
++	return val;
++}
++
++static inline void native_set_debugreg(int regno, unsigned long value)
++{
++	switch (regno) {
++	case 0:
++		asm("mov %0, %%db0"	::"r" (value));
++		break;
++	case 1:
++		asm("mov %0, %%db1"	::"r" (value));
++		break;
++	case 2:
++		asm("mov %0, %%db2"	::"r" (value));
++		break;
++	case 3:
++		asm("mov %0, %%db3"	::"r" (value));
++		break;
++	case 6:
++		asm("mov %0, %%db6"	::"r" (value));
++		break;
++	case 7:
++		asm("mov %0, %%db7"	::"r" (value));
++		break;
++	default:
++		BUG();
++	}
++}
++
+ static inline void hw_breakpoint_disable(void)
+ {
+ 	/* Zero the control register for HW Breakpoint */
+diff --git a/arch/x86/include/asm/efi.h b/arch/x86/include/asm/efi.h
+index 844f735..c9dcc18 100644
+--- a/arch/x86/include/asm/efi.h
++++ b/arch/x86/include/asm/efi.h
+@@ -95,7 +95,7 @@ extern void __iomem *efi_ioremap(unsigned long addr, unsigned long size,
+ 
+ extern int add_efi_memmap;
+ extern void efi_set_executable(efi_memory_desc_t *md, bool executable);
+-extern void efi_memblock_x86_reserve_range(void);
++extern int efi_memblock_x86_reserve_range(void);
+ extern void efi_call_phys_prelog(void);
+ extern void efi_call_phys_epilog(void);
+ 
+diff --git a/arch/x86/include/asm/elf.h b/arch/x86/include/asm/elf.h
+index 5f962df..5939f44 100644
+--- a/arch/x86/include/asm/elf.h
++++ b/arch/x86/include/asm/elf.h
+@@ -84,7 +84,6 @@ extern unsigned int vdso_enabled;
+ 	(((x)->e_machine == EM_386) || ((x)->e_machine == EM_486))
+ 
+ #include <asm/processor.h>
+-#include <asm/system.h>
+ 
+ #ifdef CONFIG_X86_32
+ #include <asm/desc.h>
+@@ -156,7 +155,12 @@ do {						\
+ #define elf_check_arch(x)			\
+ 	((x)->e_machine == EM_X86_64)
+ 
+-#define compat_elf_check_arch(x)	elf_check_arch_ia32(x)
++#define compat_elf_check_arch(x)		\
++	(elf_check_arch_ia32(x) || (x)->e_machine == EM_X86_64)
++
++#if __USER32_DS != __USER_DS
++# error "The following code assumes __USER32_DS == __USER_DS"
++#endif
+ 
+ static inline void elf_common_init(struct thread_struct *t,
+ 				   struct pt_regs *regs, const u16 ds)
+@@ -179,8 +183,9 @@ static inline void elf_common_init(struct thread_struct *t,
+ void start_thread_ia32(struct pt_regs *regs, u32 new_ip, u32 new_sp);
+ #define compat_start_thread start_thread_ia32
+ 
+-void set_personality_ia32(void);
+-#define COMPAT_SET_PERSONALITY(ex) set_personality_ia32()
++void set_personality_ia32(bool);
++#define COMPAT_SET_PERSONALITY(ex)			\
++	set_personality_ia32((ex).e_machine == EM_X86_64)
+ 
+ #define COMPAT_ELF_PLATFORM			("i686")
+ 
+@@ -287,7 +292,7 @@ do {									\
+ #define VDSO_HIGH_BASE		0xffffe000U /* CONFIG_COMPAT_VDSO address */
+ 
+ /* 1GB for 64bit, 8MB for 32bit */
+-#define STACK_RND_MASK (test_thread_flag(TIF_IA32) ? 0x7ff : 0x3fffff)
++#define STACK_RND_MASK (test_thread_flag(TIF_ADDR32) ? 0x7ff : 0x3fffff)
+ 
+ #define ARCH_DLINFO							\
+ do {									\
+@@ -296,9 +301,20 @@ do {									\
+ 			    (unsigned long)current->mm->context.vdso);	\
+ } while (0)
+ 
++#define ARCH_DLINFO_X32							\
++do {									\
++	if (vdso_enabled)						\
++		NEW_AUX_ENT(AT_SYSINFO_EHDR,				\
++			    (unsigned long)current->mm->context.vdso);	\
++} while (0)
++
+ #define AT_SYSINFO		32
+ 
+-#define COMPAT_ARCH_DLINFO	ARCH_DLINFO_IA32(sysctl_vsyscall32)
++#define COMPAT_ARCH_DLINFO						\
++if (test_thread_flag(TIF_X32))						\
++	ARCH_DLINFO_X32;						\
++else									\
++	ARCH_DLINFO_IA32(sysctl_vsyscall32)
+ 
+ #define COMPAT_ELF_ET_DYN_BASE	(TASK_UNMAPPED_BASE + 0x1000000)
+ 
+@@ -314,6 +330,8 @@ struct linux_binprm;
+ #define ARCH_HAS_SETUP_ADDITIONAL_PAGES 1
+ extern int arch_setup_additional_pages(struct linux_binprm *bprm,
+ 				       int uses_interp);
++extern int x32_setup_additional_pages(struct linux_binprm *bprm,
++				      int uses_interp);
+ 
+ extern int syscall32_setup_pages(struct linux_binprm *, int exstack);
+ #define compat_arch_setup_additional_pages	syscall32_setup_pages
+@@ -330,7 +348,7 @@ static inline int mmap_is_ia32(void)
+ 	return 1;
+ #endif
+ #ifdef CONFIG_IA32_EMULATION
+-	if (test_thread_flag(TIF_IA32))
++	if (test_thread_flag(TIF_ADDR32))
+ 		return 1;
+ #endif
+ 	return 0;
+diff --git a/arch/x86/include/asm/exec.h b/arch/x86/include/asm/exec.h
+new file mode 100644
+index 0000000..54c2e1d
+--- /dev/null
++++ b/arch/x86/include/asm/exec.h
+@@ -0,0 +1 @@
++/* define arch_align_stack() here */
+diff --git a/arch/x86/include/asm/fpu-internal.h b/arch/x86/include/asm/fpu-internal.h
+new file mode 100644
+index 0000000..4fa8815
+--- /dev/null
++++ b/arch/x86/include/asm/fpu-internal.h
+@@ -0,0 +1,520 @@
++/*
++ * Copyright (C) 1994 Linus Torvalds
++ *
++ * Pentium III FXSR, SSE support
++ * General FPU state handling cleanups
++ *	Gareth Hughes <gareth@valinux.com>, May 2000
++ * x86-64 work by Andi Kleen 2002
++ */
++
++#ifndef _FPU_INTERNAL_H
++#define _FPU_INTERNAL_H
++
++#include <linux/kernel_stat.h>
++#include <linux/regset.h>
++#include <linux/slab.h>
++#include <asm/asm.h>
++#include <asm/cpufeature.h>
++#include <asm/processor.h>
++#include <asm/sigcontext.h>
++#include <asm/user.h>
++#include <asm/uaccess.h>
++#include <asm/xsave.h>
++
++extern unsigned int sig_xstate_size;
++extern void fpu_init(void);
++
++DECLARE_PER_CPU(struct task_struct *, fpu_owner_task);
++
++extern user_regset_active_fn fpregs_active, xfpregs_active;
++extern user_regset_get_fn fpregs_get, xfpregs_get, fpregs_soft_get,
++				xstateregs_get;
++extern user_regset_set_fn fpregs_set, xfpregs_set, fpregs_soft_set,
++				 xstateregs_set;
++
++
++/*
++ * xstateregs_active == fpregs_active. Please refer to the comment
++ * at the definition of fpregs_active.
++ */
++#define xstateregs_active	fpregs_active
++
++extern struct _fpx_sw_bytes fx_sw_reserved;
++#ifdef CONFIG_IA32_EMULATION
++extern unsigned int sig_xstate_ia32_size;
++extern struct _fpx_sw_bytes fx_sw_reserved_ia32;
++struct _fpstate_ia32;
++struct _xstate_ia32;
++extern int save_i387_xstate_ia32(void __user *buf);
++extern int restore_i387_xstate_ia32(void __user *buf);
++#endif
++
++#ifdef CONFIG_MATH_EMULATION
++extern void finit_soft_fpu(struct i387_soft_struct *soft);
++#else
++static inline void finit_soft_fpu(struct i387_soft_struct *soft) {}
++#endif
++
++#define X87_FSW_ES (1 << 7)	/* Exception Summary */
++
++static __always_inline __pure bool use_xsaveopt(void)
++{
++	return static_cpu_has(X86_FEATURE_XSAVEOPT);
++}
++
++static __always_inline __pure bool use_xsave(void)
++{
++	return static_cpu_has(X86_FEATURE_XSAVE);
++}
++
++static __always_inline __pure bool use_fxsr(void)
++{
++        return static_cpu_has(X86_FEATURE_FXSR);
++}
++
++extern void __sanitize_i387_state(struct task_struct *);
++
++static inline void sanitize_i387_state(struct task_struct *tsk)
++{
++	if (!use_xsaveopt())
++		return;
++	__sanitize_i387_state(tsk);
++}
++
++#ifdef CONFIG_X86_64
++static inline int fxrstor_checking(struct i387_fxsave_struct *fx)
++{
++	int err;
++
++	/* See comment in fxsave() below. */
++#ifdef CONFIG_AS_FXSAVEQ
++	asm volatile("1:  fxrstorq %[fx]\n\t"
++		     "2:\n"
++		     ".section .fixup,\"ax\"\n"
++		     "3:  movl $-1,%[err]\n"
++		     "    jmp  2b\n"
++		     ".previous\n"
++		     _ASM_EXTABLE(1b, 3b)
++		     : [err] "=r" (err)
++		     : [fx] "m" (*fx), "0" (0));
++#else
++	asm volatile("1:  rex64/fxrstor (%[fx])\n\t"
++		     "2:\n"
++		     ".section .fixup,\"ax\"\n"
++		     "3:  movl $-1,%[err]\n"
++		     "    jmp  2b\n"
++		     ".previous\n"
++		     _ASM_EXTABLE(1b, 3b)
++		     : [err] "=r" (err)
++		     : [fx] "R" (fx), "m" (*fx), "0" (0));
++#endif
++	return err;
++}
++
++static inline int fxsave_user(struct i387_fxsave_struct __user *fx)
++{
++	int err;
++
++	/*
++	 * Clear the bytes not touched by the fxsave and reserved
++	 * for the SW usage.
++	 */
++	err = __clear_user(&fx->sw_reserved,
++			   sizeof(struct _fpx_sw_bytes));
++	if (unlikely(err))
++		return -EFAULT;
++
++	/* See comment in fxsave() below. */
++#ifdef CONFIG_AS_FXSAVEQ
++	asm volatile("1:  fxsaveq %[fx]\n\t"
++		     "2:\n"
++		     ".section .fixup,\"ax\"\n"
++		     "3:  movl $-1,%[err]\n"
++		     "    jmp  2b\n"
++		     ".previous\n"
++		     _ASM_EXTABLE(1b, 3b)
++		     : [err] "=r" (err), [fx] "=m" (*fx)
++		     : "0" (0));
++#else
++	asm volatile("1:  rex64/fxsave (%[fx])\n\t"
++		     "2:\n"
++		     ".section .fixup,\"ax\"\n"
++		     "3:  movl $-1,%[err]\n"
++		     "    jmp  2b\n"
++		     ".previous\n"
++		     _ASM_EXTABLE(1b, 3b)
++		     : [err] "=r" (err), "=m" (*fx)
++		     : [fx] "R" (fx), "0" (0));
++#endif
++	if (unlikely(err) &&
++	    __clear_user(fx, sizeof(struct i387_fxsave_struct)))
++		err = -EFAULT;
++	/* No need to clear here because the caller clears USED_MATH */
++	return err;
++}
++
++static inline void fpu_fxsave(struct fpu *fpu)
++{
++	/* Using "rex64; fxsave %0" is broken because, if the memory operand
++	   uses any extended registers for addressing, a second REX prefix
++	   will be generated (to the assembler, rex64 followed by semicolon
++	   is a separate instruction), and hence the 64-bitness is lost. */
++
++#ifdef CONFIG_AS_FXSAVEQ
++	/* Using "fxsaveq %0" would be the ideal choice, but is only supported
++	   starting with gas 2.16. */
++	__asm__ __volatile__("fxsaveq %0"
++			     : "=m" (fpu->state->fxsave));
++#else
++	/* Using, as a workaround, the properly prefixed form below isn't
++	   accepted by any binutils version so far released, complaining that
++	   the same type of prefix is used twice if an extended register is
++	   needed for addressing (fix submitted to mainline 2005-11-21).
++	asm volatile("rex64/fxsave %0"
++		     : "=m" (fpu->state->fxsave));
++	   This, however, we can work around by forcing the compiler to select
++	   an addressing mode that doesn't require extended registers. */
++	asm volatile("rex64/fxsave (%[fx])"
++		     : "=m" (fpu->state->fxsave)
++		     : [fx] "R" (&fpu->state->fxsave));
++#endif
++}
++
++#else  /* CONFIG_X86_32 */
++
++/* perform fxrstor iff the processor has extended states, otherwise frstor */
++static inline int fxrstor_checking(struct i387_fxsave_struct *fx)
++{
++	/*
++	 * The "nop" is needed to make the instructions the same
++	 * length.
++	 */
++	alternative_input(
++		"nop ; frstor %1",
++		"fxrstor %1",
++		X86_FEATURE_FXSR,
++		"m" (*fx));
++
++	return 0;
++}
++
++static inline void fpu_fxsave(struct fpu *fpu)
++{
++	asm volatile("fxsave %[fx]"
++		     : [fx] "=m" (fpu->state->fxsave));
++}
++
++#endif	/* CONFIG_X86_64 */
++
++/*
++ * These must be called with preempt disabled. Returns
++ * 'true' if the FPU state is still intact.
++ */
++static inline int fpu_save_init(struct fpu *fpu)
++{
++	if (use_xsave()) {
++		fpu_xsave(fpu);
++
++		/*
++		 * xsave header may indicate the init state of the FP.
++		 */
++		if (!(fpu->state->xsave.xsave_hdr.xstate_bv & XSTATE_FP))
++			return 1;
++	} else if (use_fxsr()) {
++		fpu_fxsave(fpu);
++	} else {
++		asm volatile("fnsave %[fx]; fwait"
++			     : [fx] "=m" (fpu->state->fsave));
++		return 0;
++	}
++
++	/*
++	 * If exceptions are pending, we need to clear them so
++	 * that we don't randomly get exceptions later.
++	 *
++	 * FIXME! Is this perhaps only true for the old-style
++	 * irq13 case? Maybe we could leave the x87 state
++	 * intact otherwise?
++	 */
++	if (unlikely(fpu->state->fxsave.swd & X87_FSW_ES)) {
++		asm volatile("fnclex");
++		return 0;
++	}
++	return 1;
++}
++
++static inline int __save_init_fpu(struct task_struct *tsk)
++{
++	return fpu_save_init(&tsk->thread.fpu);
++}
++
++static inline int fpu_fxrstor_checking(struct fpu *fpu)
++{
++	return fxrstor_checking(&fpu->state->fxsave);
++}
++
++static inline int fpu_restore_checking(struct fpu *fpu)
++{
++	if (use_xsave())
++		return fpu_xrstor_checking(fpu);
++	else
++		return fpu_fxrstor_checking(fpu);
++}
++
++static inline int restore_fpu_checking(struct task_struct *tsk)
++{
++	/* AMD K7/K8 CPUs don't save/restore FDP/FIP/FOP unless an exception
++	   is pending.  Clear the x87 state here by setting it to fixed
++	   values. "m" is a random variable that should be in L1 */
++	alternative_input(
++		ASM_NOP8 ASM_NOP2,
++		"emms\n\t"		/* clear stack tags */
++		"fildl %P[addr]",	/* set F?P to defined value */
++		X86_FEATURE_FXSAVE_LEAK,
++		[addr] "m" (tsk->thread.fpu.has_fpu));
++
++	return fpu_restore_checking(&tsk->thread.fpu);
++}
++
++/*
++ * Software FPU state helpers. Careful: these need to
++ * be preemption protection *and* they need to be
++ * properly paired with the CR0.TS changes!
++ */
++static inline int __thread_has_fpu(struct task_struct *tsk)
++{
++	return tsk->thread.fpu.has_fpu;
++}
++
++/* Must be paired with an 'stts' after! */
++static inline void __thread_clear_has_fpu(struct task_struct *tsk)
++{
++	tsk->thread.fpu.has_fpu = 0;
++	percpu_write(fpu_owner_task, NULL);
++}
++
++/* Must be paired with a 'clts' before! */
++static inline void __thread_set_has_fpu(struct task_struct *tsk)
++{
++	tsk->thread.fpu.has_fpu = 1;
++	percpu_write(fpu_owner_task, tsk);
++}
++
++/*
++ * Encapsulate the CR0.TS handling together with the
++ * software flag.
++ *
++ * These generally need preemption protection to work,
++ * do try to avoid using these on their own.
++ */
++static inline void __thread_fpu_end(struct task_struct *tsk)
++{
++	__thread_clear_has_fpu(tsk);
++	stts();
++}
++
++static inline void __thread_fpu_begin(struct task_struct *tsk)
++{
++	clts();
++	__thread_set_has_fpu(tsk);
++}
++
++/*
++ * FPU state switching for scheduling.
++ *
++ * This is a two-stage process:
++ *
++ *  - switch_fpu_prepare() saves the old state and
++ *    sets the new state of the CR0.TS bit. This is
++ *    done within the context of the old process.
++ *
++ *  - switch_fpu_finish() restores the new state as
++ *    necessary.
++ */
++typedef struct { int preload; } fpu_switch_t;
++
++/*
++ * FIXME! We could do a totally lazy restore, but we need to
++ * add a per-cpu "this was the task that last touched the FPU
++ * on this CPU" variable, and the task needs to have a "I last
++ * touched the FPU on this CPU" and check them.
++ *
++ * We don't do that yet, so "fpu_lazy_restore()" always returns
++ * false, but some day..
++ */
++static inline int fpu_lazy_restore(struct task_struct *new, unsigned int cpu)
++{
++	return new == percpu_read_stable(fpu_owner_task) &&
++		cpu == new->thread.fpu.last_cpu;
++}
++
++static inline fpu_switch_t switch_fpu_prepare(struct task_struct *old, struct task_struct *new, int cpu)
++{
++	fpu_switch_t fpu;
++
++	fpu.preload = tsk_used_math(new) && new->fpu_counter > 5;
++	if (__thread_has_fpu(old)) {
++		if (!__save_init_fpu(old))
++			cpu = ~0;
++		old->thread.fpu.last_cpu = cpu;
++		old->thread.fpu.has_fpu = 0;	/* But leave fpu_owner_task! */
++
++		/* Don't change CR0.TS if we just switch! */
++		if (fpu.preload) {
++			new->fpu_counter++;
++			__thread_set_has_fpu(new);
++			prefetch(new->thread.fpu.state);
++		} else
++			stts();
++	} else {
++		old->fpu_counter = 0;
++		old->thread.fpu.last_cpu = ~0;
++		if (fpu.preload) {
++			new->fpu_counter++;
++			if (fpu_lazy_restore(new, cpu))
++				fpu.preload = 0;
++			else
++				prefetch(new->thread.fpu.state);
++			__thread_fpu_begin(new);
++		}
++	}
++	return fpu;
++}
++
++/*
++ * By the time this gets called, we've already cleared CR0.TS and
++ * given the process the FPU if we are going to preload the FPU
++ * state - all we need to do is to conditionally restore the register
++ * state itself.
++ */
++static inline void switch_fpu_finish(struct task_struct *new, fpu_switch_t fpu)
++{
++	if (fpu.preload) {
++		if (unlikely(restore_fpu_checking(new)))
++			__thread_fpu_end(new);
++	}
++}
++
++/*
++ * Signal frame handlers...
++ */
++extern int save_i387_xstate(void __user *buf);
++extern int restore_i387_xstate(void __user *buf);
++
++static inline void __clear_fpu(struct task_struct *tsk)
++{
++	if (__thread_has_fpu(tsk)) {
++		/* Ignore delayed exceptions from user space */
++		asm volatile("1: fwait\n"
++			     "2:\n"
++			     _ASM_EXTABLE(1b, 2b));
++		__thread_fpu_end(tsk);
++	}
++}
++
++/*
++ * The actual user_fpu_begin/end() functions
++ * need to be preemption-safe.
++ *
++ * NOTE! user_fpu_end() must be used only after you
++ * have saved the FP state, and user_fpu_begin() must
++ * be used only immediately before restoring it.
++ * These functions do not do any save/restore on
++ * their own.
++ */
++static inline void user_fpu_end(void)
++{
++	preempt_disable();
++	__thread_fpu_end(current);
++	preempt_enable();
++}
++
++static inline void user_fpu_begin(void)
++{
++	preempt_disable();
++	if (!user_has_fpu())
++		__thread_fpu_begin(current);
++	preempt_enable();
++}
++
++/*
++ * These disable preemption on their own and are safe
++ */
++static inline void save_init_fpu(struct task_struct *tsk)
++{
++	WARN_ON_ONCE(!__thread_has_fpu(tsk));
++	preempt_disable();
++	__save_init_fpu(tsk);
++	__thread_fpu_end(tsk);
++	preempt_enable();
++}
++
++static inline void clear_fpu(struct task_struct *tsk)
++{
++	preempt_disable();
++	__clear_fpu(tsk);
++	preempt_enable();
++}
++
++/*
++ * i387 state interaction
++ */
++static inline unsigned short get_fpu_cwd(struct task_struct *tsk)
++{
++	if (cpu_has_fxsr) {
++		return tsk->thread.fpu.state->fxsave.cwd;
++	} else {
++		return (unsigned short)tsk->thread.fpu.state->fsave.cwd;
++	}
++}
++
++static inline unsigned short get_fpu_swd(struct task_struct *tsk)
++{
++	if (cpu_has_fxsr) {
++		return tsk->thread.fpu.state->fxsave.swd;
++	} else {
++		return (unsigned short)tsk->thread.fpu.state->fsave.swd;
++	}
++}
++
++static inline unsigned short get_fpu_mxcsr(struct task_struct *tsk)
++{
++	if (cpu_has_xmm) {
++		return tsk->thread.fpu.state->fxsave.mxcsr;
++	} else {
++		return MXCSR_DEFAULT;
++	}
++}
++
++static bool fpu_allocated(struct fpu *fpu)
++{
++	return fpu->state != NULL;
++}
++
++static inline int fpu_alloc(struct fpu *fpu)
++{
++	if (fpu_allocated(fpu))
++		return 0;
++	fpu->state = kmem_cache_alloc(task_xstate_cachep, GFP_KERNEL);
++	if (!fpu->state)
++		return -ENOMEM;
++	WARN_ON((unsigned long)fpu->state & 15);
++	return 0;
++}
++
++static inline void fpu_free(struct fpu *fpu)
++{
++	if (fpu->state) {
++		kmem_cache_free(task_xstate_cachep, fpu->state);
++		fpu->state = NULL;
++	}
++}
++
++static inline void fpu_copy(struct fpu *dst, struct fpu *src)
++{
++	memcpy(dst->state, src->state, xstate_size);
++}
++
++extern void fpu_finit(struct fpu *fpu);
++
++#endif
+diff --git a/arch/x86/include/asm/futex.h b/arch/x86/include/asm/futex.h
+index d09bb03..71ecbcba 100644
+--- a/arch/x86/include/asm/futex.h
++++ b/arch/x86/include/asm/futex.h
+@@ -9,7 +9,6 @@
+ #include <asm/asm.h>
+ #include <asm/errno.h>
+ #include <asm/processor.h>
+-#include <asm/system.h>
+ 
+ #define __futex_atomic_op1(insn, ret, oldval, uaddr, oparg)	\
+ 	asm volatile("1:\t" insn "\n"				\
+diff --git a/arch/x86/include/asm/hardirq.h b/arch/x86/include/asm/hardirq.h
+index da0b3ca..382f75d 100644
+--- a/arch/x86/include/asm/hardirq.h
++++ b/arch/x86/include/asm/hardirq.h
+@@ -7,7 +7,6 @@
+ typedef struct {
+ 	unsigned int __softirq_pending;
+ 	unsigned int __nmi_count;	/* arch dependent */
+-	unsigned int irq0_irqs;
+ #ifdef CONFIG_X86_LOCAL_APIC
+ 	unsigned int apic_timer_irqs;	/* arch dependent */
+ 	unsigned int irq_spurious_count;
+diff --git a/arch/x86/include/asm/highmem.h b/arch/x86/include/asm/highmem.h
+index 3bd0402..302a323 100644
+--- a/arch/x86/include/asm/highmem.h
++++ b/arch/x86/include/asm/highmem.h
+@@ -61,7 +61,7 @@ void *kmap(struct page *page);
+ void kunmap(struct page *page);
+ 
+ void *kmap_atomic_prot(struct page *page, pgprot_t prot);
+-void *__kmap_atomic(struct page *page);
++void *kmap_atomic(struct page *page);
+ void __kunmap_atomic(void *kvaddr);
+ void *kmap_atomic_pfn(unsigned long pfn);
+ void *kmap_atomic_prot_pfn(unsigned long pfn, pgprot_t prot);
+diff --git a/arch/x86/include/asm/i387.h b/arch/x86/include/asm/i387.h
+index 2479049..257d9cc 100644
+--- a/arch/x86/include/asm/i387.h
++++ b/arch/x86/include/asm/i387.h
+@@ -13,476 +13,18 @@
+ #ifndef __ASSEMBLY__
+ 
+ #include <linux/sched.h>
+-#include <linux/kernel_stat.h>
+-#include <linux/regset.h>
+ #include <linux/hardirq.h>
+-#include <linux/slab.h>
+-#include <asm/asm.h>
+-#include <asm/cpufeature.h>
+-#include <asm/processor.h>
+-#include <asm/sigcontext.h>
+-#include <asm/user.h>
+-#include <asm/uaccess.h>
+-#include <asm/xsave.h>
+ 
+-extern unsigned int sig_xstate_size;
+-extern void fpu_init(void);
+-extern void mxcsr_feature_mask_init(void);
++struct pt_regs;
++struct user_i387_struct;
++
+ extern int init_fpu(struct task_struct *child);
+-extern void math_state_restore(void);
+ extern int dump_fpu(struct pt_regs *, struct user_i387_struct *);
++extern void math_state_restore(void);
+ 
+-DECLARE_PER_CPU(struct task_struct *, fpu_owner_task);
+-
+-extern user_regset_active_fn fpregs_active, xfpregs_active;
+-extern user_regset_get_fn fpregs_get, xfpregs_get, fpregs_soft_get,
+-				xstateregs_get;
+-extern user_regset_set_fn fpregs_set, xfpregs_set, fpregs_soft_set,
+-				 xstateregs_set;
+-
+-/*
+- * xstateregs_active == fpregs_active. Please refer to the comment
+- * at the definition of fpregs_active.
+- */
+-#define xstateregs_active	fpregs_active
+-
+-extern struct _fpx_sw_bytes fx_sw_reserved;
+-#ifdef CONFIG_IA32_EMULATION
+-extern unsigned int sig_xstate_ia32_size;
+-extern struct _fpx_sw_bytes fx_sw_reserved_ia32;
+-struct _fpstate_ia32;
+-struct _xstate_ia32;
+-extern int save_i387_xstate_ia32(void __user *buf);
+-extern int restore_i387_xstate_ia32(void __user *buf);
+-#endif
+-
+-#ifdef CONFIG_MATH_EMULATION
+-extern void finit_soft_fpu(struct i387_soft_struct *soft);
+-#else
+-static inline void finit_soft_fpu(struct i387_soft_struct *soft) {}
+-#endif
+-
+-#define X87_FSW_ES (1 << 7)	/* Exception Summary */
+-
+-static __always_inline __pure bool use_xsaveopt(void)
+-{
+-	return static_cpu_has(X86_FEATURE_XSAVEOPT);
+-}
+-
+-static __always_inline __pure bool use_xsave(void)
+-{
+-	return static_cpu_has(X86_FEATURE_XSAVE);
+-}
+-
+-static __always_inline __pure bool use_fxsr(void)
+-{
+-        return static_cpu_has(X86_FEATURE_FXSR);
+-}
+-
+-extern void __sanitize_i387_state(struct task_struct *);
+-
+-static inline void sanitize_i387_state(struct task_struct *tsk)
+-{
+-	if (!use_xsaveopt())
+-		return;
+-	__sanitize_i387_state(tsk);
+-}
+-
+-#ifdef CONFIG_X86_64
+-static inline int fxrstor_checking(struct i387_fxsave_struct *fx)
+-{
+-	int err;
+-
+-	/* See comment in fxsave() below. */
+-#ifdef CONFIG_AS_FXSAVEQ
+-	asm volatile("1:  fxrstorq %[fx]\n\t"
+-		     "2:\n"
+-		     ".section .fixup,\"ax\"\n"
+-		     "3:  movl $-1,%[err]\n"
+-		     "    jmp  2b\n"
+-		     ".previous\n"
+-		     _ASM_EXTABLE(1b, 3b)
+-		     : [err] "=r" (err)
+-		     : [fx] "m" (*fx), "0" (0));
+-#else
+-	asm volatile("1:  rex64/fxrstor (%[fx])\n\t"
+-		     "2:\n"
+-		     ".section .fixup,\"ax\"\n"
+-		     "3:  movl $-1,%[err]\n"
+-		     "    jmp  2b\n"
+-		     ".previous\n"
+-		     _ASM_EXTABLE(1b, 3b)
+-		     : [err] "=r" (err)
+-		     : [fx] "R" (fx), "m" (*fx), "0" (0));
+-#endif
+-	return err;
+-}
+-
+-static inline int fxsave_user(struct i387_fxsave_struct __user *fx)
+-{
+-	int err;
+-
+-	/*
+-	 * Clear the bytes not touched by the fxsave and reserved
+-	 * for the SW usage.
+-	 */
+-	err = __clear_user(&fx->sw_reserved,
+-			   sizeof(struct _fpx_sw_bytes));
+-	if (unlikely(err))
+-		return -EFAULT;
+-
+-	/* See comment in fxsave() below. */
+-#ifdef CONFIG_AS_FXSAVEQ
+-	asm volatile("1:  fxsaveq %[fx]\n\t"
+-		     "2:\n"
+-		     ".section .fixup,\"ax\"\n"
+-		     "3:  movl $-1,%[err]\n"
+-		     "    jmp  2b\n"
+-		     ".previous\n"
+-		     _ASM_EXTABLE(1b, 3b)
+-		     : [err] "=r" (err), [fx] "=m" (*fx)
+-		     : "0" (0));
+-#else
+-	asm volatile("1:  rex64/fxsave (%[fx])\n\t"
+-		     "2:\n"
+-		     ".section .fixup,\"ax\"\n"
+-		     "3:  movl $-1,%[err]\n"
+-		     "    jmp  2b\n"
+-		     ".previous\n"
+-		     _ASM_EXTABLE(1b, 3b)
+-		     : [err] "=r" (err), "=m" (*fx)
+-		     : [fx] "R" (fx), "0" (0));
+-#endif
+-	if (unlikely(err) &&
+-	    __clear_user(fx, sizeof(struct i387_fxsave_struct)))
+-		err = -EFAULT;
+-	/* No need to clear here because the caller clears USED_MATH */
+-	return err;
+-}
+-
+-static inline void fpu_fxsave(struct fpu *fpu)
+-{
+-	/* Using "rex64; fxsave %0" is broken because, if the memory operand
+-	   uses any extended registers for addressing, a second REX prefix
+-	   will be generated (to the assembler, rex64 followed by semicolon
+-	   is a separate instruction), and hence the 64-bitness is lost. */
+-
+-#ifdef CONFIG_AS_FXSAVEQ
+-	/* Using "fxsaveq %0" would be the ideal choice, but is only supported
+-	   starting with gas 2.16. */
+-	__asm__ __volatile__("fxsaveq %0"
+-			     : "=m" (fpu->state->fxsave));
+-#else
+-	/* Using, as a workaround, the properly prefixed form below isn't
+-	   accepted by any binutils version so far released, complaining that
+-	   the same type of prefix is used twice if an extended register is
+-	   needed for addressing (fix submitted to mainline 2005-11-21).
+-	asm volatile("rex64/fxsave %0"
+-		     : "=m" (fpu->state->fxsave));
+-	   This, however, we can work around by forcing the compiler to select
+-	   an addressing mode that doesn't require extended registers. */
+-	asm volatile("rex64/fxsave (%[fx])"
+-		     : "=m" (fpu->state->fxsave)
+-		     : [fx] "R" (&fpu->state->fxsave));
+-#endif
+-}
+-
+-#else  /* CONFIG_X86_32 */
+-
+-/* perform fxrstor iff the processor has extended states, otherwise frstor */
+-static inline int fxrstor_checking(struct i387_fxsave_struct *fx)
+-{
+-	/*
+-	 * The "nop" is needed to make the instructions the same
+-	 * length.
+-	 */
+-	alternative_input(
+-		"nop ; frstor %1",
+-		"fxrstor %1",
+-		X86_FEATURE_FXSR,
+-		"m" (*fx));
+-
+-	return 0;
+-}
+-
+-static inline void fpu_fxsave(struct fpu *fpu)
+-{
+-	asm volatile("fxsave %[fx]"
+-		     : [fx] "=m" (fpu->state->fxsave));
+-}
+-
+-#endif	/* CONFIG_X86_64 */
+-
+-/*
+- * These must be called with preempt disabled. Returns
+- * 'true' if the FPU state is still intact.
+- */
+-static inline int fpu_save_init(struct fpu *fpu)
+-{
+-	if (use_xsave()) {
+-		fpu_xsave(fpu);
+-
+-		/*
+-		 * xsave header may indicate the init state of the FP.
+-		 */
+-		if (!(fpu->state->xsave.xsave_hdr.xstate_bv & XSTATE_FP))
+-			return 1;
+-	} else if (use_fxsr()) {
+-		fpu_fxsave(fpu);
+-	} else {
+-		asm volatile("fnsave %[fx]; fwait"
+-			     : [fx] "=m" (fpu->state->fsave));
+-		return 0;
+-	}
+-
+-	/*
+-	 * If exceptions are pending, we need to clear them so
+-	 * that we don't randomly get exceptions later.
+-	 *
+-	 * FIXME! Is this perhaps only true for the old-style
+-	 * irq13 case? Maybe we could leave the x87 state
+-	 * intact otherwise?
+-	 */
+-	if (unlikely(fpu->state->fxsave.swd & X87_FSW_ES)) {
+-		asm volatile("fnclex");
+-		return 0;
+-	}
+-	return 1;
+-}
+-
+-static inline int __save_init_fpu(struct task_struct *tsk)
+-{
+-	return fpu_save_init(&tsk->thread.fpu);
+-}
+-
+-static inline int fpu_fxrstor_checking(struct fpu *fpu)
+-{
+-	return fxrstor_checking(&fpu->state->fxsave);
+-}
+-
+-static inline int fpu_restore_checking(struct fpu *fpu)
+-{
+-	if (use_xsave())
+-		return fpu_xrstor_checking(fpu);
+-	else
+-		return fpu_fxrstor_checking(fpu);
+-}
+-
+-static inline int restore_fpu_checking(struct task_struct *tsk)
+-{
+-	/* AMD K7/K8 CPUs don't save/restore FDP/FIP/FOP unless an exception
+-	   is pending.  Clear the x87 state here by setting it to fixed
+-	   values. "m" is a random variable that should be in L1 */
+-	alternative_input(
+-		ASM_NOP8 ASM_NOP2,
+-		"emms\n\t"	  	/* clear stack tags */
+-		"fildl %P[addr]",	/* set F?P to defined value */
+-		X86_FEATURE_FXSAVE_LEAK,
+-		[addr] "m" (tsk->thread.fpu.has_fpu));
+-
+-	return fpu_restore_checking(&tsk->thread.fpu);
+-}
+-
+-/*
+- * Software FPU state helpers. Careful: these need to
+- * be preemption protection *and* they need to be
+- * properly paired with the CR0.TS changes!
+- */
+-static inline int __thread_has_fpu(struct task_struct *tsk)
+-{
+-	return tsk->thread.fpu.has_fpu;
+-}
+-
+-/* Must be paired with an 'stts' after! */
+-static inline void __thread_clear_has_fpu(struct task_struct *tsk)
+-{
+-	tsk->thread.fpu.has_fpu = 0;
+-	percpu_write(fpu_owner_task, NULL);
+-}
+-
+-/* Must be paired with a 'clts' before! */
+-static inline void __thread_set_has_fpu(struct task_struct *tsk)
+-{
+-	tsk->thread.fpu.has_fpu = 1;
+-	percpu_write(fpu_owner_task, tsk);
+-}
+-
+-/*
+- * Encapsulate the CR0.TS handling together with the
+- * software flag.
+- *
+- * These generally need preemption protection to work,
+- * do try to avoid using these on their own.
+- */
+-static inline void __thread_fpu_end(struct task_struct *tsk)
+-{
+-	__thread_clear_has_fpu(tsk);
+-	stts();
+-}
+-
+-static inline void __thread_fpu_begin(struct task_struct *tsk)
+-{
+-	clts();
+-	__thread_set_has_fpu(tsk);
+-}
+-
+-/*
+- * FPU state switching for scheduling.
+- *
+- * This is a two-stage process:
+- *
+- *  - switch_fpu_prepare() saves the old state and
+- *    sets the new state of the CR0.TS bit. This is
+- *    done within the context of the old process.
+- *
+- *  - switch_fpu_finish() restores the new state as
+- *    necessary.
+- */
+-typedef struct { int preload; } fpu_switch_t;
+-
+-/*
+- * FIXME! We could do a totally lazy restore, but we need to
+- * add a per-cpu "this was the task that last touched the FPU
+- * on this CPU" variable, and the task needs to have a "I last
+- * touched the FPU on this CPU" and check them.
+- *
+- * We don't do that yet, so "fpu_lazy_restore()" always returns
+- * false, but some day..
+- */
+-static inline int fpu_lazy_restore(struct task_struct *new, unsigned int cpu)
+-{
+-	return new == percpu_read_stable(fpu_owner_task) &&
+-		cpu == new->thread.fpu.last_cpu;
+-}
+-
+-static inline fpu_switch_t switch_fpu_prepare(struct task_struct *old, struct task_struct *new, int cpu)
+-{
+-	fpu_switch_t fpu;
+-
+-	fpu.preload = tsk_used_math(new) && new->fpu_counter > 5;
+-	if (__thread_has_fpu(old)) {
+-		if (!__save_init_fpu(old))
+-			cpu = ~0;
+-		old->thread.fpu.last_cpu = cpu;
+-		old->thread.fpu.has_fpu = 0;	/* But leave fpu_owner_task! */
+-
+-		/* Don't change CR0.TS if we just switch! */
+-		if (fpu.preload) {
+-			new->fpu_counter++;
+-			__thread_set_has_fpu(new);
+-			prefetch(new->thread.fpu.state);
+-		} else
+-			stts();
+-	} else {
+-		old->fpu_counter = 0;
+-		old->thread.fpu.last_cpu = ~0;
+-		if (fpu.preload) {
+-			new->fpu_counter++;
+-			if (fpu_lazy_restore(new, cpu))
+-				fpu.preload = 0;
+-			else
+-				prefetch(new->thread.fpu.state);
+-			__thread_fpu_begin(new);
+-		}
+-	}
+-	return fpu;
+-}
+-
+-/*
+- * By the time this gets called, we've already cleared CR0.TS and
+- * given the process the FPU if we are going to preload the FPU
+- * state - all we need to do is to conditionally restore the register
+- * state itself.
+- */
+-static inline void switch_fpu_finish(struct task_struct *new, fpu_switch_t fpu)
+-{
+-	if (fpu.preload) {
+-		if (unlikely(restore_fpu_checking(new)))
+-			__thread_fpu_end(new);
+-	}
+-}
+-
+-/*
+- * Signal frame handlers...
+- */
+-extern int save_i387_xstate(void __user *buf);
+-extern int restore_i387_xstate(void __user *buf);
+-
+-static inline void __clear_fpu(struct task_struct *tsk)
+-{
+-	if (__thread_has_fpu(tsk)) {
+-		/* Ignore delayed exceptions from user space */
+-		asm volatile("1: fwait\n"
+-			     "2:\n"
+-			     _ASM_EXTABLE(1b, 2b));
+-		__thread_fpu_end(tsk);
+-	}
+-}
+-
+-/*
+- * Were we in an interrupt that interrupted kernel mode?
+- *
+- * We can do a kernel_fpu_begin/end() pair *ONLY* if that
+- * pair does nothing at all: the thread must not have fpu (so
+- * that we don't try to save the FPU state), and TS must
+- * be set (so that the clts/stts pair does nothing that is
+- * visible in the interrupted kernel thread).
+- */
+-static inline bool interrupted_kernel_fpu_idle(void)
+-{
+-	return !__thread_has_fpu(current) &&
+-		(read_cr0() & X86_CR0_TS);
+-}
+-
+-/*
+- * Were we in user mode (or vm86 mode) when we were
+- * interrupted?
+- *
+- * Doing kernel_fpu_begin/end() is ok if we are running
+- * in an interrupt context from user mode - we'll just
+- * save the FPU state as required.
+- */
+-static inline bool interrupted_user_mode(void)
+-{
+-	struct pt_regs *regs = get_irq_regs();
+-	return regs && user_mode_vm(regs);
+-}
+-
+-/*
+- * Can we use the FPU in kernel mode with the
+- * whole "kernel_fpu_begin/end()" sequence?
+- *
+- * It's always ok in process context (ie "not interrupt")
+- * but it is sometimes ok even from an irq.
+- */
+-static inline bool irq_fpu_usable(void)
+-{
+-	return !in_interrupt() ||
+-		interrupted_user_mode() ||
+-		interrupted_kernel_fpu_idle();
+-}
+-
+-static inline void kernel_fpu_begin(void)
+-{
+-	struct task_struct *me = current;
+-
+-	WARN_ON_ONCE(!irq_fpu_usable());
+-	preempt_disable();
+-	if (__thread_has_fpu(me)) {
+-		__save_init_fpu(me);
+-		__thread_clear_has_fpu(me);
+-		/* We do 'stts()' in kernel_fpu_end() */
+-	} else {
+-		percpu_write(fpu_owner_task, NULL);
+-		clts();
+-	}
+-}
+-
+-static inline void kernel_fpu_end(void)
+-{
+-	stts();
+-	preempt_enable();
+-}
++extern bool irq_fpu_usable(void);
++extern void kernel_fpu_begin(void);
++extern void kernel_fpu_end(void);
+ 
+ /*
+  * Some instructions like VIA's padlock instructions generate a spurious
+@@ -524,126 +66,13 @@ static inline void irq_ts_restore(int TS_state)
+  * we can just assume we have FPU access - typically
+  * to save the FP state - we'll just take a #NM
+  * fault and get the FPU access back.
+- *
+- * The actual user_fpu_begin/end() functions
+- * need to be preemption-safe, though.
+- *
+- * NOTE! user_fpu_end() must be used only after you
+- * have saved the FP state, and user_fpu_begin() must
+- * be used only immediately before restoring it.
+- * These functions do not do any save/restore on
+- * their own.
+  */
+ static inline int user_has_fpu(void)
+ {
+-	return __thread_has_fpu(current);
+-}
+-
+-static inline void user_fpu_end(void)
+-{
+-	preempt_disable();
+-	__thread_fpu_end(current);
+-	preempt_enable();
+-}
+-
+-static inline void user_fpu_begin(void)
+-{
+-	preempt_disable();
+-	if (!user_has_fpu())
+-		__thread_fpu_begin(current);
+-	preempt_enable();
+-}
+-
+-/*
+- * These disable preemption on their own and are safe
+- */
+-static inline void save_init_fpu(struct task_struct *tsk)
+-{
+-	WARN_ON_ONCE(!__thread_has_fpu(tsk));
+-	preempt_disable();
+-	__save_init_fpu(tsk);
+-	__thread_fpu_end(tsk);
+-	preempt_enable();
+-}
+-
+-static inline void unlazy_fpu(struct task_struct *tsk)
+-{
+-	preempt_disable();
+-	if (__thread_has_fpu(tsk)) {
+-		__save_init_fpu(tsk);
+-		__thread_fpu_end(tsk);
+-	} else
+-		tsk->fpu_counter = 0;
+-	preempt_enable();
+-}
+-
+-static inline void clear_fpu(struct task_struct *tsk)
+-{
+-	preempt_disable();
+-	__clear_fpu(tsk);
+-	preempt_enable();
+-}
+-
+-/*
+- * i387 state interaction
+- */
+-static inline unsigned short get_fpu_cwd(struct task_struct *tsk)
+-{
+-	if (cpu_has_fxsr) {
+-		return tsk->thread.fpu.state->fxsave.cwd;
+-	} else {
+-		return (unsigned short)tsk->thread.fpu.state->fsave.cwd;
+-	}
+-}
+-
+-static inline unsigned short get_fpu_swd(struct task_struct *tsk)
+-{
+-	if (cpu_has_fxsr) {
+-		return tsk->thread.fpu.state->fxsave.swd;
+-	} else {
+-		return (unsigned short)tsk->thread.fpu.state->fsave.swd;
+-	}
+-}
+-
+-static inline unsigned short get_fpu_mxcsr(struct task_struct *tsk)
+-{
+-	if (cpu_has_xmm) {
+-		return tsk->thread.fpu.state->fxsave.mxcsr;
+-	} else {
+-		return MXCSR_DEFAULT;
+-	}
+-}
+-
+-static bool fpu_allocated(struct fpu *fpu)
+-{
+-	return fpu->state != NULL;
+-}
+-
+-static inline int fpu_alloc(struct fpu *fpu)
+-{
+-	if (fpu_allocated(fpu))
+-		return 0;
+-	fpu->state = kmem_cache_alloc(task_xstate_cachep, GFP_KERNEL);
+-	if (!fpu->state)
+-		return -ENOMEM;
+-	WARN_ON((unsigned long)fpu->state & 15);
+-	return 0;
+-}
+-
+-static inline void fpu_free(struct fpu *fpu)
+-{
+-	if (fpu->state) {
+-		kmem_cache_free(task_xstate_cachep, fpu->state);
+-		fpu->state = NULL;
+-	}
+-}
+-
+-static inline void fpu_copy(struct fpu *dst, struct fpu *src)
+-{
+-	memcpy(dst->state, src->state, xstate_size);
++	return current->thread.fpu.has_fpu;
+ }
+ 
+-extern void fpu_finit(struct fpu *fpu);
++extern void unlazy_fpu(struct task_struct *tsk);
+ 
+ #endif /* __ASSEMBLY__ */
+ 
+diff --git a/arch/x86/include/asm/ia32.h b/arch/x86/include/asm/ia32.h
+index 1f7e625..ee52760 100644
+--- a/arch/x86/include/asm/ia32.h
++++ b/arch/x86/include/asm/ia32.h
+@@ -43,6 +43,15 @@ struct ucontext_ia32 {
+ 	compat_sigset_t	  uc_sigmask;	/* mask last for extensibility */
+ };
+ 
++struct ucontext_x32 {
++	unsigned int	  uc_flags;
++	unsigned int 	  uc_link;
++	stack_ia32_t	  uc_stack;
++	unsigned int	  uc__pad0;     /* needed for alignment */
++	struct sigcontext uc_mcontext;  /* the 64-bit sigcontext type */
++	compat_sigset_t	  uc_sigmask;	/* mask last for extensibility */
++};
++
+ /* This matches struct stat64 in glibc2.2, hence the absolutely
+  * insane amounts of padding around dev_t's.
+  */
+@@ -116,6 +125,15 @@ typedef struct compat_siginfo {
+ 			compat_clock_t _stime;
+ 		} _sigchld;
+ 
++		/* SIGCHLD (x32 version) */
++		struct {
++			unsigned int _pid;	/* which child */
++			unsigned int _uid;	/* sender's uid */
++			int _status;		/* exit code */
++			compat_s64 _utime;
++			compat_s64 _stime;
++		} _sigchld_x32;
++
+ 		/* SIGILL, SIGFPE, SIGSEGV, SIGBUS */
+ 		struct {
+ 			unsigned int _addr;	/* faulting insn/memory ref. */
+diff --git a/arch/x86/include/asm/idle.h b/arch/x86/include/asm/idle.h
+index f49253d7..c5d1785 100644
+--- a/arch/x86/include/asm/idle.h
++++ b/arch/x86/include/asm/idle.h
+@@ -14,6 +14,7 @@ void exit_idle(void);
+ #else /* !CONFIG_X86_64 */
+ static inline void enter_idle(void) { }
+ static inline void exit_idle(void) { }
++static inline void __exit_idle(void) { }
+ #endif /* CONFIG_X86_64 */
+ 
+ void amd_e400_remove_cpu(int cpu);
+diff --git a/arch/x86/include/asm/inat.h b/arch/x86/include/asm/inat.h
+index 205b063..74a2e31 100644
+--- a/arch/x86/include/asm/inat.h
++++ b/arch/x86/include/asm/inat.h
+@@ -97,11 +97,12 @@
+ 
+ /* Attribute search APIs */
+ extern insn_attr_t inat_get_opcode_attribute(insn_byte_t opcode);
++extern int inat_get_last_prefix_id(insn_byte_t last_pfx);
+ extern insn_attr_t inat_get_escape_attribute(insn_byte_t opcode,
+-					     insn_byte_t last_pfx,
++					     int lpfx_id,
+ 					     insn_attr_t esc_attr);
+ extern insn_attr_t inat_get_group_attribute(insn_byte_t modrm,
+-					    insn_byte_t last_pfx,
++					    int lpfx_id,
+ 					    insn_attr_t esc_attr);
+ extern insn_attr_t inat_get_avx_attribute(insn_byte_t opcode,
+ 					  insn_byte_t vex_m,
+diff --git a/arch/x86/include/asm/insn.h b/arch/x86/include/asm/insn.h
+index 74df3f1..48eb30a 100644
+--- a/arch/x86/include/asm/insn.h
++++ b/arch/x86/include/asm/insn.h
+@@ -96,12 +96,6 @@ struct insn {
+ #define X86_VEX_P(vex)	((vex) & 0x03)		/* VEX3 Byte2, VEX2 Byte1 */
+ #define X86_VEX_M_MAX	0x1f			/* VEX3.M Maximum value */
+ 
+-/* The last prefix is needed for two-byte and three-byte opcodes */
+-static inline insn_byte_t insn_last_prefix(struct insn *insn)
+-{
+-	return insn->prefixes.bytes[3];
+-}
+-
+ extern void insn_init(struct insn *insn, const void *kaddr, int x86_64);
+ extern void insn_get_prefixes(struct insn *insn);
+ extern void insn_get_opcode(struct insn *insn);
+@@ -160,6 +154,18 @@ static inline insn_byte_t insn_vex_p_bits(struct insn *insn)
+ 		return X86_VEX_P(insn->vex_prefix.bytes[2]);
+ }
+ 
++/* Get the last prefix id from last prefix or VEX prefix */
++static inline int insn_last_prefix_id(struct insn *insn)
++{
++	if (insn_is_avx(insn))
++		return insn_vex_p_bits(insn);	/* VEX_p is a SIMD prefix id */
++
++	if (insn->prefixes.bytes[3])
++		return inat_get_last_prefix_id(insn->prefixes.bytes[3]);
++
++	return 0;
++}
++
+ /* Offset of each field from kaddr */
+ static inline int insn_offset_rex_prefix(struct insn *insn)
+ {
+diff --git a/arch/x86/include/asm/io_apic.h b/arch/x86/include/asm/io_apic.h
+index 690d1cc..2c4943d 100644
+--- a/arch/x86/include/asm/io_apic.h
++++ b/arch/x86/include/asm/io_apic.h
+@@ -21,6 +21,15 @@
+ #define IO_APIC_REDIR_LEVEL_TRIGGER	(1 << 15)
+ #define IO_APIC_REDIR_MASKED		(1 << 16)
+ 
++struct io_apic_ops {
++	void		(*init)  (void);
++	unsigned int	(*read)  (unsigned int apic, unsigned int reg);
++	void		(*write) (unsigned int apic, unsigned int reg, unsigned int value);
++	void		(*modify)(unsigned int apic, unsigned int reg, unsigned int value);
++};
++
++void __init set_io_apic_ops(const struct io_apic_ops *);
++
+ /*
+  * The structure of the IO-APIC:
+  */
+diff --git a/arch/x86/include/asm/irq_controller.h b/arch/x86/include/asm/irq_controller.h
+deleted file mode 100644
+index 423bbbd..0000000
+--- a/arch/x86/include/asm/irq_controller.h
++++ /dev/null
+@@ -1,12 +0,0 @@
+-#ifndef __IRQ_CONTROLLER__
+-#define __IRQ_CONTROLLER__
+-
+-struct irq_domain {
+-	int (*xlate)(struct irq_domain *h, const u32 *intspec, u32 intsize,
+-			u32 *out_hwirq, u32 *out_type);
+-	void *priv;
+-	struct device_node *controller;
+-	struct list_head l;
+-};
+-
+-#endif
+diff --git a/arch/x86/include/asm/jump_label.h b/arch/x86/include/asm/jump_label.h
+index a32b18c..3a16c14 100644
+--- a/arch/x86/include/asm/jump_label.h
++++ b/arch/x86/include/asm/jump_label.h
+@@ -9,12 +9,12 @@
+ 
+ #define JUMP_LABEL_NOP_SIZE 5
+ 
+-#define JUMP_LABEL_INITIAL_NOP ".byte 0xe9 \n\t .long 0\n\t"
++#define STATIC_KEY_INITIAL_NOP ".byte 0xe9 \n\t .long 0\n\t"
+ 
+-static __always_inline bool arch_static_branch(struct jump_label_key *key)
++static __always_inline bool arch_static_branch(struct static_key *key)
+ {
+ 	asm goto("1:"
+-		JUMP_LABEL_INITIAL_NOP
++		STATIC_KEY_INITIAL_NOP
+ 		".pushsection __jump_table,  \"aw\" \n\t"
+ 		_ASM_ALIGN "\n\t"
+ 		_ASM_PTR "1b, %l[l_yes], %c0 \n\t"
+diff --git a/arch/x86/include/asm/kgdb.h b/arch/x86/include/asm/kgdb.h
+index 77e95f5..332f98c 100644
+--- a/arch/x86/include/asm/kgdb.h
++++ b/arch/x86/include/asm/kgdb.h
+@@ -64,11 +64,15 @@ enum regnames {
+ 	GDB_PS,			/* 17 */
+ 	GDB_CS,			/* 18 */
+ 	GDB_SS,			/* 19 */
++	GDB_DS,			/* 20 */
++	GDB_ES,			/* 21 */
++	GDB_FS,			/* 22 */
++	GDB_GS,			/* 23 */
+ };
+ #define GDB_ORIG_AX		57
+-#define DBG_MAX_REG_NUM		20
+-/* 17 64 bit regs and 3 32 bit regs */
+-#define NUMREGBYTES		((17 * 8) + (3 * 4))
++#define DBG_MAX_REG_NUM		24
++/* 17 64 bit regs and 5 32 bit regs */
++#define NUMREGBYTES		((17 * 8) + (5 * 4))
+ #endif /* ! CONFIG_X86_32 */
+ 
+ static inline void arch_kgdb_breakpoint(void)
+diff --git a/arch/x86/include/asm/kvm.h b/arch/x86/include/asm/kvm.h
+index 4d8dcbd..e7d1c19 100644
+--- a/arch/x86/include/asm/kvm.h
++++ b/arch/x86/include/asm/kvm.h
+@@ -321,4 +321,8 @@ struct kvm_xcrs {
+ 	__u64 padding[16];
+ };
+ 
++/* definition of registers in kvm_run */
++struct kvm_sync_regs {
++};
++
+ #endif /* _ASM_X86_KVM_H */
+diff --git a/arch/x86/include/asm/kvm_emulate.h b/arch/x86/include/asm/kvm_emulate.h
+index 7b9cfc4..c222e1a 100644
+--- a/arch/x86/include/asm/kvm_emulate.h
++++ b/arch/x86/include/asm/kvm_emulate.h
+@@ -176,6 +176,7 @@ struct x86_emulate_ops {
+ 	void (*set_idt)(struct x86_emulate_ctxt *ctxt, struct desc_ptr *dt);
+ 	ulong (*get_cr)(struct x86_emulate_ctxt *ctxt, int cr);
+ 	int (*set_cr)(struct x86_emulate_ctxt *ctxt, int cr, ulong val);
++	void (*set_rflags)(struct x86_emulate_ctxt *ctxt, ulong val);
+ 	int (*cpl)(struct x86_emulate_ctxt *ctxt);
+ 	int (*get_dr)(struct x86_emulate_ctxt *ctxt, int dr, ulong *dest);
+ 	int (*set_dr)(struct x86_emulate_ctxt *ctxt, int dr, ulong value);
+@@ -388,7 +389,7 @@ bool x86_page_table_writing_insn(struct x86_emulate_ctxt *ctxt);
+ #define EMULATION_INTERCEPTED 2
+ int x86_emulate_insn(struct x86_emulate_ctxt *ctxt);
+ int emulator_task_switch(struct x86_emulate_ctxt *ctxt,
+-			 u16 tss_selector, int reason,
++			 u16 tss_selector, int idt_index, int reason,
+ 			 bool has_error_code, u32 error_code);
+ int emulate_int_real(struct x86_emulate_ctxt *ctxt, int irq);
+ #endif /* _ASM_X86_KVM_X86_EMULATE_H */
+diff --git a/arch/x86/include/asm/kvm_host.h b/arch/x86/include/asm/kvm_host.h
+index 52d6640..e216ba0 100644
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -29,7 +29,7 @@
+ #include <asm/msr-index.h>
+ 
+ #define KVM_MAX_VCPUS 254
+-#define KVM_SOFT_MAX_VCPUS 64
++#define KVM_SOFT_MAX_VCPUS 160
+ #define KVM_MEMORY_SLOTS 32
+ /* memory slots that does not exposed to userspace */
+ #define KVM_PRIVATE_MEM_SLOTS 4
+@@ -181,13 +181,6 @@ struct kvm_mmu_memory_cache {
+ 	void *objects[KVM_NR_MEM_OBJS];
+ };
+ 
+-#define NR_PTE_CHAIN_ENTRIES 5
+-
+-struct kvm_pte_chain {
+-	u64 *parent_ptes[NR_PTE_CHAIN_ENTRIES];
+-	struct hlist_node link;
+-};
+-
+ /*
+  * kvm_mmu_page_role, below, is defined as:
+  *
+@@ -427,12 +420,16 @@ struct kvm_vcpu_arch {
+ 
+ 	u64 last_guest_tsc;
+ 	u64 last_kernel_ns;
+-	u64 last_tsc_nsec;
+-	u64 last_tsc_write;
+-	u32 virtual_tsc_khz;
++	u64 last_host_tsc;
++	u64 tsc_offset_adjustment;
++	u64 this_tsc_nsec;
++	u64 this_tsc_write;
++	u8  this_tsc_generation;
+ 	bool tsc_catchup;
+-	u32  tsc_catchup_mult;
+-	s8   tsc_catchup_shift;
++	bool tsc_always_catchup;
++	s8 virtual_tsc_shift;
++	u32 virtual_tsc_mult;
++	u32 virtual_tsc_khz;
+ 
+ 	atomic_t nmi_queued;  /* unprocessed asynchronous NMIs */
+ 	unsigned nmi_pending; /* NMI queued after currently running handler */
+@@ -478,6 +475,21 @@ struct kvm_vcpu_arch {
+ 		u32 id;
+ 		bool send_user_only;
+ 	} apf;
++
++	/* OSVW MSRs (AMD only) */
++	struct {
++		u64 length;
++		u64 status;
++	} osvw;
++};
++
++struct kvm_lpage_info {
++	unsigned long rmap_pde;
++	int write_count;
++};
++
++struct kvm_arch_memory_slot {
++	struct kvm_lpage_info *lpage_info[KVM_NR_PAGE_SIZES - 1];
+ };
+ 
+ struct kvm_arch {
+@@ -511,8 +523,12 @@ struct kvm_arch {
+ 	s64 kvmclock_offset;
+ 	raw_spinlock_t tsc_write_lock;
+ 	u64 last_tsc_nsec;
+-	u64 last_tsc_offset;
+ 	u64 last_tsc_write;
++	u32 last_tsc_khz;
++	u64 cur_tsc_nsec;
++	u64 cur_tsc_write;
++	u64 cur_tsc_offset;
++	u8  cur_tsc_generation;
+ 
+ 	struct kvm_xen_hvm_config xen_hvm_config;
+ 
+@@ -644,7 +660,7 @@ struct kvm_x86_ops {
+ 	u64 (*get_mt_mask)(struct kvm_vcpu *vcpu, gfn_t gfn, bool is_mmio);
+ 	int (*get_lpage_level)(void);
+ 	bool (*rdtscp_supported)(void);
+-	void (*adjust_tsc_offset)(struct kvm_vcpu *vcpu, s64 adjustment);
++	void (*adjust_tsc_offset)(struct kvm_vcpu *vcpu, s64 adjustment, bool host);
+ 
+ 	void (*set_tdp_cr3)(struct kvm_vcpu *vcpu, unsigned long cr3);
+ 
+@@ -652,7 +668,7 @@ struct kvm_x86_ops {
+ 
+ 	bool (*has_wbinvd_exit)(void);
+ 
+-	void (*set_tsc_khz)(struct kvm_vcpu *vcpu, u32 user_tsc_khz);
++	void (*set_tsc_khz)(struct kvm_vcpu *vcpu, u32 user_tsc_khz, bool scale);
+ 	void (*write_tsc_offset)(struct kvm_vcpu *vcpu, u64 offset);
+ 
+ 	u64 (*compute_tsc_offset)(struct kvm_vcpu *vcpu, u64 target_tsc);
+@@ -674,6 +690,17 @@ struct kvm_arch_async_pf {
+ 
+ extern struct kvm_x86_ops *kvm_x86_ops;
+ 
++static inline void adjust_tsc_offset_guest(struct kvm_vcpu *vcpu,
++					   s64 adjustment)
++{
++	kvm_x86_ops->adjust_tsc_offset(vcpu, adjustment, false);
++}
++
++static inline void adjust_tsc_offset_host(struct kvm_vcpu *vcpu, s64 adjustment)
++{
++	kvm_x86_ops->adjust_tsc_offset(vcpu, adjustment, true);
++}
++
+ int kvm_mmu_module_init(void);
+ void kvm_mmu_module_exit(void);
+ 
+@@ -741,8 +768,8 @@ int kvm_emulate_wbinvd(struct kvm_vcpu *vcpu);
+ void kvm_get_segment(struct kvm_vcpu *vcpu, struct kvm_segment *var, int seg);
+ int kvm_load_segment_descriptor(struct kvm_vcpu *vcpu, u16 selector, int seg);
+ 
+-int kvm_task_switch(struct kvm_vcpu *vcpu, u16 tss_selector, int reason,
+-		    bool has_error_code, u32 error_code);
++int kvm_task_switch(struct kvm_vcpu *vcpu, u16 tss_selector, int idt_index,
++		    int reason, bool has_error_code, u32 error_code);
+ 
+ int kvm_set_cr0(struct kvm_vcpu *vcpu, unsigned long cr0);
+ int kvm_set_cr3(struct kvm_vcpu *vcpu, unsigned long cr3);
+diff --git a/arch/x86/include/asm/local.h b/arch/x86/include/asm/local.h
+index 9cdae5d..c8bed0d 100644
+--- a/arch/x86/include/asm/local.h
++++ b/arch/x86/include/asm/local.h
+@@ -3,7 +3,6 @@
+ 
+ #include <linux/percpu.h>
+ 
+-#include <asm/system.h>
+ #include <linux/atomic.h>
+ #include <asm/asm.h>
+ 
+diff --git a/arch/x86/include/asm/mc146818rtc.h b/arch/x86/include/asm/mc146818rtc.h
+index 0e8e85b..d354fb7 100644
+--- a/arch/x86/include/asm/mc146818rtc.h
++++ b/arch/x86/include/asm/mc146818rtc.h
+@@ -5,7 +5,6 @@
+ #define _ASM_X86_MC146818RTC_H
+ 
+ #include <asm/io.h>
+-#include <asm/system.h>
+ #include <asm/processor.h>
+ #include <linux/mc146818rtc.h>
+ 
+diff --git a/arch/x86/include/asm/mce.h b/arch/x86/include/asm/mce.h
+index 6aefb14..441520e 100644
+--- a/arch/x86/include/asm/mce.h
++++ b/arch/x86/include/asm/mce.h
+@@ -151,7 +151,7 @@ static inline void enable_p5_mce(void) {}
+ 
+ void mce_setup(struct mce *m);
+ void mce_log(struct mce *m);
+-extern struct device *mce_device[CONFIG_NR_CPUS];
++DECLARE_PER_CPU(struct device *, mce_device);
+ 
+ /*
+  * Maximum banks number.
+diff --git a/arch/x86/include/asm/mrst.h b/arch/x86/include/asm/mrst.h
+index 0a0a954..fc18bf3 100644
+--- a/arch/x86/include/asm/mrst.h
++++ b/arch/x86/include/asm/mrst.h
+@@ -26,8 +26,8 @@ extern struct sfi_rtc_table_entry sfi_mrtc_array[];
+  * identified via MSRs.
+  */
+ enum mrst_cpu_type {
+-	MRST_CPU_CHIP_LINCROFT = 1,
+-	MRST_CPU_CHIP_PENWELL,
++	/* 1 was Moorestown */
++	MRST_CPU_CHIP_PENWELL = 2,
+ };
+ 
+ extern enum mrst_cpu_type __mrst_cpu_chip;
+diff --git a/arch/x86/include/asm/msr-index.h b/arch/x86/include/asm/msr-index.h
+index a6962d9..ccb8059 100644
+--- a/arch/x86/include/asm/msr-index.h
++++ b/arch/x86/include/asm/msr-index.h
+@@ -56,6 +56,13 @@
+ #define MSR_OFFCORE_RSP_0		0x000001a6
+ #define MSR_OFFCORE_RSP_1		0x000001a7
+ 
++#define MSR_LBR_SELECT			0x000001c8
++#define MSR_LBR_TOS			0x000001c9
++#define MSR_LBR_NHM_FROM		0x00000680
++#define MSR_LBR_NHM_TO			0x000006c0
++#define MSR_LBR_CORE_FROM		0x00000040
++#define MSR_LBR_CORE_TO			0x00000060
++
+ #define MSR_IA32_PEBS_ENABLE		0x000003f1
+ #define MSR_IA32_DS_AREA		0x00000600
+ #define MSR_IA32_PERF_CAPABILITIES	0x00000345
+diff --git a/arch/x86/include/asm/mtrr.h b/arch/x86/include/asm/mtrr.h
+index 4365ffd..7e3f17f 100644
+--- a/arch/x86/include/asm/mtrr.h
++++ b/arch/x86/include/asm/mtrr.h
+@@ -29,18 +29,18 @@
+ 
+ #define	MTRR_IOCTL_BASE	'M'
+ 
+-struct mtrr_sentry {
+-    unsigned long base;    /*  Base address     */
+-    unsigned int size;    /*  Size of region   */
+-    unsigned int type;     /*  Type of region   */
+-};
+-
+ /* Warning: this structure has a different order from i386
+    on x86-64. The 32bit emulation code takes care of that.
+    But you need to use this for 64bit, otherwise your X server
+    will break. */
+ 
+ #ifdef __i386__
++struct mtrr_sentry {
++    unsigned long base;    /*  Base address     */
++    unsigned int size;    /*  Size of region   */
++    unsigned int type;     /*  Type of region   */
++};
++
+ struct mtrr_gentry {
+     unsigned int regnum;   /*  Register number  */
+     unsigned long base;    /*  Base address     */
+@@ -50,12 +50,20 @@ struct mtrr_gentry {
+ 
+ #else /* __i386__ */
+ 
++struct mtrr_sentry {
++	__u64 base;		/*  Base address     */
++	__u32 size;		/*  Size of region   */
++	__u32 type;		/*  Type of region   */
++};
++
+ struct mtrr_gentry {
+-    unsigned long base;    /*  Base address     */
+-    unsigned int size;    /*  Size of region   */
+-    unsigned int regnum;   /*  Register number  */
+-    unsigned int type;     /*  Type of region   */
++	__u64 base;		/*  Base address     */
++	__u32 size;		/*  Size of region   */
++	__u32 regnum;		/*  Register number  */
++	__u32 type;		/*  Type of region   */
++	__u32 _pad;		/*  Unused	     */
+ };
++
+ #endif /* !__i386__ */
+ 
+ struct mtrr_var_range {
+diff --git a/arch/x86/include/asm/page_types.h b/arch/x86/include/asm/page_types.h
+index bce688d..e21fdd1 100644
+--- a/arch/x86/include/asm/page_types.h
++++ b/arch/x86/include/asm/page_types.h
+@@ -55,7 +55,6 @@ extern unsigned long init_memory_mapping(unsigned long start,
+ 					 unsigned long end);
+ 
+ extern void initmem_init(void);
+-extern void free_initmem(void);
+ 
+ #endif	/* !__ASSEMBLY__ */
+ 
+diff --git a/arch/x86/include/asm/paravirt.h b/arch/x86/include/asm/paravirt.h
+index a7d2db9..aa0f913 100644
+--- a/arch/x86/include/asm/paravirt.h
++++ b/arch/x86/include/asm/paravirt.h
+@@ -10,6 +10,7 @@
+ #include <asm/paravirt_types.h>
+ 
+ #ifndef __ASSEMBLY__
++#include <linux/bug.h>
+ #include <linux/types.h>
+ #include <linux/cpumask.h>
+ 
+@@ -230,9 +231,9 @@ static inline unsigned long long paravirt_sched_clock(void)
+ 	return PVOP_CALL0(unsigned long long, pv_time_ops.sched_clock);
+ }
+ 
+-struct jump_label_key;
+-extern struct jump_label_key paravirt_steal_enabled;
+-extern struct jump_label_key paravirt_steal_rq_enabled;
++struct static_key;
++extern struct static_key paravirt_steal_enabled;
++extern struct static_key paravirt_steal_rq_enabled;
+ 
+ static inline u64 paravirt_steal_clock(int cpu)
+ {
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 461ce43..2291895 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -23,6 +23,7 @@
+ #define ARCH_PERFMON_EVENTSEL_USR			(1ULL << 16)
+ #define ARCH_PERFMON_EVENTSEL_OS			(1ULL << 17)
+ #define ARCH_PERFMON_EVENTSEL_EDGE			(1ULL << 18)
++#define ARCH_PERFMON_EVENTSEL_PIN_CONTROL		(1ULL << 19)
+ #define ARCH_PERFMON_EVENTSEL_INT			(1ULL << 20)
+ #define ARCH_PERFMON_EVENTSEL_ANY			(1ULL << 21)
+ #define ARCH_PERFMON_EVENTSEL_ENABLE			(1ULL << 22)
+@@ -188,8 +189,6 @@ extern u32 get_ibs_caps(void);
+ #ifdef CONFIG_PERF_EVENTS
+ extern void perf_events_lapic_init(void);
+ 
+-#define PERF_EVENT_INDEX_OFFSET			0
+-
+ /*
+  * Abuse bit 3 of the cpu eflags register to indicate proper PEBS IP fixups.
+  * This flag is otherwise unused and ABI specified to be 0, so nobody should
+diff --git a/arch/x86/include/asm/posix_types.h b/arch/x86/include/asm/posix_types.h
+index bb7133d..3427b77 100644
+--- a/arch/x86/include/asm/posix_types.h
++++ b/arch/x86/include/asm/posix_types.h
+@@ -7,7 +7,9 @@
+ #else
+ # ifdef __i386__
+ #  include "posix_types_32.h"
+-# else
++# elif defined(__LP64__)
+ #  include "posix_types_64.h"
++# else
++#  include "posix_types_x32.h"
+ # endif
+ #endif
+diff --git a/arch/x86/include/asm/posix_types_32.h b/arch/x86/include/asm/posix_types_32.h
+index f7d9adf..99f262e 100644
+--- a/arch/x86/include/asm/posix_types_32.h
++++ b/arch/x86/include/asm/posix_types_32.h
+@@ -7,79 +7,22 @@
+  * assume GCC is being used.
+  */
+ 
+-typedef unsigned long	__kernel_ino_t;
+ typedef unsigned short	__kernel_mode_t;
++#define __kernel_mode_t __kernel_mode_t
++
+ typedef unsigned short	__kernel_nlink_t;
+-typedef long		__kernel_off_t;
+-typedef int		__kernel_pid_t;
++#define __kernel_nlink_t __kernel_nlink_t
++
+ typedef unsigned short	__kernel_ipc_pid_t;
++#define __kernel_ipc_pid_t __kernel_ipc_pid_t
++
+ typedef unsigned short	__kernel_uid_t;
+ typedef unsigned short	__kernel_gid_t;
+-typedef unsigned int	__kernel_size_t;
+-typedef int		__kernel_ssize_t;
+-typedef int		__kernel_ptrdiff_t;
+-typedef long		__kernel_time_t;
+-typedef long		__kernel_suseconds_t;
+-typedef long		__kernel_clock_t;
+-typedef int		__kernel_timer_t;
+-typedef int		__kernel_clockid_t;
+-typedef int		__kernel_daddr_t;
+-typedef char *		__kernel_caddr_t;
+-typedef unsigned short	__kernel_uid16_t;
+-typedef unsigned short	__kernel_gid16_t;
+-typedef unsigned int	__kernel_uid32_t;
+-typedef unsigned int	__kernel_gid32_t;
++#define __kernel_uid_t __kernel_uid_t
+ 
+-typedef unsigned short	__kernel_old_uid_t;
+-typedef unsigned short	__kernel_old_gid_t;
+ typedef unsigned short	__kernel_old_dev_t;
++#define __kernel_old_dev_t __kernel_old_dev_t
+ 
+-#ifdef __GNUC__
+-typedef long long	__kernel_loff_t;
+-#endif
+-
+-typedef struct {
+-	int	val[2];
+-} __kernel_fsid_t;
+-
+-#if defined(__KERNEL__)
+-
+-#undef	__FD_SET
+-#define __FD_SET(fd,fdsetp)					\
+-	asm volatile("btsl %1,%0":				\
+-		     "+m" (*(__kernel_fd_set *)(fdsetp))	\
+-		     : "r" ((int)(fd)))
+-
+-#undef	__FD_CLR
+-#define __FD_CLR(fd,fdsetp)					\
+-	asm volatile("btrl %1,%0":				\
+-		     "+m" (*(__kernel_fd_set *)(fdsetp))	\
+-		     : "r" ((int) (fd)))
+-
+-#undef	__FD_ISSET
+-#define __FD_ISSET(fd,fdsetp)					\
+-	(__extension__						\
+-	 ({							\
+-	 unsigned char __result;				\
+-	 asm volatile("btl %1,%2 ; setb %0"			\
+-		      : "=q" (__result)				\
+-		      : "r" ((int)(fd)),			\
+-			"m" (*(__kernel_fd_set *)(fdsetp)));	\
+-	 __result;						\
+-}))
+-
+-#undef	__FD_ZERO
+-#define __FD_ZERO(fdsetp)					\
+-do {								\
+-	int __d0, __d1;						\
+-	asm volatile("cld ; rep ; stosl"			\
+-		     : "=m" (*(__kernel_fd_set *)(fdsetp)),	\
+-		       "=&c" (__d0), "=&D" (__d1)		\
+-		     : "a" (0), "1" (__FDSET_LONGS),		\
+-		       "2" ((__kernel_fd_set *)(fdsetp))	\
+-		     : "memory");				\
+-} while (0)
+-
+-#endif /* defined(__KERNEL__) */
++#include <asm-generic/posix_types.h>
+ 
+ #endif /* _ASM_X86_POSIX_TYPES_32_H */
+diff --git a/arch/x86/include/asm/posix_types_64.h b/arch/x86/include/asm/posix_types_64.h
+index eb8d2d9..cba0c1e 100644
+--- a/arch/x86/include/asm/posix_types_64.h
++++ b/arch/x86/include/asm/posix_types_64.h
+@@ -7,113 +7,13 @@
+  * assume GCC is being used.
+  */
+ 
+-typedef unsigned long	__kernel_ino_t;
+-typedef unsigned int	__kernel_mode_t;
+-typedef unsigned long	__kernel_nlink_t;
+-typedef long		__kernel_off_t;
+-typedef int		__kernel_pid_t;
+-typedef int		__kernel_ipc_pid_t;
+-typedef unsigned int	__kernel_uid_t;
+-typedef unsigned int	__kernel_gid_t;
+-typedef unsigned long	__kernel_size_t;
+-typedef long		__kernel_ssize_t;
+-typedef long		__kernel_ptrdiff_t;
+-typedef long		__kernel_time_t;
+-typedef long		__kernel_suseconds_t;
+-typedef long		__kernel_clock_t;
+-typedef int		__kernel_timer_t;
+-typedef int		__kernel_clockid_t;
+-typedef int		__kernel_daddr_t;
+-typedef char *		__kernel_caddr_t;
+-typedef unsigned short	__kernel_uid16_t;
+-typedef unsigned short	__kernel_gid16_t;
+-
+-#ifdef __GNUC__
+-typedef long long	__kernel_loff_t;
+-#endif
+-
+-typedef struct {
+-	int	val[2];
+-} __kernel_fsid_t;
+-
+ typedef unsigned short __kernel_old_uid_t;
+ typedef unsigned short __kernel_old_gid_t;
+-typedef __kernel_uid_t __kernel_uid32_t;
+-typedef __kernel_gid_t __kernel_gid32_t;
++#define __kernel_old_uid_t __kernel_old_uid_t
+ 
+ typedef unsigned long	__kernel_old_dev_t;
++#define __kernel_old_dev_t __kernel_old_dev_t
+ 
+-#ifdef __KERNEL__
+-
+-#undef __FD_SET
+-static inline void __FD_SET(unsigned long fd, __kernel_fd_set *fdsetp)
+-{
+-	unsigned long _tmp = fd / __NFDBITS;
+-	unsigned long _rem = fd % __NFDBITS;
+-	fdsetp->fds_bits[_tmp] |= (1UL<<_rem);
+-}
+-
+-#undef __FD_CLR
+-static inline void __FD_CLR(unsigned long fd, __kernel_fd_set *fdsetp)
+-{
+-	unsigned long _tmp = fd / __NFDBITS;
+-	unsigned long _rem = fd % __NFDBITS;
+-	fdsetp->fds_bits[_tmp] &= ~(1UL<<_rem);
+-}
+-
+-#undef __FD_ISSET
+-static inline int __FD_ISSET(unsigned long fd, __const__ __kernel_fd_set *p)
+-{
+-	unsigned long _tmp = fd / __NFDBITS;
+-	unsigned long _rem = fd % __NFDBITS;
+-	return (p->fds_bits[_tmp] & (1UL<<_rem)) != 0;
+-}
+-
+-/*
+- * This will unroll the loop for the normal constant cases (8 or 32 longs,
+- * for 256 and 1024-bit fd_sets respectively)
+- */
+-#undef __FD_ZERO
+-static inline void __FD_ZERO(__kernel_fd_set *p)
+-{
+-	unsigned long *tmp = p->fds_bits;
+-	int i;
+-
+-	if (__builtin_constant_p(__FDSET_LONGS)) {
+-		switch (__FDSET_LONGS) {
+-		case 32:
+-			tmp[ 0] = 0; tmp[ 1] = 0; tmp[ 2] = 0; tmp[ 3] = 0;
+-			tmp[ 4] = 0; tmp[ 5] = 0; tmp[ 6] = 0; tmp[ 7] = 0;
+-			tmp[ 8] = 0; tmp[ 9] = 0; tmp[10] = 0; tmp[11] = 0;
+-			tmp[12] = 0; tmp[13] = 0; tmp[14] = 0; tmp[15] = 0;
+-			tmp[16] = 0; tmp[17] = 0; tmp[18] = 0; tmp[19] = 0;
+-			tmp[20] = 0; tmp[21] = 0; tmp[22] = 0; tmp[23] = 0;
+-			tmp[24] = 0; tmp[25] = 0; tmp[26] = 0; tmp[27] = 0;
+-			tmp[28] = 0; tmp[29] = 0; tmp[30] = 0; tmp[31] = 0;
+-			return;
+-		case 16:
+-			tmp[ 0] = 0; tmp[ 1] = 0; tmp[ 2] = 0; tmp[ 3] = 0;
+-			tmp[ 4] = 0; tmp[ 5] = 0; tmp[ 6] = 0; tmp[ 7] = 0;
+-			tmp[ 8] = 0; tmp[ 9] = 0; tmp[10] = 0; tmp[11] = 0;
+-			tmp[12] = 0; tmp[13] = 0; tmp[14] = 0; tmp[15] = 0;
+-			return;
+-		case 8:
+-			tmp[ 0] = 0; tmp[ 1] = 0; tmp[ 2] = 0; tmp[ 3] = 0;
+-			tmp[ 4] = 0; tmp[ 5] = 0; tmp[ 6] = 0; tmp[ 7] = 0;
+-			return;
+-		case 4:
+-			tmp[ 0] = 0; tmp[ 1] = 0; tmp[ 2] = 0; tmp[ 3] = 0;
+-			return;
+-		}
+-	}
+-	i = __FDSET_LONGS;
+-	while (i) {
+-		i--;
+-		*tmp = 0;
+-		tmp++;
+-	}
+-}
+-
+-#endif /* defined(__KERNEL__) */
++#include <asm-generic/posix_types.h>
+ 
+ #endif /* _ASM_X86_POSIX_TYPES_64_H */
+diff --git a/arch/x86/include/asm/posix_types_x32.h b/arch/x86/include/asm/posix_types_x32.h
+new file mode 100644
+index 0000000..85f9bda
+--- /dev/null
++++ b/arch/x86/include/asm/posix_types_x32.h
+@@ -0,0 +1,19 @@
++#ifndef _ASM_X86_POSIX_TYPES_X32_H
++#define _ASM_X86_POSIX_TYPES_X32_H
++
++/*
++ * This file is only used by user-level software, so you need to
++ * be a little careful about namespace pollution etc.  Also, we cannot
++ * assume GCC is being used.
++ *
++ * These types should generally match the ones used by the 64-bit kernel,
++ *
++ */
++
++typedef long long __kernel_long_t;
++typedef unsigned long long __kernel_ulong_t;
++#define __kernel_long_t __kernel_long_t
++
++#include <asm/posix_types_64.h>
++
++#endif /* _ASM_X86_POSIX_TYPES_X32_H */
+diff --git a/arch/x86/include/asm/processor.h b/arch/x86/include/asm/processor.h
+index 58545c9..7284c9a 100644
+--- a/arch/x86/include/asm/processor.h
++++ b/arch/x86/include/asm/processor.h
+@@ -14,13 +14,13 @@ struct mm_struct;
+ #include <asm/sigcontext.h>
+ #include <asm/current.h>
+ #include <asm/cpufeature.h>
+-#include <asm/system.h>
+ #include <asm/page.h>
+ #include <asm/pgtable_types.h>
+ #include <asm/percpu.h>
+ #include <asm/msr.h>
+ #include <asm/desc_defs.h>
+ #include <asm/nops.h>
++#include <asm/special_insns.h>
+ 
+ #include <linux/personality.h>
+ #include <linux/cpumask.h>
+@@ -29,6 +29,15 @@ struct mm_struct;
+ #include <linux/math64.h>
+ #include <linux/init.h>
+ #include <linux/err.h>
++#include <linux/irqflags.h>
++
++/*
++ * We handle most unaligned accesses in hardware.  On the other hand
++ * unaligned DMA can be quite expensive on some Nehalem processors.
++ *
++ * Based on this we disable the IP header alignment in network drivers.
++ */
++#define NET_IP_ALIGN	0
+ 
+ #define HBP_NUM 4
+ /*
+@@ -162,6 +171,7 @@ extern void early_cpu_init(void);
+ extern void identify_boot_cpu(void);
+ extern void identify_secondary_cpu(struct cpuinfo_x86 *);
+ extern void print_cpu_info(struct cpuinfo_x86 *);
++void print_cpu_msr(struct cpuinfo_x86 *);
+ extern void init_scattered_cpuid_features(struct cpuinfo_x86 *c);
+ extern unsigned int init_intel_cacheinfo(struct cpuinfo_x86 *c);
+ extern unsigned short num_cache_leaves;
+@@ -453,7 +463,7 @@ struct thread_struct {
+ 	unsigned long           ptrace_dr7;
+ 	/* Fault info: */
+ 	unsigned long		cr2;
+-	unsigned long		trap_no;
++	unsigned long		trap_nr;
+ 	unsigned long		error_code;
+ 	/* floating point and extended processor state */
+ 	struct fpu		fpu;
+@@ -474,61 +484,6 @@ struct thread_struct {
+ 	unsigned		io_bitmap_max;
+ };
+ 
+-static inline unsigned long native_get_debugreg(int regno)
+-{
+-	unsigned long val = 0;	/* Damn you, gcc! */
+-
+-	switch (regno) {
+-	case 0:
+-		asm("mov %%db0, %0" :"=r" (val));
+-		break;
+-	case 1:
+-		asm("mov %%db1, %0" :"=r" (val));
+-		break;
+-	case 2:
+-		asm("mov %%db2, %0" :"=r" (val));
+-		break;
+-	case 3:
+-		asm("mov %%db3, %0" :"=r" (val));
+-		break;
+-	case 6:
+-		asm("mov %%db6, %0" :"=r" (val));
+-		break;
+-	case 7:
+-		asm("mov %%db7, %0" :"=r" (val));
+-		break;
+-	default:
+-		BUG();
+-	}
+-	return val;
+-}
+-
+-static inline void native_set_debugreg(int regno, unsigned long value)
+-{
+-	switch (regno) {
+-	case 0:
+-		asm("mov %0, %%db0"	::"r" (value));
+-		break;
+-	case 1:
+-		asm("mov %0, %%db1"	::"r" (value));
+-		break;
+-	case 2:
+-		asm("mov %0, %%db2"	::"r" (value));
+-		break;
+-	case 3:
+-		asm("mov %0, %%db3"	::"r" (value));
+-		break;
+-	case 6:
+-		asm("mov %0, %%db6"	::"r" (value));
+-		break;
+-	case 7:
+-		asm("mov %0, %%db7"	::"r" (value));
+-		break;
+-	default:
+-		BUG();
+-	}
+-}
+-
+ /*
+  * Set IOPL bits in EFLAGS from given mask
+  */
+@@ -574,14 +529,6 @@ static inline void native_swapgs(void)
+ #define __cpuid			native_cpuid
+ #define paravirt_enabled()	0
+ 
+-/*
+- * These special macros can be used to get or set a debugging register
+- */
+-#define get_debugreg(var, register)				\
+-	(var) = native_get_debugreg(register)
+-#define set_debugreg(value, register)				\
+-	native_set_debugreg(register, value)
+-
+ static inline void load_sp0(struct tss_struct *tss,
+ 			    struct thread_struct *thread)
+ {
+@@ -926,9 +873,9 @@ extern unsigned long thread_saved_pc(struct task_struct *tsk);
+ #define IA32_PAGE_OFFSET	((current->personality & ADDR_LIMIT_3GB) ? \
+ 					0xc0000000 : 0xFFFFe000)
+ 
+-#define TASK_SIZE		(test_thread_flag(TIF_IA32) ? \
++#define TASK_SIZE		(test_thread_flag(TIF_ADDR32) ? \
+ 					IA32_PAGE_OFFSET : TASK_SIZE_MAX)
+-#define TASK_SIZE_OF(child)	((test_tsk_thread_flag(child, TIF_IA32)) ? \
++#define TASK_SIZE_OF(child)	((test_tsk_thread_flag(child, TIF_ADDR32)) ? \
+ 					IA32_PAGE_OFFSET : TASK_SIZE_MAX)
+ 
+ #define STACK_TOP		TASK_SIZE
+@@ -950,6 +897,12 @@ extern unsigned long thread_saved_pc(struct task_struct *tsk);
+ 
+ #define task_pt_regs(tsk)	((struct pt_regs *)(tsk)->thread.sp0 - 1)
+ extern unsigned long KSTK_ESP(struct task_struct *task);
++
++/*
++ * User space RSP while inside the SYSCALL fast path
++ */
++DECLARE_PER_CPU(unsigned long, old_rsp);
++
+ #endif /* CONFIG_X86_64 */
+ 
+ extern void start_thread(struct pt_regs *regs, unsigned long new_ip,
+@@ -1021,4 +974,24 @@ extern bool cpu_has_amd_erratum(const int *);
+ #define cpu_has_amd_erratum(x)	(false)
+ #endif /* CONFIG_CPU_SUP_AMD */
+ 
++#ifdef CONFIG_X86_32
++/*
++ * disable hlt during certain critical i/o operations
++ */
++#define HAVE_DISABLE_HLT
++#endif
++
++void disable_hlt(void);
++void enable_hlt(void);
++
++void cpu_idle_wait(void);
++
++extern unsigned long arch_align_stack(unsigned long sp);
++extern void free_init_pages(char *what, unsigned long begin, unsigned long end);
++
++void default_idle(void);
++bool set_pm_idle_to_default(void);
++
++void stop_this_cpu(void *dummy);
++
+ #endif /* _ASM_X86_PROCESSOR_H */
+diff --git a/arch/x86/include/asm/prom.h b/arch/x86/include/asm/prom.h
+index 644dd885..60bef66 100644
+--- a/arch/x86/include/asm/prom.h
++++ b/arch/x86/include/asm/prom.h
+@@ -21,7 +21,6 @@
+ #include <asm/irq.h>
+ #include <linux/atomic.h>
+ #include <asm/setup.h>
+-#include <asm/irq_controller.h>
+ 
+ #ifdef CONFIG_OF
+ extern int of_ioapic;
+@@ -43,15 +42,6 @@ extern char cmd_line[COMMAND_LINE_SIZE];
+ #define pci_address_to_pio pci_address_to_pio
+ unsigned long pci_address_to_pio(phys_addr_t addr);
+ 
+-/**
+- * irq_dispose_mapping - Unmap an interrupt
+- * @virq: linux virq number of the interrupt to unmap
+- *
+- * FIXME: We really should implement proper virq handling like power,
+- * but that's going to be major surgery.
+- */
+-static inline void irq_dispose_mapping(unsigned int virq) { }
+-
+ #define HAVE_ARCH_DEVTREE_FIXUPS
+ 
+ #endif /* __ASSEMBLY__ */
+diff --git a/arch/x86/include/asm/ptrace.h b/arch/x86/include/asm/ptrace.h
+index 3566454..dcfde52 100644
+--- a/arch/x86/include/asm/ptrace.h
++++ b/arch/x86/include/asm/ptrace.h
+@@ -145,7 +145,6 @@ extern unsigned long
+ convert_ip_to_linear(struct task_struct *child, struct pt_regs *regs);
+ extern void send_sigtrap(struct task_struct *tsk, struct pt_regs *regs,
+ 			 int error_code, int si_code);
+-void signal_fault(struct pt_regs *regs, void __user *frame, char *where);
+ 
+ extern long syscall_trace_enter(struct pt_regs *);
+ extern void syscall_trace_leave(struct pt_regs *);
+diff --git a/arch/x86/include/asm/segment.h b/arch/x86/include/asm/segment.h
+index 5e64171..1654662 100644
+--- a/arch/x86/include/asm/segment.h
++++ b/arch/x86/include/asm/segment.h
+@@ -212,7 +212,61 @@
+ #ifdef __KERNEL__
+ #ifndef __ASSEMBLY__
+ extern const char early_idt_handlers[NUM_EXCEPTION_VECTORS][10];
+-#endif
+-#endif
++
++/*
++ * Load a segment. Fall back on loading the zero
++ * segment if something goes wrong..
++ */
++#define loadsegment(seg, value)						\
++do {									\
++	unsigned short __val = (value);					\
++									\
++	asm volatile("						\n"	\
++		     "1:	movl %k0,%%" #seg "		\n"	\
++									\
++		     ".section .fixup,\"ax\"			\n"	\
++		     "2:	xorl %k0,%k0			\n"	\
++		     "		jmp 1b				\n"	\
++		     ".previous					\n"	\
++									\
++		     _ASM_EXTABLE(1b, 2b)				\
++									\
++		     : "+r" (__val) : : "memory");			\
++} while (0)
++
++/*
++ * Save a segment register away
++ */
++#define savesegment(seg, value)				\
++	asm("mov %%" #seg ",%0":"=r" (value) : : "memory")
++
++/*
++ * x86_32 user gs accessors.
++ */
++#ifdef CONFIG_X86_32
++#ifdef CONFIG_X86_32_LAZY_GS
++#define get_user_gs(regs)	(u16)({unsigned long v; savesegment(gs, v); v;})
++#define set_user_gs(regs, v)	loadsegment(gs, (unsigned long)(v))
++#define task_user_gs(tsk)	((tsk)->thread.gs)
++#define lazy_save_gs(v)		savesegment(gs, (v))
++#define lazy_load_gs(v)		loadsegment(gs, (v))
++#else	/* X86_32_LAZY_GS */
++#define get_user_gs(regs)	(u16)((regs)->gs)
++#define set_user_gs(regs, v)	do { (regs)->gs = (v); } while (0)
++#define task_user_gs(tsk)	(task_pt_regs(tsk)->gs)
++#define lazy_save_gs(v)		do { } while (0)
++#define lazy_load_gs(v)		do { } while (0)
++#endif	/* X86_32_LAZY_GS */
++#endif	/* X86_32 */
++
++static inline unsigned long get_limit(unsigned long segment)
++{
++	unsigned long __limit;
++	asm("lsll %1,%0" : "=r" (__limit) : "r" (segment));
++	return __limit + 1;
++}
++
++#endif /* !__ASSEMBLY__ */
++#endif /* __KERNEL__ */
+ 
+ #endif /* _ASM_X86_SEGMENT_H */
+diff --git a/arch/x86/include/asm/sigcontext.h b/arch/x86/include/asm/sigcontext.h
+index 04459d2..4a08538 100644
+--- a/arch/x86/include/asm/sigcontext.h
++++ b/arch/x86/include/asm/sigcontext.h
+@@ -230,34 +230,37 @@ struct sigcontext {
+  * User-space might still rely on the old definition:
+  */
+ struct sigcontext {
+-	unsigned long r8;
+-	unsigned long r9;
+-	unsigned long r10;
+-	unsigned long r11;
+-	unsigned long r12;
+-	unsigned long r13;
+-	unsigned long r14;
+-	unsigned long r15;
+-	unsigned long rdi;
+-	unsigned long rsi;
+-	unsigned long rbp;
+-	unsigned long rbx;
+-	unsigned long rdx;
+-	unsigned long rax;
+-	unsigned long rcx;
+-	unsigned long rsp;
+-	unsigned long rip;
+-	unsigned long eflags;		/* RFLAGS */
+-	unsigned short cs;
+-	unsigned short gs;
+-	unsigned short fs;
+-	unsigned short __pad0;
+-	unsigned long err;
+-	unsigned long trapno;
+-	unsigned long oldmask;
+-	unsigned long cr2;
++	__u64 r8;
++	__u64 r9;
++	__u64 r10;
++	__u64 r11;
++	__u64 r12;
++	__u64 r13;
++	__u64 r14;
++	__u64 r15;
++	__u64 rdi;
++	__u64 rsi;
++	__u64 rbp;
++	__u64 rbx;
++	__u64 rdx;
++	__u64 rax;
++	__u64 rcx;
++	__u64 rsp;
++	__u64 rip;
++	__u64 eflags;		/* RFLAGS */
++	__u16 cs;
++	__u16 gs;
++	__u16 fs;
++	__u16 __pad0;
++	__u64 err;
++	__u64 trapno;
++	__u64 oldmask;
++	__u64 cr2;
+ 	struct _fpstate __user *fpstate;	/* zero when no FPU context */
+-	unsigned long reserved1[8];
++#ifndef __LP64__
++	__u32 __fpstate_pad;
++#endif
++	__u64 reserved1[8];
+ };
+ #endif /* !__KERNEL__ */
+ 
+diff --git a/arch/x86/include/asm/sigframe.h b/arch/x86/include/asm/sigframe.h
+index 4e0fe26..7c7c27c 100644
+--- a/arch/x86/include/asm/sigframe.h
++++ b/arch/x86/include/asm/sigframe.h
+@@ -59,12 +59,25 @@ struct rt_sigframe_ia32 {
+ #endif /* defined(CONFIG_X86_32) || defined(CONFIG_IA32_EMULATION) */
+ 
+ #ifdef CONFIG_X86_64
++
+ struct rt_sigframe {
+ 	char __user *pretcode;
+ 	struct ucontext uc;
+ 	struct siginfo info;
+ 	/* fp state follows here */
+ };
++
++#ifdef CONFIG_X86_X32_ABI
++
++struct rt_sigframe_x32 {
++	u64 pretcode;
++	struct ucontext_x32 uc;
++	compat_siginfo_t info;
++	/* fp state follows here */
++};
++
++#endif /* CONFIG_X86_X32_ABI */
++
+ #endif /* CONFIG_X86_64 */
+ 
+ #endif /* _ASM_X86_SIGFRAME_H */
+diff --git a/arch/x86/include/asm/sighandling.h b/arch/x86/include/asm/sighandling.h
+new file mode 100644
+index 0000000..ada93b3
+--- /dev/null
++++ b/arch/x86/include/asm/sighandling.h
+@@ -0,0 +1,24 @@
++#ifndef _ASM_X86_SIGHANDLING_H
++#define _ASM_X86_SIGHANDLING_H
++
++#include <linux/compiler.h>
++#include <linux/ptrace.h>
++#include <linux/signal.h>
++
++#include <asm/processor-flags.h>
++
++#define _BLOCKABLE (~(sigmask(SIGKILL) | sigmask(SIGSTOP)))
++
++#define __FIX_EFLAGS	(X86_EFLAGS_AC | X86_EFLAGS_OF | \
++			 X86_EFLAGS_DF | X86_EFLAGS_TF | X86_EFLAGS_SF | \
++			 X86_EFLAGS_ZF | X86_EFLAGS_AF | X86_EFLAGS_PF | \
++			 X86_EFLAGS_CF)
++
++void signal_fault(struct pt_regs *regs, void __user *frame, char *where);
++
++int restore_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc,
++		       unsigned long *pax);
++int setup_sigcontext(struct sigcontext __user *sc, void __user *fpstate,
++		     struct pt_regs *regs, unsigned long mask);
++
++#endif /* _ASM_X86_SIGHANDLING_H */
+diff --git a/arch/x86/include/asm/special_insns.h b/arch/x86/include/asm/special_insns.h
+new file mode 100644
+index 0000000..41fc93a
+--- /dev/null
++++ b/arch/x86/include/asm/special_insns.h
+@@ -0,0 +1,199 @@
++#ifndef _ASM_X86_SPECIAL_INSNS_H
++#define _ASM_X86_SPECIAL_INSNS_H
++
++
++#ifdef __KERNEL__
++
++static inline void native_clts(void)
++{
++	asm volatile("clts");
++}
++
++/*
++ * Volatile isn't enough to prevent the compiler from reordering the
++ * read/write functions for the control registers and messing everything up.
++ * A memory clobber would solve the problem, but would prevent reordering of
++ * all loads stores around it, which can hurt performance. Solution is to
++ * use a variable and mimic reads and writes to it to enforce serialization
++ */
++static unsigned long __force_order;
++
++static inline unsigned long native_read_cr0(void)
++{
++	unsigned long val;
++	asm volatile("mov %%cr0,%0\n\t" : "=r" (val), "=m" (__force_order));
++	return val;
++}
++
++static inline void native_write_cr0(unsigned long val)
++{
++	asm volatile("mov %0,%%cr0": : "r" (val), "m" (__force_order));
++}
++
++static inline unsigned long native_read_cr2(void)
++{
++	unsigned long val;
++	asm volatile("mov %%cr2,%0\n\t" : "=r" (val), "=m" (__force_order));
++	return val;
++}
++
++static inline void native_write_cr2(unsigned long val)
++{
++	asm volatile("mov %0,%%cr2": : "r" (val), "m" (__force_order));
++}
++
++static inline unsigned long native_read_cr3(void)
++{
++	unsigned long val;
++	asm volatile("mov %%cr3,%0\n\t" : "=r" (val), "=m" (__force_order));
++	return val;
++}
++
++static inline void native_write_cr3(unsigned long val)
++{
++	asm volatile("mov %0,%%cr3": : "r" (val), "m" (__force_order));
++}
++
++static inline unsigned long native_read_cr4(void)
++{
++	unsigned long val;
++	asm volatile("mov %%cr4,%0\n\t" : "=r" (val), "=m" (__force_order));
++	return val;
++}
++
++static inline unsigned long native_read_cr4_safe(void)
++{
++	unsigned long val;
++	/* This could fault if %cr4 does not exist. In x86_64, a cr4 always
++	 * exists, so it will never fail. */
++#ifdef CONFIG_X86_32
++	asm volatile("1: mov %%cr4, %0\n"
++		     "2:\n"
++		     _ASM_EXTABLE(1b, 2b)
++		     : "=r" (val), "=m" (__force_order) : "0" (0));
++#else
++	val = native_read_cr4();
++#endif
++	return val;
++}
++
++static inline void native_write_cr4(unsigned long val)
++{
++	asm volatile("mov %0,%%cr4": : "r" (val), "m" (__force_order));
++}
++
++#ifdef CONFIG_X86_64
++static inline unsigned long native_read_cr8(void)
++{
++	unsigned long cr8;
++	asm volatile("movq %%cr8,%0" : "=r" (cr8));
++	return cr8;
++}
++
++static inline void native_write_cr8(unsigned long val)
++{
++	asm volatile("movq %0,%%cr8" :: "r" (val) : "memory");
++}
++#endif
++
++static inline void native_wbinvd(void)
++{
++	asm volatile("wbinvd": : :"memory");
++}
++
++extern void native_load_gs_index(unsigned);
++
++#ifdef CONFIG_PARAVIRT
++#include <asm/paravirt.h>
++#else
++
++static inline unsigned long read_cr0(void)
++{
++	return native_read_cr0();
++}
++
++static inline void write_cr0(unsigned long x)
++{
++	native_write_cr0(x);
++}
++
++static inline unsigned long read_cr2(void)
++{
++	return native_read_cr2();
++}
++
++static inline void write_cr2(unsigned long x)
++{
++	native_write_cr2(x);
++}
++
++static inline unsigned long read_cr3(void)
++{
++	return native_read_cr3();
++}
++
++static inline void write_cr3(unsigned long x)
++{
++	native_write_cr3(x);
++}
++
++static inline unsigned long read_cr4(void)
++{
++	return native_read_cr4();
++}
++
++static inline unsigned long read_cr4_safe(void)
++{
++	return native_read_cr4_safe();
++}
++
++static inline void write_cr4(unsigned long x)
++{
++	native_write_cr4(x);
++}
++
++static inline void wbinvd(void)
++{
++	native_wbinvd();
++}
++
++#ifdef CONFIG_X86_64
++
++static inline unsigned long read_cr8(void)
++{
++	return native_read_cr8();
++}
++
++static inline void write_cr8(unsigned long x)
++{
++	native_write_cr8(x);
++}
++
++static inline void load_gs_index(unsigned selector)
++{
++	native_load_gs_index(selector);
++}
++
++#endif
++
++/* Clear the 'TS' bit */
++static inline void clts(void)
++{
++	native_clts();
++}
++
++#endif/* CONFIG_PARAVIRT */
++
++#define stts() write_cr0(read_cr0() | X86_CR0_TS)
++
++static inline void clflush(volatile void *__p)
++{
++	asm volatile("clflush %0" : "+m" (*(volatile char __force *)__p));
++}
++
++#define nop() asm volatile ("nop")
++
++
++#endif /* __KERNEL__ */
++
++#endif /* _ASM_X86_SPECIAL_INSNS_H */
+diff --git a/arch/x86/include/asm/spinlock.h b/arch/x86/include/asm/spinlock.h
+index a82c2bf..76bfa2c 100644
+--- a/arch/x86/include/asm/spinlock.h
++++ b/arch/x86/include/asm/spinlock.h
+@@ -88,14 +88,14 @@ static inline int __ticket_spin_is_locked(arch_spinlock_t *lock)
+ {
+ 	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
+ 
+-	return !!(tmp.tail ^ tmp.head);
++	return tmp.tail != tmp.head;
+ }
+ 
+ static inline int __ticket_spin_is_contended(arch_spinlock_t *lock)
+ {
+ 	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
+ 
+-	return ((tmp.tail - tmp.head) & TICKET_MASK) > 1;
++	return (__ticket_t)(tmp.tail - tmp.head) > 1;
+ }
+ 
+ #ifndef CONFIG_PARAVIRT_SPINLOCKS
+diff --git a/arch/x86/include/asm/spinlock_types.h b/arch/x86/include/asm/spinlock_types.h
+index 8ebd5df..ad0ad07 100644
+--- a/arch/x86/include/asm/spinlock_types.h
++++ b/arch/x86/include/asm/spinlock_types.h
+@@ -16,7 +16,6 @@ typedef u32 __ticketpair_t;
+ #endif
+ 
+ #define TICKET_SHIFT	(sizeof(__ticket_t) * 8)
+-#define TICKET_MASK	((__ticket_t)((1 << TICKET_SHIFT) - 1))
+ 
+ typedef struct arch_spinlock {
+ 	union {
+diff --git a/arch/x86/include/asm/stackprotector.h b/arch/x86/include/asm/stackprotector.h
+index 1575177..b5d9533 100644
+--- a/arch/x86/include/asm/stackprotector.h
++++ b/arch/x86/include/asm/stackprotector.h
+@@ -38,7 +38,6 @@
+ #include <asm/tsc.h>
+ #include <asm/processor.h>
+ #include <asm/percpu.h>
+-#include <asm/system.h>
+ #include <asm/desc.h>
+ #include <linux/random.h>
+ 
+diff --git a/arch/x86/include/asm/switch_to.h b/arch/x86/include/asm/switch_to.h
+new file mode 100644
+index 0000000..4ec45b3
+--- /dev/null
++++ b/arch/x86/include/asm/switch_to.h
+@@ -0,0 +1,129 @@
++#ifndef _ASM_X86_SWITCH_TO_H
++#define _ASM_X86_SWITCH_TO_H
++
++struct task_struct; /* one of the stranger aspects of C forward declarations */
++struct task_struct *__switch_to(struct task_struct *prev,
++				struct task_struct *next);
++struct tss_struct;
++void __switch_to_xtra(struct task_struct *prev_p, struct task_struct *next_p,
++		      struct tss_struct *tss);
++
++#ifdef CONFIG_X86_32
++
++#ifdef CONFIG_CC_STACKPROTECTOR
++#define __switch_canary							\
++	"movl %P[task_canary](%[next]), %%ebx\n\t"			\
++	"movl %%ebx, "__percpu_arg([stack_canary])"\n\t"
++#define __switch_canary_oparam						\
++	, [stack_canary] "=m" (stack_canary.canary)
++#define __switch_canary_iparam						\
++	, [task_canary] "i" (offsetof(struct task_struct, stack_canary))
++#else	/* CC_STACKPROTECTOR */
++#define __switch_canary
++#define __switch_canary_oparam
++#define __switch_canary_iparam
++#endif	/* CC_STACKPROTECTOR */
++
++/*
++ * Saving eflags is important. It switches not only IOPL between tasks,
++ * it also protects other tasks from NT leaking through sysenter etc.
++ */
++#define switch_to(prev, next, last)					\
++do {									\
++	/*								\
++	 * Context-switching clobbers all registers, so we clobber	\
++	 * them explicitly, via unused output variables.		\
++	 * (EAX and EBP is not listed because EBP is saved/restored	\
++	 * explicitly for wchan access and EAX is the return value of	\
++	 * __switch_to())						\
++	 */								\
++	unsigned long ebx, ecx, edx, esi, edi;				\
++									\
++	asm volatile("pushfl\n\t"		/* save    flags */	\
++		     "pushl %%ebp\n\t"		/* save    EBP   */	\
++		     "movl %%esp,%[prev_sp]\n\t"	/* save    ESP   */ \
++		     "movl %[next_sp],%%esp\n\t"	/* restore ESP   */ \
++		     "movl $1f,%[prev_ip]\n\t"	/* save    EIP   */	\
++		     "pushl %[next_ip]\n\t"	/* restore EIP   */	\
++		     __switch_canary					\
++		     "jmp __switch_to\n"	/* regparm call  */	\
++		     "1:\t"						\
++		     "popl %%ebp\n\t"		/* restore EBP   */	\
++		     "popfl\n"			/* restore flags */	\
++									\
++		     /* output parameters */				\
++		     : [prev_sp] "=m" (prev->thread.sp),		\
++		       [prev_ip] "=m" (prev->thread.ip),		\
++		       "=a" (last),					\
++									\
++		       /* clobbered output registers: */		\
++		       "=b" (ebx), "=c" (ecx), "=d" (edx),		\
++		       "=S" (esi), "=D" (edi)				\
++		       							\
++		       __switch_canary_oparam				\
++									\
++		       /* input parameters: */				\
++		     : [next_sp]  "m" (next->thread.sp),		\
++		       [next_ip]  "m" (next->thread.ip),		\
++		       							\
++		       /* regparm parameters for __switch_to(): */	\
++		       [prev]     "a" (prev),				\
++		       [next]     "d" (next)				\
++									\
++		       __switch_canary_iparam				\
++									\
++		     : /* reloaded segment registers */			\
++			"memory");					\
++} while (0)
++
++#else /* CONFIG_X86_32 */
++
++/* frame pointer must be last for get_wchan */
++#define SAVE_CONTEXT    "pushf ; pushq %%rbp ; movq %%rsi,%%rbp\n\t"
++#define RESTORE_CONTEXT "movq %%rbp,%%rsi ; popq %%rbp ; popf\t"
++
++#define __EXTRA_CLOBBER  \
++	, "rcx", "rbx", "rdx", "r8", "r9", "r10", "r11", \
++	  "r12", "r13", "r14", "r15"
++
++#ifdef CONFIG_CC_STACKPROTECTOR
++#define __switch_canary							  \
++	"movq %P[task_canary](%%rsi),%%r8\n\t"				  \
++	"movq %%r8,"__percpu_arg([gs_canary])"\n\t"
++#define __switch_canary_oparam						  \
++	, [gs_canary] "=m" (irq_stack_union.stack_canary)
++#define __switch_canary_iparam						  \
++	, [task_canary] "i" (offsetof(struct task_struct, stack_canary))
++#else	/* CC_STACKPROTECTOR */
++#define __switch_canary
++#define __switch_canary_oparam
++#define __switch_canary_iparam
++#endif	/* CC_STACKPROTECTOR */
++
++/* Save restore flags to clear handle leaking NT */
++#define switch_to(prev, next, last) \
++	asm volatile(SAVE_CONTEXT					  \
++	     "movq %%rsp,%P[threadrsp](%[prev])\n\t" /* save RSP */	  \
++	     "movq %P[threadrsp](%[next]),%%rsp\n\t" /* restore RSP */	  \
++	     "call __switch_to\n\t"					  \
++	     "movq "__percpu_arg([current_task])",%%rsi\n\t"		  \
++	     __switch_canary						  \
++	     "movq %P[thread_info](%%rsi),%%r8\n\t"			  \
++	     "movq %%rax,%%rdi\n\t" 					  \
++	     "testl  %[_tif_fork],%P[ti_flags](%%r8)\n\t"		  \
++	     "jnz   ret_from_fork\n\t"					  \
++	     RESTORE_CONTEXT						  \
++	     : "=a" (last)					  	  \
++	       __switch_canary_oparam					  \
++	     : [next] "S" (next), [prev] "D" (prev),			  \
++	       [threadrsp] "i" (offsetof(struct task_struct, thread.sp)), \
++	       [ti_flags] "i" (offsetof(struct thread_info, flags)),	  \
++	       [_tif_fork] "i" (_TIF_FORK),			  	  \
++	       [thread_info] "i" (offsetof(struct task_struct, stack)),   \
++	       [current_task] "m" (current_task)			  \
++	       __switch_canary_iparam					  \
++	     : "memory", "cc" __EXTRA_CLOBBER)
++
++#endif /* CONFIG_X86_32 */
++
++#endif /* _ASM_X86_SWITCH_TO_H */
+diff --git a/arch/x86/include/asm/sys_ia32.h b/arch/x86/include/asm/sys_ia32.h
+index cb23852..3fda9db4 100644
+--- a/arch/x86/include/asm/sys_ia32.h
++++ b/arch/x86/include/asm/sys_ia32.h
+@@ -10,6 +10,8 @@
+ #ifndef _ASM_X86_SYS_IA32_H
+ #define _ASM_X86_SYS_IA32_H
+ 
++#ifdef CONFIG_COMPAT
++
+ #include <linux/compiler.h>
+ #include <linux/linkage.h>
+ #include <linux/types.h>
+@@ -36,8 +38,6 @@ asmlinkage long sys32_rt_sigaction(int, struct sigaction32 __user *,
+ 				   struct sigaction32 __user *, unsigned int);
+ asmlinkage long sys32_sigaction(int, struct old_sigaction32 __user *,
+ 				struct old_sigaction32 __user *);
+-asmlinkage long sys32_rt_sigprocmask(int, compat_sigset_t __user *,
+-				     compat_sigset_t __user *, unsigned int);
+ asmlinkage long sys32_alarm(unsigned int);
+ 
+ asmlinkage long sys32_waitpid(compat_pid_t, unsigned int *, int);
+@@ -83,4 +83,7 @@ asmlinkage long sys32_ipc(u32, int, int, int, compat_uptr_t, u32);
+ 
+ asmlinkage long sys32_fanotify_mark(int, unsigned int, u32, u32, int,
+ 				    const char __user *);
++
++#endif /* CONFIG_COMPAT */
++
+ #endif /* _ASM_X86_SYS_IA32_H */
+diff --git a/arch/x86/include/asm/syscall.h b/arch/x86/include/asm/syscall.h
+index d962e56..386b786 100644
+--- a/arch/x86/include/asm/syscall.h
++++ b/arch/x86/include/asm/syscall.h
+@@ -16,6 +16,7 @@
+ #include <linux/sched.h>
+ #include <linux/err.h>
+ #include <asm/asm-offsets.h>	/* For NR_syscalls */
++#include <asm/unistd.h>
+ 
+ extern const unsigned long sys_call_table[];
+ 
+@@ -26,13 +27,13 @@ extern const unsigned long sys_call_table[];
+  */
+ static inline int syscall_get_nr(struct task_struct *task, struct pt_regs *regs)
+ {
+-	return regs->orig_ax;
++	return regs->orig_ax & __SYSCALL_MASK;
+ }
+ 
+ static inline void syscall_rollback(struct task_struct *task,
+ 				    struct pt_regs *regs)
+ {
+-	regs->ax = regs->orig_ax;
++	regs->ax = regs->orig_ax & __SYSCALL_MASK;
+ }
+ 
+ static inline long syscall_get_error(struct task_struct *task,
+diff --git a/arch/x86/include/asm/system.h b/arch/x86/include/asm/system.h
+deleted file mode 100644
+index 2d2f01c..0000000
+--- a/arch/x86/include/asm/system.h
++++ /dev/null
+@@ -1,523 +0,0 @@
+-#ifndef _ASM_X86_SYSTEM_H
+-#define _ASM_X86_SYSTEM_H
+-
+-#include <asm/asm.h>
+-#include <asm/segment.h>
+-#include <asm/cpufeature.h>
+-#include <asm/cmpxchg.h>
+-#include <asm/nops.h>
+-
+-#include <linux/kernel.h>
+-#include <linux/irqflags.h>
+-
+-/* entries in ARCH_DLINFO: */
+-#if defined(CONFIG_IA32_EMULATION) || !defined(CONFIG_X86_64)
+-# define AT_VECTOR_SIZE_ARCH 2
+-#else /* else it's non-compat x86-64 */
+-# define AT_VECTOR_SIZE_ARCH 1
+-#endif
+-
+-struct task_struct; /* one of the stranger aspects of C forward declarations */
+-struct task_struct *__switch_to(struct task_struct *prev,
+-				struct task_struct *next);
+-struct tss_struct;
+-void __switch_to_xtra(struct task_struct *prev_p, struct task_struct *next_p,
+-		      struct tss_struct *tss);
+-extern void show_regs_common(void);
+-
+-#ifdef CONFIG_X86_32
+-
+-#ifdef CONFIG_CC_STACKPROTECTOR
+-#define __switch_canary							\
+-	"movl %P[task_canary](%[next]), %%ebx\n\t"			\
+-	"movl %%ebx, "__percpu_arg([stack_canary])"\n\t"
+-#define __switch_canary_oparam						\
+-	, [stack_canary] "=m" (stack_canary.canary)
+-#define __switch_canary_iparam						\
+-	, [task_canary] "i" (offsetof(struct task_struct, stack_canary))
+-#else	/* CC_STACKPROTECTOR */
+-#define __switch_canary
+-#define __switch_canary_oparam
+-#define __switch_canary_iparam
+-#endif	/* CC_STACKPROTECTOR */
+-
+-/*
+- * Saving eflags is important. It switches not only IOPL between tasks,
+- * it also protects other tasks from NT leaking through sysenter etc.
+- */
+-#define switch_to(prev, next, last)					\
+-do {									\
+-	/*								\
+-	 * Context-switching clobbers all registers, so we clobber	\
+-	 * them explicitly, via unused output variables.		\
+-	 * (EAX and EBP is not listed because EBP is saved/restored	\
+-	 * explicitly for wchan access and EAX is the return value of	\
+-	 * __switch_to())						\
+-	 */								\
+-	unsigned long ebx, ecx, edx, esi, edi;				\
+-									\
+-	asm volatile("pushfl\n\t"		/* save    flags */	\
+-		     "pushl %%ebp\n\t"		/* save    EBP   */	\
+-		     "movl %%esp,%[prev_sp]\n\t"	/* save    ESP   */ \
+-		     "movl %[next_sp],%%esp\n\t"	/* restore ESP   */ \
+-		     "movl $1f,%[prev_ip]\n\t"	/* save    EIP   */	\
+-		     "pushl %[next_ip]\n\t"	/* restore EIP   */	\
+-		     __switch_canary					\
+-		     "jmp __switch_to\n"	/* regparm call  */	\
+-		     "1:\t"						\
+-		     "popl %%ebp\n\t"		/* restore EBP   */	\
+-		     "popfl\n"			/* restore flags */	\
+-									\
+-		     /* output parameters */				\
+-		     : [prev_sp] "=m" (prev->thread.sp),		\
+-		       [prev_ip] "=m" (prev->thread.ip),		\
+-		       "=a" (last),					\
+-									\
+-		       /* clobbered output registers: */		\
+-		       "=b" (ebx), "=c" (ecx), "=d" (edx),		\
+-		       "=S" (esi), "=D" (edi)				\
+-		       							\
+-		       __switch_canary_oparam				\
+-									\
+-		       /* input parameters: */				\
+-		     : [next_sp]  "m" (next->thread.sp),		\
+-		       [next_ip]  "m" (next->thread.ip),		\
+-		       							\
+-		       /* regparm parameters for __switch_to(): */	\
+-		       [prev]     "a" (prev),				\
+-		       [next]     "d" (next)				\
+-									\
+-		       __switch_canary_iparam				\
+-									\
+-		     : /* reloaded segment registers */			\
+-			"memory");					\
+-} while (0)
+-
+-/*
+- * disable hlt during certain critical i/o operations
+- */
+-#define HAVE_DISABLE_HLT
+-#else
+-
+-/* frame pointer must be last for get_wchan */
+-#define SAVE_CONTEXT    "pushf ; pushq %%rbp ; movq %%rsi,%%rbp\n\t"
+-#define RESTORE_CONTEXT "movq %%rbp,%%rsi ; popq %%rbp ; popf\t"
+-
+-#define __EXTRA_CLOBBER  \
+-	, "rcx", "rbx", "rdx", "r8", "r9", "r10", "r11", \
+-	  "r12", "r13", "r14", "r15"
+-
+-#ifdef CONFIG_CC_STACKPROTECTOR
+-#define __switch_canary							  \
+-	"movq %P[task_canary](%%rsi),%%r8\n\t"				  \
+-	"movq %%r8,"__percpu_arg([gs_canary])"\n\t"
+-#define __switch_canary_oparam						  \
+-	, [gs_canary] "=m" (irq_stack_union.stack_canary)
+-#define __switch_canary_iparam						  \
+-	, [task_canary] "i" (offsetof(struct task_struct, stack_canary))
+-#else	/* CC_STACKPROTECTOR */
+-#define __switch_canary
+-#define __switch_canary_oparam
+-#define __switch_canary_iparam
+-#endif	/* CC_STACKPROTECTOR */
+-
+-/* Save restore flags to clear handle leaking NT */
+-#define switch_to(prev, next, last) \
+-	asm volatile(SAVE_CONTEXT					  \
+-	     "movq %%rsp,%P[threadrsp](%[prev])\n\t" /* save RSP */	  \
+-	     "movq %P[threadrsp](%[next]),%%rsp\n\t" /* restore RSP */	  \
+-	     "call __switch_to\n\t"					  \
+-	     "movq "__percpu_arg([current_task])",%%rsi\n\t"		  \
+-	     __switch_canary						  \
+-	     "movq %P[thread_info](%%rsi),%%r8\n\t"			  \
+-	     "movq %%rax,%%rdi\n\t" 					  \
+-	     "testl  %[_tif_fork],%P[ti_flags](%%r8)\n\t"		  \
+-	     "jnz   ret_from_fork\n\t"					  \
+-	     RESTORE_CONTEXT						  \
+-	     : "=a" (last)					  	  \
+-	       __switch_canary_oparam					  \
+-	     : [next] "S" (next), [prev] "D" (prev),			  \
+-	       [threadrsp] "i" (offsetof(struct task_struct, thread.sp)), \
+-	       [ti_flags] "i" (offsetof(struct thread_info, flags)),	  \
+-	       [_tif_fork] "i" (_TIF_FORK),			  	  \
+-	       [thread_info] "i" (offsetof(struct task_struct, stack)),   \
+-	       [current_task] "m" (current_task)			  \
+-	       __switch_canary_iparam					  \
+-	     : "memory", "cc" __EXTRA_CLOBBER)
+-#endif
+-
+-#ifdef __KERNEL__
+-
+-extern void native_load_gs_index(unsigned);
+-
+-/*
+- * Load a segment. Fall back on loading the zero
+- * segment if something goes wrong..
+- */
+-#define loadsegment(seg, value)						\
+-do {									\
+-	unsigned short __val = (value);					\
+-									\
+-	asm volatile("						\n"	\
+-		     "1:	movl %k0,%%" #seg "		\n"	\
+-									\
+-		     ".section .fixup,\"ax\"			\n"	\
+-		     "2:	xorl %k0,%k0			\n"	\
+-		     "		jmp 1b				\n"	\
+-		     ".previous					\n"	\
+-									\
+-		     _ASM_EXTABLE(1b, 2b)				\
+-									\
+-		     : "+r" (__val) : : "memory");			\
+-} while (0)
+-
+-/*
+- * Save a segment register away
+- */
+-#define savesegment(seg, value)				\
+-	asm("mov %%" #seg ",%0":"=r" (value) : : "memory")
+-
+-/*
+- * x86_32 user gs accessors.
+- */
+-#ifdef CONFIG_X86_32
+-#ifdef CONFIG_X86_32_LAZY_GS
+-#define get_user_gs(regs)	(u16)({unsigned long v; savesegment(gs, v); v;})
+-#define set_user_gs(regs, v)	loadsegment(gs, (unsigned long)(v))
+-#define task_user_gs(tsk)	((tsk)->thread.gs)
+-#define lazy_save_gs(v)		savesegment(gs, (v))
+-#define lazy_load_gs(v)		loadsegment(gs, (v))
+-#else	/* X86_32_LAZY_GS */
+-#define get_user_gs(regs)	(u16)((regs)->gs)
+-#define set_user_gs(regs, v)	do { (regs)->gs = (v); } while (0)
+-#define task_user_gs(tsk)	(task_pt_regs(tsk)->gs)
+-#define lazy_save_gs(v)		do { } while (0)
+-#define lazy_load_gs(v)		do { } while (0)
+-#endif	/* X86_32_LAZY_GS */
+-#endif	/* X86_32 */
+-
+-static inline unsigned long get_limit(unsigned long segment)
+-{
+-	unsigned long __limit;
+-	asm("lsll %1,%0" : "=r" (__limit) : "r" (segment));
+-	return __limit + 1;
+-}
+-
+-static inline void native_clts(void)
+-{
+-	asm volatile("clts");
+-}
+-
+-/*
+- * Volatile isn't enough to prevent the compiler from reordering the
+- * read/write functions for the control registers and messing everything up.
+- * A memory clobber would solve the problem, but would prevent reordering of
+- * all loads stores around it, which can hurt performance. Solution is to
+- * use a variable and mimic reads and writes to it to enforce serialization
+- */
+-static unsigned long __force_order;
+-
+-static inline unsigned long native_read_cr0(void)
+-{
+-	unsigned long val;
+-	asm volatile("mov %%cr0,%0\n\t" : "=r" (val), "=m" (__force_order));
+-	return val;
+-}
+-
+-static inline void native_write_cr0(unsigned long val)
+-{
+-	asm volatile("mov %0,%%cr0": : "r" (val), "m" (__force_order));
+-}
+-
+-static inline unsigned long native_read_cr2(void)
+-{
+-	unsigned long val;
+-	asm volatile("mov %%cr2,%0\n\t" : "=r" (val), "=m" (__force_order));
+-	return val;
+-}
+-
+-static inline void native_write_cr2(unsigned long val)
+-{
+-	asm volatile("mov %0,%%cr2": : "r" (val), "m" (__force_order));
+-}
+-
+-static inline unsigned long native_read_cr3(void)
+-{
+-	unsigned long val;
+-	asm volatile("mov %%cr3,%0\n\t" : "=r" (val), "=m" (__force_order));
+-	return val;
+-}
+-
+-static inline void native_write_cr3(unsigned long val)
+-{
+-	asm volatile("mov %0,%%cr3": : "r" (val), "m" (__force_order));
+-}
+-
+-static inline unsigned long native_read_cr4(void)
+-{
+-	unsigned long val;
+-	asm volatile("mov %%cr4,%0\n\t" : "=r" (val), "=m" (__force_order));
+-	return val;
+-}
+-
+-static inline unsigned long native_read_cr4_safe(void)
+-{
+-	unsigned long val;
+-	/* This could fault if %cr4 does not exist. In x86_64, a cr4 always
+-	 * exists, so it will never fail. */
+-#ifdef CONFIG_X86_32
+-	asm volatile("1: mov %%cr4, %0\n"
+-		     "2:\n"
+-		     _ASM_EXTABLE(1b, 2b)
+-		     : "=r" (val), "=m" (__force_order) : "0" (0));
+-#else
+-	val = native_read_cr4();
+-#endif
+-	return val;
+-}
+-
+-static inline void native_write_cr4(unsigned long val)
+-{
+-	asm volatile("mov %0,%%cr4": : "r" (val), "m" (__force_order));
+-}
+-
+-#ifdef CONFIG_X86_64
+-static inline unsigned long native_read_cr8(void)
+-{
+-	unsigned long cr8;
+-	asm volatile("movq %%cr8,%0" : "=r" (cr8));
+-	return cr8;
+-}
+-
+-static inline void native_write_cr8(unsigned long val)
+-{
+-	asm volatile("movq %0,%%cr8" :: "r" (val) : "memory");
+-}
+-#endif
+-
+-static inline void native_wbinvd(void)
+-{
+-	asm volatile("wbinvd": : :"memory");
+-}
+-
+-#ifdef CONFIG_PARAVIRT
+-#include <asm/paravirt.h>
+-#else
+-
+-static inline unsigned long read_cr0(void)
+-{
+-	return native_read_cr0();
+-}
+-
+-static inline void write_cr0(unsigned long x)
+-{
+-	native_write_cr0(x);
+-}
+-
+-static inline unsigned long read_cr2(void)
+-{
+-	return native_read_cr2();
+-}
+-
+-static inline void write_cr2(unsigned long x)
+-{
+-	native_write_cr2(x);
+-}
+-
+-static inline unsigned long read_cr3(void)
+-{
+-	return native_read_cr3();
+-}
+-
+-static inline void write_cr3(unsigned long x)
+-{
+-	native_write_cr3(x);
+-}
+-
+-static inline unsigned long read_cr4(void)
+-{
+-	return native_read_cr4();
+-}
+-
+-static inline unsigned long read_cr4_safe(void)
+-{
+-	return native_read_cr4_safe();
+-}
+-
+-static inline void write_cr4(unsigned long x)
+-{
+-	native_write_cr4(x);
+-}
+-
+-static inline void wbinvd(void)
+-{
+-	native_wbinvd();
+-}
+-
+-#ifdef CONFIG_X86_64
+-
+-static inline unsigned long read_cr8(void)
+-{
+-	return native_read_cr8();
+-}
+-
+-static inline void write_cr8(unsigned long x)
+-{
+-	native_write_cr8(x);
+-}
+-
+-static inline void load_gs_index(unsigned selector)
+-{
+-	native_load_gs_index(selector);
+-}
+-
+-#endif
+-
+-/* Clear the 'TS' bit */
+-static inline void clts(void)
+-{
+-	native_clts();
+-}
+-
+-#endif/* CONFIG_PARAVIRT */
+-
+-#define stts() write_cr0(read_cr0() | X86_CR0_TS)
+-
+-#endif /* __KERNEL__ */
+-
+-static inline void clflush(volatile void *__p)
+-{
+-	asm volatile("clflush %0" : "+m" (*(volatile char __force *)__p));
+-}
+-
+-#define nop() asm volatile ("nop")
+-
+-void disable_hlt(void);
+-void enable_hlt(void);
+-
+-void cpu_idle_wait(void);
+-
+-extern unsigned long arch_align_stack(unsigned long sp);
+-extern void free_init_pages(char *what, unsigned long begin, unsigned long end);
+-
+-void default_idle(void);
+-bool set_pm_idle_to_default(void);
+-
+-void stop_this_cpu(void *dummy);
+-
+-/*
+- * Force strict CPU ordering.
+- * And yes, this is required on UP too when we're talking
+- * to devices.
+- */
+-#ifdef CONFIG_X86_32
+-/*
+- * Some non-Intel clones support out of order store. wmb() ceases to be a
+- * nop for these.
+- */
+-#define mb() alternative("lock; addl $0,0(%%esp)", "mfence", X86_FEATURE_XMM2)
+-#define rmb() alternative("lock; addl $0,0(%%esp)", "lfence", X86_FEATURE_XMM2)
+-#define wmb() alternative("lock; addl $0,0(%%esp)", "sfence", X86_FEATURE_XMM)
+-#else
+-#define mb() 	asm volatile("mfence":::"memory")
+-#define rmb()	asm volatile("lfence":::"memory")
+-#define wmb()	asm volatile("sfence" ::: "memory")
+-#endif
+-
+-/**
+- * read_barrier_depends - Flush all pending reads that subsequents reads
+- * depend on.
+- *
+- * No data-dependent reads from memory-like regions are ever reordered
+- * over this barrier.  All reads preceding this primitive are guaranteed
+- * to access memory (but not necessarily other CPUs' caches) before any
+- * reads following this primitive that depend on the data return by
+- * any of the preceding reads.  This primitive is much lighter weight than
+- * rmb() on most CPUs, and is never heavier weight than is
+- * rmb().
+- *
+- * These ordering constraints are respected by both the local CPU
+- * and the compiler.
+- *
+- * Ordering is not guaranteed by anything other than these primitives,
+- * not even by data dependencies.  See the documentation for
+- * memory_barrier() for examples and URLs to more information.
+- *
+- * For example, the following code would force ordering (the initial
+- * value of "a" is zero, "b" is one, and "p" is "&a"):
+- *
+- * <programlisting>
+- *	CPU 0				CPU 1
+- *
+- *	b = 2;
+- *	memory_barrier();
+- *	p = &b;				q = p;
+- *					read_barrier_depends();
+- *					d = *q;
+- * </programlisting>
+- *
+- * because the read of "*q" depends on the read of "p" and these
+- * two reads are separated by a read_barrier_depends().  However,
+- * the following code, with the same initial values for "a" and "b":
+- *
+- * <programlisting>
+- *	CPU 0				CPU 1
+- *
+- *	a = 2;
+- *	memory_barrier();
+- *	b = 3;				y = b;
+- *					read_barrier_depends();
+- *					x = a;
+- * </programlisting>
+- *
+- * does not enforce ordering, since there is no data dependency between
+- * the read of "a" and the read of "b".  Therefore, on some CPUs, such
+- * as Alpha, "y" could be set to 3 and "x" to 0.  Use rmb()
+- * in cases like this where there are no data dependencies.
+- **/
+-
+-#define read_barrier_depends()	do { } while (0)
+-
+-#ifdef CONFIG_SMP
+-#define smp_mb()	mb()
+-#ifdef CONFIG_X86_PPRO_FENCE
+-# define smp_rmb()	rmb()
+-#else
+-# define smp_rmb()	barrier()
+-#endif
+-#ifdef CONFIG_X86_OOSTORE
+-# define smp_wmb() 	wmb()
+-#else
+-# define smp_wmb()	barrier()
+-#endif
+-#define smp_read_barrier_depends()	read_barrier_depends()
+-#define set_mb(var, value) do { (void)xchg(&var, value); } while (0)
+-#else
+-#define smp_mb()	barrier()
+-#define smp_rmb()	barrier()
+-#define smp_wmb()	barrier()
+-#define smp_read_barrier_depends()	do { } while (0)
+-#define set_mb(var, value) do { var = value; barrier(); } while (0)
+-#endif
+-
+-/*
+- * Stop RDTSC speculation. This is needed when you need to use RDTSC
+- * (or get_cycles or vread that possibly accesses the TSC) in a defined
+- * code region.
+- *
+- * (Could use an alternative three way for this if there was one.)
+- */
+-static __always_inline void rdtsc_barrier(void)
+-{
+-	alternative(ASM_NOP3, "mfence", X86_FEATURE_MFENCE_RDTSC);
+-	alternative(ASM_NOP3, "lfence", X86_FEATURE_LFENCE_RDTSC);
+-}
+-
+-/*
+- * We handle most unaligned accesses in hardware.  On the other hand
+- * unaligned DMA can be quite expensive on some Nehalem processors.
+- *
+- * Based on this we disable the IP header alignment in network drivers.
+- */
+-#define NET_IP_ALIGN	0
+-#endif /* _ASM_X86_SYSTEM_H */
+diff --git a/arch/x86/include/asm/thread_info.h b/arch/x86/include/asm/thread_info.h
+index cfd8144..ad6df8c 100644
+--- a/arch/x86/include/asm/thread_info.h
++++ b/arch/x86/include/asm/thread_info.h
+@@ -86,7 +86,7 @@ struct thread_info {
+ #define TIF_MCE_NOTIFY		10	/* notify userspace of an MCE */
+ #define TIF_USER_RETURN_NOTIFY	11	/* notify kernel of userspace return */
+ #define TIF_NOTSC		16	/* TSC is not accessible in userland */
+-#define TIF_IA32		17	/* 32bit process */
++#define TIF_IA32		17	/* IA32 compatibility process */
+ #define TIF_FORK		18	/* ret_from_fork */
+ #define TIF_MEMDIE		20	/* is terminating due to OOM killer */
+ #define TIF_DEBUG		21	/* uses debug registers */
+@@ -95,6 +95,8 @@ struct thread_info {
+ #define TIF_BLOCKSTEP		25	/* set when we want DEBUGCTLMSR_BTF */
+ #define TIF_LAZY_MMU_UPDATES	27	/* task is updating the mmu lazily */
+ #define TIF_SYSCALL_TRACEPOINT	28	/* syscall tracepoint instrumentation */
++#define TIF_ADDR32		29	/* 32-bit address space on 64 bits */
++#define TIF_X32			30	/* 32-bit native x86-64 binary */
+ 
+ #define _TIF_SYSCALL_TRACE	(1 << TIF_SYSCALL_TRACE)
+ #define _TIF_NOTIFY_RESUME	(1 << TIF_NOTIFY_RESUME)
+@@ -116,6 +118,8 @@ struct thread_info {
+ #define _TIF_BLOCKSTEP		(1 << TIF_BLOCKSTEP)
+ #define _TIF_LAZY_MMU_UPDATES	(1 << TIF_LAZY_MMU_UPDATES)
+ #define _TIF_SYSCALL_TRACEPOINT	(1 << TIF_SYSCALL_TRACEPOINT)
++#define _TIF_ADDR32		(1 << TIF_ADDR32)
++#define _TIF_X32		(1 << TIF_X32)
+ 
+ /* work to do in syscall_trace_enter() */
+ #define _TIF_WORK_SYSCALL_ENTRY	\
+@@ -262,6 +266,18 @@ static inline void set_restore_sigmask(void)
+ 	ti->status |= TS_RESTORE_SIGMASK;
+ 	set_bit(TIF_SIGPENDING, (unsigned long *)&ti->flags);
+ }
++
++static inline bool is_ia32_task(void)
++{
++#ifdef CONFIG_X86_32
++	return true;
++#endif
++#ifdef CONFIG_IA32_EMULATION
++	if (current_thread_info()->status & TS_COMPAT)
++		return true;
++#endif
++	return false;
++}
+ #endif	/* !__ASSEMBLY__ */
+ 
+ #ifndef __ASSEMBLY__
+diff --git a/arch/x86/include/asm/timer.h b/arch/x86/include/asm/timer.h
+index 431793e..34baa0e 100644
+--- a/arch/x86/include/asm/timer.h
++++ b/arch/x86/include/asm/timer.h
+@@ -57,14 +57,10 @@ DECLARE_PER_CPU(unsigned long long, cyc2ns_offset);
+ 
+ static inline unsigned long long __cycles_2_ns(unsigned long long cyc)
+ {
+-	unsigned long long quot;
+-	unsigned long long rem;
+ 	int cpu = smp_processor_id();
+ 	unsigned long long ns = per_cpu(cyc2ns_offset, cpu);
+-	quot = (cyc >> CYC2NS_SCALE_FACTOR);
+-	rem = cyc & ((1ULL << CYC2NS_SCALE_FACTOR) - 1);
+-	ns += quot * per_cpu(cyc2ns, cpu) +
+-		((rem * per_cpu(cyc2ns, cpu)) >> CYC2NS_SCALE_FACTOR);
++	ns += mult_frac(cyc, per_cpu(cyc2ns, cpu),
++			(1UL << CYC2NS_SCALE_FACTOR));
+ 	return ns;
+ }
+ 
+diff --git a/arch/x86/include/asm/tlbflush.h b/arch/x86/include/asm/tlbflush.h
+index 169be89..c0e108e 100644
+--- a/arch/x86/include/asm/tlbflush.h
++++ b/arch/x86/include/asm/tlbflush.h
+@@ -5,7 +5,7 @@
+ #include <linux/sched.h>
+ 
+ #include <asm/processor.h>
+-#include <asm/system.h>
++#include <asm/special_insns.h>
+ 
+ #ifdef CONFIG_PARAVIRT
+ #include <asm/paravirt.h>
+diff --git a/arch/x86/include/asm/traps.h b/arch/x86/include/asm/traps.h
+index 0012d09..88eae2a 100644
+--- a/arch/x86/include/asm/traps.h
++++ b/arch/x86/include/asm/traps.h
+@@ -89,4 +89,29 @@ asmlinkage void smp_thermal_interrupt(void);
+ asmlinkage void mce_threshold_interrupt(void);
+ #endif
+ 
++/* Interrupts/Exceptions */
++enum {
++	X86_TRAP_DE = 0,	/*  0, Divide-by-zero */
++	X86_TRAP_DB,		/*  1, Debug */
++	X86_TRAP_NMI,		/*  2, Non-maskable Interrupt */
++	X86_TRAP_BP,		/*  3, Breakpoint */
++	X86_TRAP_OF,		/*  4, Overflow */
++	X86_TRAP_BR,		/*  5, Bound Range Exceeded */
++	X86_TRAP_UD,		/*  6, Invalid Opcode */
++	X86_TRAP_NM,		/*  7, Device Not Available */
++	X86_TRAP_DF,		/*  8, Double Fault */
++	X86_TRAP_OLD_MF,	/*  9, Coprocessor Segment Overrun */
++	X86_TRAP_TS,		/* 10, Invalid TSS */
++	X86_TRAP_NP,		/* 11, Segment Not Present */
++	X86_TRAP_SS,		/* 12, Stack Segment Fault */
++	X86_TRAP_GP,		/* 13, General Protection Fault */
++	X86_TRAP_PF,		/* 14, Page Fault */
++	X86_TRAP_SPURIOUS,	/* 15, Spurious Interrupt */
++	X86_TRAP_MF,		/* 16, x87 Floating-Point Exception */
++	X86_TRAP_AC,		/* 17, Alignment Check */
++	X86_TRAP_MC,		/* 18, Machine Check */
++	X86_TRAP_XF,		/* 19, SIMD Floating-Point Exception */
++	X86_TRAP_IRET = 32,	/* 32, IRET Exception */
++};
++
+ #endif /* _ASM_X86_TRAPS_H */
+diff --git a/arch/x86/include/asm/tsc.h b/arch/x86/include/asm/tsc.h
+index 15d9915..c91e8b9 100644
+--- a/arch/x86/include/asm/tsc.h
++++ b/arch/x86/include/asm/tsc.h
+@@ -61,7 +61,7 @@ extern void check_tsc_sync_source(int cpu);
+ extern void check_tsc_sync_target(void);
+ 
+ extern int notsc_setup(char *);
+-extern void save_sched_clock_state(void);
+-extern void restore_sched_clock_state(void);
++extern void tsc_save_sched_clock_state(void);
++extern void tsc_restore_sched_clock_state(void);
+ 
+ #endif /* _ASM_X86_TSC_H */
+diff --git a/arch/x86/include/asm/unistd.h b/arch/x86/include/asm/unistd.h
+index 21f77b8..37cdc9d 100644
+--- a/arch/x86/include/asm/unistd.h
++++ b/arch/x86/include/asm/unistd.h
+@@ -1,7 +1,17 @@
+ #ifndef _ASM_X86_UNISTD_H
+ #define _ASM_X86_UNISTD_H 1
+ 
++/* x32 syscall flag bit */
++#define __X32_SYSCALL_BIT	0x40000000
++
+ #ifdef __KERNEL__
++
++# ifdef CONFIG_X86_X32_ABI
++#  define __SYSCALL_MASK (~(__X32_SYSCALL_BIT))
++# else
++#  define __SYSCALL_MASK (~0)
++# endif
++
+ # ifdef CONFIG_X86_32
+ 
+ #  include <asm/unistd_32.h>
+@@ -14,6 +24,7 @@
+ # else
+ 
+ #  include <asm/unistd_64.h>
++#  include <asm/unistd_64_x32.h>
+ #  define __ARCH_WANT_COMPAT_SYS_TIME
+ 
+ # endif
+@@ -52,8 +63,10 @@
+ #else
+ # ifdef __i386__
+ #  include <asm/unistd_32.h>
+-# else
++# elif defined(__LP64__)
+ #  include <asm/unistd_64.h>
++# else
++#  include <asm/unistd_x32.h>
+ # endif
+ #endif
+ 
+diff --git a/arch/x86/include/asm/vgtod.h b/arch/x86/include/asm/vgtod.h
+index 815285b..8b38be2 100644
+--- a/arch/x86/include/asm/vgtod.h
++++ b/arch/x86/include/asm/vgtod.h
+@@ -5,13 +5,8 @@
+ #include <linux/clocksource.h>
+ 
+ struct vsyscall_gtod_data {
+-	seqlock_t	lock;
++	seqcount_t	seq;
+ 
+-	/* open coded 'struct timespec' */
+-	time_t		wall_time_sec;
+-	u32		wall_time_nsec;
+-
+-	struct timezone sys_tz;
+ 	struct { /* extract of a clocksource struct */
+ 		int vclock_mode;
+ 		cycle_t	cycle_last;
+@@ -19,8 +14,16 @@ struct vsyscall_gtod_data {
+ 		u32	mult;
+ 		u32	shift;
+ 	} clock;
+-	struct timespec wall_to_monotonic;
++
++	/* open coded 'struct timespec' */
++	time_t		wall_time_sec;
++	u32		wall_time_nsec;
++	u32		monotonic_time_nsec;
++	time_t		monotonic_time_sec;
++
++	struct timezone sys_tz;
+ 	struct timespec wall_time_coarse;
++	struct timespec monotonic_time_coarse;
+ };
+ extern struct vsyscall_gtod_data vsyscall_gtod_data;
+ 
+diff --git a/arch/x86/include/asm/virtext.h b/arch/x86/include/asm/virtext.h
+index e0f9aa1..5da71c2 100644
+--- a/arch/x86/include/asm/virtext.h
++++ b/arch/x86/include/asm/virtext.h
+@@ -16,7 +16,6 @@
+ #define _ASM_X86_VIRTEX_H
+ 
+ #include <asm/processor.h>
+-#include <asm/system.h>
+ 
+ #include <asm/vmx.h>
+ #include <asm/svm.h>
+diff --git a/arch/x86/include/asm/x2apic.h b/arch/x86/include/asm/x2apic.h
+index 6bf5b8e..92e54ab 100644
+--- a/arch/x86/include/asm/x2apic.h
++++ b/arch/x86/include/asm/x2apic.h
+@@ -18,6 +18,11 @@ static const struct cpumask *x2apic_target_cpus(void)
+ 	return cpu_online_mask;
+ }
+ 
++static int x2apic_apic_id_valid(int apicid)
++{
++	return 1;
++}
++
+ static int x2apic_apic_id_registered(void)
+ {
+ 	return 1;
+diff --git a/arch/x86/include/asm/x86_init.h b/arch/x86/include/asm/x86_init.h
+index 517d476..baaca8d 100644
+--- a/arch/x86/include/asm/x86_init.h
++++ b/arch/x86/include/asm/x86_init.h
+@@ -145,9 +145,11 @@ struct x86_init_ops {
+ /**
+  * struct x86_cpuinit_ops - platform specific cpu hotplug setups
+  * @setup_percpu_clockev:	set up the per cpu clock event device
++ * @early_percpu_clock_init:	early init of the per cpu clock event device
+  */
+ struct x86_cpuinit_ops {
+ 	void (*setup_percpu_clockev)(void);
++	void (*early_percpu_clock_init)(void);
+ 	void (*fixup_cpu_id)(struct cpuinfo_x86 *c, int node);
+ };
+ 
+@@ -160,6 +162,8 @@ struct x86_cpuinit_ops {
+  * @is_untracked_pat_range	exclude from PAT logic
+  * @nmi_init			enable NMI on cpus
+  * @i8042_detect		pre-detect if i8042 controller exists
++ * @save_sched_clock_state:	save state for sched_clock() on suspend
++ * @restore_sched_clock_state:	restore state for sched_clock() on resume
+  */
+ struct x86_platform_ops {
+ 	unsigned long (*calibrate_tsc)(void);
+@@ -171,6 +175,8 @@ struct x86_platform_ops {
+ 	void (*nmi_init)(void);
+ 	unsigned char (*get_nmi_reason)(void);
+ 	int (*i8042_detect)(void);
++	void (*save_sched_clock_state)(void);
++	void (*restore_sched_clock_state)(void);
+ };
+ 
+ struct pci_dev;
+diff --git a/arch/x86/include/asm/xen/interface.h b/arch/x86/include/asm/xen/interface.h
+index a1f2db5..cbf0c9d 100644
+--- a/arch/x86/include/asm/xen/interface.h
++++ b/arch/x86/include/asm/xen/interface.h
+@@ -56,6 +56,7 @@ DEFINE_GUEST_HANDLE(int);
+ DEFINE_GUEST_HANDLE(long);
+ DEFINE_GUEST_HANDLE(void);
+ DEFINE_GUEST_HANDLE(uint64_t);
++DEFINE_GUEST_HANDLE(uint32_t);
+ #endif
+ 
+ #ifndef HYPERVISOR_VIRT_START
+diff --git a/arch/x86/syscalls/Makefile b/arch/x86/syscalls/Makefile
+index 564b247..3236aeb 100644
+--- a/arch/x86/syscalls/Makefile
++++ b/arch/x86/syscalls/Makefile
+@@ -10,8 +10,10 @@ syshdr := $(srctree)/$(src)/syscallhdr.sh
+ systbl := $(srctree)/$(src)/syscalltbl.sh
+ 
+ quiet_cmd_syshdr = SYSHDR  $@
+-      cmd_syshdr = $(CONFIG_SHELL) '$(syshdr)' $< $@ \
+-		   $(syshdr_abi_$(basetarget)) $(syshdr_pfx_$(basetarget))
++      cmd_syshdr = $(CONFIG_SHELL) '$(syshdr)' '$<' '$@' \
++		   '$(syshdr_abi_$(basetarget))' \
++		   '$(syshdr_pfx_$(basetarget))' \
++		   '$(syshdr_offset_$(basetarget))'
+ quiet_cmd_systbl = SYSTBL  $@
+       cmd_systbl = $(CONFIG_SHELL) '$(systbl)' $< $@
+ 
+@@ -24,18 +26,28 @@ syshdr_pfx_unistd_32_ia32 := ia32_
+ $(out)/unistd_32_ia32.h: $(syscall32) $(syshdr)
+ 	$(call if_changed,syshdr)
+ 
+-syshdr_abi_unistd_64 := 64
++syshdr_abi_unistd_x32 := common,x32
++syshdr_offset_unistd_x32 := __X32_SYSCALL_BIT
++$(out)/unistd_x32.h: $(syscall64) $(syshdr)
++	$(call if_changed,syshdr)
++
++syshdr_abi_unistd_64 := common,64
+ $(out)/unistd_64.h: $(syscall64) $(syshdr)
+ 	$(call if_changed,syshdr)
+ 
++syshdr_abi_unistd_64_x32 := x32
++syshdr_pfx_unistd_64_x32 := x32_
++$(out)/unistd_64_x32.h: $(syscall64) $(syshdr)
++	$(call if_changed,syshdr)
++
+ $(out)/syscalls_32.h: $(syscall32) $(systbl)
+ 	$(call if_changed,systbl)
+ $(out)/syscalls_64.h: $(syscall64) $(systbl)
+ 	$(call if_changed,systbl)
+ 
+-syshdr-y			+= unistd_32.h unistd_64.h
++syshdr-y			+= unistd_32.h unistd_64.h unistd_x32.h
+ syshdr-y			+= syscalls_32.h
+-syshdr-$(CONFIG_X86_64)		+= unistd_32_ia32.h
++syshdr-$(CONFIG_X86_64)		+= unistd_32_ia32.h unistd_64_x32.h
+ syshdr-$(CONFIG_X86_64)		+= syscalls_64.h
+ 
+ targets	+= $(syshdr-y)
+diff --git a/arch/x86/syscalls/syscall_32.tbl b/arch/x86/syscalls/syscall_32.tbl
+index ce98e28..29f9f05 100644
+--- a/arch/x86/syscalls/syscall_32.tbl
++++ b/arch/x86/syscalls/syscall_32.tbl
+@@ -181,7 +181,7 @@
+ 172	i386	prctl			sys_prctl
+ 173	i386	rt_sigreturn		ptregs_rt_sigreturn		stub32_rt_sigreturn
+ 174	i386	rt_sigaction		sys_rt_sigaction		sys32_rt_sigaction
+-175	i386	rt_sigprocmask		sys_rt_sigprocmask		sys32_rt_sigprocmask
++175	i386	rt_sigprocmask		sys_rt_sigprocmask
+ 176	i386	rt_sigpending		sys_rt_sigpending		sys32_rt_sigpending
+ 177	i386	rt_sigtimedwait		sys_rt_sigtimedwait		compat_sys_rt_sigtimedwait
+ 178	i386	rt_sigqueueinfo		sys_rt_sigqueueinfo		sys32_rt_sigqueueinfo
+@@ -288,7 +288,7 @@
+ 279	i386	mq_timedsend		sys_mq_timedsend		compat_sys_mq_timedsend
+ 280	i386	mq_timedreceive		sys_mq_timedreceive		compat_sys_mq_timedreceive
+ 281	i386	mq_notify		sys_mq_notify			compat_sys_mq_notify
+-282	i386	mq_getsetaddr		sys_mq_getsetattr		compat_sys_mq_getsetattr
++282	i386	mq_getsetattr		sys_mq_getsetattr		compat_sys_mq_getsetattr
+ 283	i386	kexec_load		sys_kexec_load			compat_sys_kexec_load
+ 284	i386	waitid			sys_waitid			compat_sys_waitid
+ # 285 sys_setaltroot
+diff --git a/arch/x86/syscalls/syscall_64.tbl b/arch/x86/syscalls/syscall_64.tbl
+index b440a8f..dd29a9e 100644
+--- a/arch/x86/syscalls/syscall_64.tbl
++++ b/arch/x86/syscalls/syscall_64.tbl
+@@ -4,317 +4,350 @@
+ # The format is:
+ # <number> <abi> <name> <entry point>
+ #
+-# The abi is always "64" for this file (for now.)
++# The abi is "common", "64" or "x32" for this file.
+ #
+-0	64	read			sys_read
+-1	64	write			sys_write
+-2	64	open			sys_open
+-3	64	close			sys_close
+-4	64	stat			sys_newstat
+-5	64	fstat			sys_newfstat
+-6	64	lstat			sys_newlstat
+-7	64	poll			sys_poll
+-8	64	lseek			sys_lseek
+-9	64	mmap			sys_mmap
+-10	64	mprotect		sys_mprotect
+-11	64	munmap			sys_munmap
+-12	64	brk			sys_brk
++0	common	read			sys_read
++1	common	write			sys_write
++2	common	open			sys_open
++3	common	close			sys_close
++4	common	stat			sys_newstat
++5	common	fstat			sys_newfstat
++6	common	lstat			sys_newlstat
++7	common	poll			sys_poll
++8	common	lseek			sys_lseek
++9	common	mmap			sys_mmap
++10	common	mprotect		sys_mprotect
++11	common	munmap			sys_munmap
++12	common	brk			sys_brk
+ 13	64	rt_sigaction		sys_rt_sigaction
+-14	64	rt_sigprocmask		sys_rt_sigprocmask
++14	common	rt_sigprocmask		sys_rt_sigprocmask
+ 15	64	rt_sigreturn		stub_rt_sigreturn
+ 16	64	ioctl			sys_ioctl
+-17	64	pread64			sys_pread64
+-18	64	pwrite64		sys_pwrite64
++17	common	pread64			sys_pread64
++18	common	pwrite64		sys_pwrite64
+ 19	64	readv			sys_readv
+ 20	64	writev			sys_writev
+-21	64	access			sys_access
+-22	64	pipe			sys_pipe
+-23	64	select			sys_select
+-24	64	sched_yield		sys_sched_yield
+-25	64	mremap			sys_mremap
+-26	64	msync			sys_msync
+-27	64	mincore			sys_mincore
+-28	64	madvise			sys_madvise
+-29	64	shmget			sys_shmget
+-30	64	shmat			sys_shmat
+-31	64	shmctl			sys_shmctl
+-32	64	dup			sys_dup
+-33	64	dup2			sys_dup2
+-34	64	pause			sys_pause
+-35	64	nanosleep		sys_nanosleep
+-36	64	getitimer		sys_getitimer
+-37	64	alarm			sys_alarm
+-38	64	setitimer		sys_setitimer
+-39	64	getpid			sys_getpid
+-40	64	sendfile		sys_sendfile64
+-41	64	socket			sys_socket
+-42	64	connect			sys_connect
+-43	64	accept			sys_accept
+-44	64	sendto			sys_sendto
++21	common	access			sys_access
++22	common	pipe			sys_pipe
++23	common	select			sys_select
++24	common	sched_yield		sys_sched_yield
++25	common	mremap			sys_mremap
++26	common	msync			sys_msync
++27	common	mincore			sys_mincore
++28	common	madvise			sys_madvise
++29	common	shmget			sys_shmget
++30	common	shmat			sys_shmat
++31	common	shmctl			sys_shmctl
++32	common	dup			sys_dup
++33	common	dup2			sys_dup2
++34	common	pause			sys_pause
++35	common	nanosleep		sys_nanosleep
++36	common	getitimer		sys_getitimer
++37	common	alarm			sys_alarm
++38	common	setitimer		sys_setitimer
++39	common	getpid			sys_getpid
++40	common	sendfile		sys_sendfile64
++41	common	socket			sys_socket
++42	common	connect			sys_connect
++43	common	accept			sys_accept
++44	common	sendto			sys_sendto
+ 45	64	recvfrom		sys_recvfrom
+ 46	64	sendmsg			sys_sendmsg
+ 47	64	recvmsg			sys_recvmsg
+-48	64	shutdown		sys_shutdown
+-49	64	bind			sys_bind
+-50	64	listen			sys_listen
+-51	64	getsockname		sys_getsockname
+-52	64	getpeername		sys_getpeername
+-53	64	socketpair		sys_socketpair
+-54	64	setsockopt		sys_setsockopt
+-55	64	getsockopt		sys_getsockopt
+-56	64	clone			stub_clone
+-57	64	fork			stub_fork
+-58	64	vfork			stub_vfork
++48	common	shutdown		sys_shutdown
++49	common	bind			sys_bind
++50	common	listen			sys_listen
++51	common	getsockname		sys_getsockname
++52	common	getpeername		sys_getpeername
++53	common	socketpair		sys_socketpair
++54	common	setsockopt		sys_setsockopt
++55	common	getsockopt		sys_getsockopt
++56	common	clone			stub_clone
++57	common	fork			stub_fork
++58	common	vfork			stub_vfork
+ 59	64	execve			stub_execve
+-60	64	exit			sys_exit
+-61	64	wait4			sys_wait4
+-62	64	kill			sys_kill
+-63	64	uname			sys_newuname
+-64	64	semget			sys_semget
+-65	64	semop			sys_semop
+-66	64	semctl			sys_semctl
+-67	64	shmdt			sys_shmdt
+-68	64	msgget			sys_msgget
+-69	64	msgsnd			sys_msgsnd
+-70	64	msgrcv			sys_msgrcv
+-71	64	msgctl			sys_msgctl
+-72	64	fcntl			sys_fcntl
+-73	64	flock			sys_flock
+-74	64	fsync			sys_fsync
+-75	64	fdatasync		sys_fdatasync
+-76	64	truncate		sys_truncate
+-77	64	ftruncate		sys_ftruncate
+-78	64	getdents		sys_getdents
+-79	64	getcwd			sys_getcwd
+-80	64	chdir			sys_chdir
+-81	64	fchdir			sys_fchdir
+-82	64	rename			sys_rename
+-83	64	mkdir			sys_mkdir
+-84	64	rmdir			sys_rmdir
+-85	64	creat			sys_creat
+-86	64	link			sys_link
+-87	64	unlink			sys_unlink
+-88	64	symlink			sys_symlink
+-89	64	readlink		sys_readlink
+-90	64	chmod			sys_chmod
+-91	64	fchmod			sys_fchmod
+-92	64	chown			sys_chown
+-93	64	fchown			sys_fchown
+-94	64	lchown			sys_lchown
+-95	64	umask			sys_umask
+-96	64	gettimeofday		sys_gettimeofday
+-97	64	getrlimit		sys_getrlimit
+-98	64	getrusage		sys_getrusage
+-99	64	sysinfo			sys_sysinfo
+-100	64	times			sys_times
++60	common	exit			sys_exit
++61	common	wait4			sys_wait4
++62	common	kill			sys_kill
++63	common	uname			sys_newuname
++64	common	semget			sys_semget
++65	common	semop			sys_semop
++66	common	semctl			sys_semctl
++67	common	shmdt			sys_shmdt
++68	common	msgget			sys_msgget
++69	common	msgsnd			sys_msgsnd
++70	common	msgrcv			sys_msgrcv
++71	common	msgctl			sys_msgctl
++72	common	fcntl			sys_fcntl
++73	common	flock			sys_flock
++74	common	fsync			sys_fsync
++75	common	fdatasync		sys_fdatasync
++76	common	truncate		sys_truncate
++77	common	ftruncate		sys_ftruncate
++78	common	getdents		sys_getdents
++79	common	getcwd			sys_getcwd
++80	common	chdir			sys_chdir
++81	common	fchdir			sys_fchdir
++82	common	rename			sys_rename
++83	common	mkdir			sys_mkdir
++84	common	rmdir			sys_rmdir
++85	common	creat			sys_creat
++86	common	link			sys_link
++87	common	unlink			sys_unlink
++88	common	symlink			sys_symlink
++89	common	readlink		sys_readlink
++90	common	chmod			sys_chmod
++91	common	fchmod			sys_fchmod
++92	common	chown			sys_chown
++93	common	fchown			sys_fchown
++94	common	lchown			sys_lchown
++95	common	umask			sys_umask
++96	common	gettimeofday		sys_gettimeofday
++97	common	getrlimit		sys_getrlimit
++98	common	getrusage		sys_getrusage
++99	common	sysinfo			sys_sysinfo
++100	common	times			sys_times
+ 101	64	ptrace			sys_ptrace
+-102	64	getuid			sys_getuid
+-103	64	syslog			sys_syslog
+-104	64	getgid			sys_getgid
+-105	64	setuid			sys_setuid
+-106	64	setgid			sys_setgid
+-107	64	geteuid			sys_geteuid
+-108	64	getegid			sys_getegid
+-109	64	setpgid			sys_setpgid
+-110	64	getppid			sys_getppid
+-111	64	getpgrp			sys_getpgrp
+-112	64	setsid			sys_setsid
+-113	64	setreuid		sys_setreuid
+-114	64	setregid		sys_setregid
+-115	64	getgroups		sys_getgroups
+-116	64	setgroups		sys_setgroups
+-117	64	setresuid		sys_setresuid
+-118	64	getresuid		sys_getresuid
+-119	64	setresgid		sys_setresgid
+-120	64	getresgid		sys_getresgid
+-121	64	getpgid			sys_getpgid
+-122	64	setfsuid		sys_setfsuid
+-123	64	setfsgid		sys_setfsgid
+-124	64	getsid			sys_getsid
+-125	64	capget			sys_capget
+-126	64	capset			sys_capset
++102	common	getuid			sys_getuid
++103	common	syslog			sys_syslog
++104	common	getgid			sys_getgid
++105	common	setuid			sys_setuid
++106	common	setgid			sys_setgid
++107	common	geteuid			sys_geteuid
++108	common	getegid			sys_getegid
++109	common	setpgid			sys_setpgid
++110	common	getppid			sys_getppid
++111	common	getpgrp			sys_getpgrp
++112	common	setsid			sys_setsid
++113	common	setreuid		sys_setreuid
++114	common	setregid		sys_setregid
++115	common	getgroups		sys_getgroups
++116	common	setgroups		sys_setgroups
++117	common	setresuid		sys_setresuid
++118	common	getresuid		sys_getresuid
++119	common	setresgid		sys_setresgid
++120	common	getresgid		sys_getresgid
++121	common	getpgid			sys_getpgid
++122	common	setfsuid		sys_setfsuid
++123	common	setfsgid		sys_setfsgid
++124	common	getsid			sys_getsid
++125	common	capget			sys_capget
++126	common	capset			sys_capset
+ 127	64	rt_sigpending		sys_rt_sigpending
+ 128	64	rt_sigtimedwait		sys_rt_sigtimedwait
+ 129	64	rt_sigqueueinfo		sys_rt_sigqueueinfo
+-130	64	rt_sigsuspend		sys_rt_sigsuspend
++130	common	rt_sigsuspend		sys_rt_sigsuspend
+ 131	64	sigaltstack		stub_sigaltstack
+-132	64	utime			sys_utime
+-133	64	mknod			sys_mknod
++132	common	utime			sys_utime
++133	common	mknod			sys_mknod
+ 134	64	uselib
+-135	64	personality		sys_personality
+-136	64	ustat			sys_ustat
+-137	64	statfs			sys_statfs
+-138	64	fstatfs			sys_fstatfs
+-139	64	sysfs			sys_sysfs
+-140	64	getpriority		sys_getpriority
+-141	64	setpriority		sys_setpriority
+-142	64	sched_setparam		sys_sched_setparam
+-143	64	sched_getparam		sys_sched_getparam
+-144	64	sched_setscheduler	sys_sched_setscheduler
+-145	64	sched_getscheduler	sys_sched_getscheduler
+-146	64	sched_get_priority_max	sys_sched_get_priority_max
+-147	64	sched_get_priority_min	sys_sched_get_priority_min
+-148	64	sched_rr_get_interval	sys_sched_rr_get_interval
+-149	64	mlock			sys_mlock
+-150	64	munlock			sys_munlock
+-151	64	mlockall		sys_mlockall
+-152	64	munlockall		sys_munlockall
+-153	64	vhangup			sys_vhangup
+-154	64	modify_ldt		sys_modify_ldt
+-155	64	pivot_root		sys_pivot_root
++135	common	personality		sys_personality
++136	common	ustat			sys_ustat
++137	common	statfs			sys_statfs
++138	common	fstatfs			sys_fstatfs
++139	common	sysfs			sys_sysfs
++140	common	getpriority		sys_getpriority
++141	common	setpriority		sys_setpriority
++142	common	sched_setparam		sys_sched_setparam
++143	common	sched_getparam		sys_sched_getparam
++144	common	sched_setscheduler	sys_sched_setscheduler
++145	common	sched_getscheduler	sys_sched_getscheduler
++146	common	sched_get_priority_max	sys_sched_get_priority_max
++147	common	sched_get_priority_min	sys_sched_get_priority_min
++148	common	sched_rr_get_interval	sys_sched_rr_get_interval
++149	common	mlock			sys_mlock
++150	common	munlock			sys_munlock
++151	common	mlockall		sys_mlockall
++152	common	munlockall		sys_munlockall
++153	common	vhangup			sys_vhangup
++154	common	modify_ldt		sys_modify_ldt
++155	common	pivot_root		sys_pivot_root
+ 156	64	_sysctl			sys_sysctl
+-157	64	prctl			sys_prctl
+-158	64	arch_prctl		sys_arch_prctl
+-159	64	adjtimex		sys_adjtimex
+-160	64	setrlimit		sys_setrlimit
+-161	64	chroot			sys_chroot
+-162	64	sync			sys_sync
+-163	64	acct			sys_acct
+-164	64	settimeofday		sys_settimeofday
+-165	64	mount			sys_mount
+-166	64	umount2			sys_umount
+-167	64	swapon			sys_swapon
+-168	64	swapoff			sys_swapoff
+-169	64	reboot			sys_reboot
+-170	64	sethostname		sys_sethostname
+-171	64	setdomainname		sys_setdomainname
+-172	64	iopl			stub_iopl
+-173	64	ioperm			sys_ioperm
++157	common	prctl			sys_prctl
++158	common	arch_prctl		sys_arch_prctl
++159	common	adjtimex		sys_adjtimex
++160	common	setrlimit		sys_setrlimit
++161	common	chroot			sys_chroot
++162	common	sync			sys_sync
++163	common	acct			sys_acct
++164	common	settimeofday		sys_settimeofday
++165	common	mount			sys_mount
++166	common	umount2			sys_umount
++167	common	swapon			sys_swapon
++168	common	swapoff			sys_swapoff
++169	common	reboot			sys_reboot
++170	common	sethostname		sys_sethostname
++171	common	setdomainname		sys_setdomainname
++172	common	iopl			stub_iopl
++173	common	ioperm			sys_ioperm
+ 174	64	create_module
+-175	64	init_module		sys_init_module
+-176	64	delete_module		sys_delete_module
++175	common	init_module		sys_init_module
++176	common	delete_module		sys_delete_module
+ 177	64	get_kernel_syms
+ 178	64	query_module
+-179	64	quotactl		sys_quotactl
++179	common	quotactl		sys_quotactl
+ 180	64	nfsservctl
+-181	64	getpmsg
+-182	64	putpmsg
+-183	64	afs_syscall
+-184	64	tuxcall
+-185	64	security
+-186	64	gettid			sys_gettid
+-187	64	readahead		sys_readahead
+-188	64	setxattr		sys_setxattr
+-189	64	lsetxattr		sys_lsetxattr
+-190	64	fsetxattr		sys_fsetxattr
+-191	64	getxattr		sys_getxattr
+-192	64	lgetxattr		sys_lgetxattr
+-193	64	fgetxattr		sys_fgetxattr
+-194	64	listxattr		sys_listxattr
+-195	64	llistxattr		sys_llistxattr
+-196	64	flistxattr		sys_flistxattr
+-197	64	removexattr		sys_removexattr
+-198	64	lremovexattr		sys_lremovexattr
+-199	64	fremovexattr		sys_fremovexattr
+-200	64	tkill			sys_tkill
+-201	64	time			sys_time
+-202	64	futex			sys_futex
+-203	64	sched_setaffinity	sys_sched_setaffinity
+-204	64	sched_getaffinity	sys_sched_getaffinity
++181	common	getpmsg
++182	common	putpmsg
++183	common	afs_syscall
++184	common	tuxcall
++185	common	security
++186	common	gettid			sys_gettid
++187	common	readahead		sys_readahead
++188	common	setxattr		sys_setxattr
++189	common	lsetxattr		sys_lsetxattr
++190	common	fsetxattr		sys_fsetxattr
++191	common	getxattr		sys_getxattr
++192	common	lgetxattr		sys_lgetxattr
++193	common	fgetxattr		sys_fgetxattr
++194	common	listxattr		sys_listxattr
++195	common	llistxattr		sys_llistxattr
++196	common	flistxattr		sys_flistxattr
++197	common	removexattr		sys_removexattr
++198	common	lremovexattr		sys_lremovexattr
++199	common	fremovexattr		sys_fremovexattr
++200	common	tkill			sys_tkill
++201	common	time			sys_time
++202	common	futex			sys_futex
++203	common	sched_setaffinity	sys_sched_setaffinity
++204	common	sched_getaffinity	sys_sched_getaffinity
+ 205	64	set_thread_area
+-206	64	io_setup		sys_io_setup
+-207	64	io_destroy		sys_io_destroy
+-208	64	io_getevents		sys_io_getevents
+-209	64	io_submit		sys_io_submit
+-210	64	io_cancel		sys_io_cancel
++206	common	io_setup		sys_io_setup
++207	common	io_destroy		sys_io_destroy
++208	common	io_getevents		sys_io_getevents
++209	common	io_submit		sys_io_submit
++210	common	io_cancel		sys_io_cancel
+ 211	64	get_thread_area
+-212	64	lookup_dcookie		sys_lookup_dcookie
+-213	64	epoll_create		sys_epoll_create
++212	common	lookup_dcookie		sys_lookup_dcookie
++213	common	epoll_create		sys_epoll_create
+ 214	64	epoll_ctl_old
+ 215	64	epoll_wait_old
+-216	64	remap_file_pages	sys_remap_file_pages
+-217	64	getdents64		sys_getdents64
+-218	64	set_tid_address		sys_set_tid_address
+-219	64	restart_syscall		sys_restart_syscall
+-220	64	semtimedop		sys_semtimedop
+-221	64	fadvise64		sys_fadvise64
++216	common	remap_file_pages	sys_remap_file_pages
++217	common	getdents64		sys_getdents64
++218	common	set_tid_address		sys_set_tid_address
++219	common	restart_syscall		sys_restart_syscall
++220	common	semtimedop		sys_semtimedop
++221	common	fadvise64		sys_fadvise64
+ 222	64	timer_create		sys_timer_create
+-223	64	timer_settime		sys_timer_settime
+-224	64	timer_gettime		sys_timer_gettime
+-225	64	timer_getoverrun	sys_timer_getoverrun
+-226	64	timer_delete		sys_timer_delete
+-227	64	clock_settime		sys_clock_settime
+-228	64	clock_gettime		sys_clock_gettime
+-229	64	clock_getres		sys_clock_getres
+-230	64	clock_nanosleep		sys_clock_nanosleep
+-231	64	exit_group		sys_exit_group
+-232	64	epoll_wait		sys_epoll_wait
+-233	64	epoll_ctl		sys_epoll_ctl
+-234	64	tgkill			sys_tgkill
+-235	64	utimes			sys_utimes
++223	common	timer_settime		sys_timer_settime
++224	common	timer_gettime		sys_timer_gettime
++225	common	timer_getoverrun	sys_timer_getoverrun
++226	common	timer_delete		sys_timer_delete
++227	common	clock_settime		sys_clock_settime
++228	common	clock_gettime		sys_clock_gettime
++229	common	clock_getres		sys_clock_getres
++230	common	clock_nanosleep		sys_clock_nanosleep
++231	common	exit_group		sys_exit_group
++232	common	epoll_wait		sys_epoll_wait
++233	common	epoll_ctl		sys_epoll_ctl
++234	common	tgkill			sys_tgkill
++235	common	utimes			sys_utimes
+ 236	64	vserver
+-237	64	mbind			sys_mbind
+-238	64	set_mempolicy		sys_set_mempolicy
+-239	64	get_mempolicy		sys_get_mempolicy
+-240	64	mq_open			sys_mq_open
+-241	64	mq_unlink		sys_mq_unlink
+-242	64	mq_timedsend		sys_mq_timedsend
+-243	64	mq_timedreceive		sys_mq_timedreceive
++237	common	mbind			sys_mbind
++238	common	set_mempolicy		sys_set_mempolicy
++239	common	get_mempolicy		sys_get_mempolicy
++240	common	mq_open			sys_mq_open
++241	common	mq_unlink		sys_mq_unlink
++242	common	mq_timedsend		sys_mq_timedsend
++243	common	mq_timedreceive		sys_mq_timedreceive
+ 244	64	mq_notify		sys_mq_notify
+-245	64	mq_getsetattr		sys_mq_getsetattr
++245	common	mq_getsetattr		sys_mq_getsetattr
+ 246	64	kexec_load		sys_kexec_load
+ 247	64	waitid			sys_waitid
+-248	64	add_key			sys_add_key
+-249	64	request_key		sys_request_key
+-250	64	keyctl			sys_keyctl
+-251	64	ioprio_set		sys_ioprio_set
+-252	64	ioprio_get		sys_ioprio_get
+-253	64	inotify_init		sys_inotify_init
+-254	64	inotify_add_watch	sys_inotify_add_watch
+-255	64	inotify_rm_watch	sys_inotify_rm_watch
+-256	64	migrate_pages		sys_migrate_pages
+-257	64	openat			sys_openat
+-258	64	mkdirat			sys_mkdirat
+-259	64	mknodat			sys_mknodat
+-260	64	fchownat		sys_fchownat
+-261	64	futimesat		sys_futimesat
+-262	64	newfstatat		sys_newfstatat
+-263	64	unlinkat		sys_unlinkat
+-264	64	renameat		sys_renameat
+-265	64	linkat			sys_linkat
+-266	64	symlinkat		sys_symlinkat
+-267	64	readlinkat		sys_readlinkat
+-268	64	fchmodat		sys_fchmodat
+-269	64	faccessat		sys_faccessat
+-270	64	pselect6		sys_pselect6
+-271	64	ppoll			sys_ppoll
+-272	64	unshare			sys_unshare
++248	common	add_key			sys_add_key
++249	common	request_key		sys_request_key
++250	common	keyctl			sys_keyctl
++251	common	ioprio_set		sys_ioprio_set
++252	common	ioprio_get		sys_ioprio_get
++253	common	inotify_init		sys_inotify_init
++254	common	inotify_add_watch	sys_inotify_add_watch
++255	common	inotify_rm_watch	sys_inotify_rm_watch
++256	common	migrate_pages		sys_migrate_pages
++257	common	openat			sys_openat
++258	common	mkdirat			sys_mkdirat
++259	common	mknodat			sys_mknodat
++260	common	fchownat		sys_fchownat
++261	common	futimesat		sys_futimesat
++262	common	newfstatat		sys_newfstatat
++263	common	unlinkat		sys_unlinkat
++264	common	renameat		sys_renameat
++265	common	linkat			sys_linkat
++266	common	symlinkat		sys_symlinkat
++267	common	readlinkat		sys_readlinkat
++268	common	fchmodat		sys_fchmodat
++269	common	faccessat		sys_faccessat
++270	common	pselect6		sys_pselect6
++271	common	ppoll			sys_ppoll
++272	common	unshare			sys_unshare
+ 273	64	set_robust_list		sys_set_robust_list
+ 274	64	get_robust_list		sys_get_robust_list
+-275	64	splice			sys_splice
+-276	64	tee			sys_tee
+-277	64	sync_file_range		sys_sync_file_range
++275	common	splice			sys_splice
++276	common	tee			sys_tee
++277	common	sync_file_range		sys_sync_file_range
+ 278	64	vmsplice		sys_vmsplice
+ 279	64	move_pages		sys_move_pages
+-280	64	utimensat		sys_utimensat
+-281	64	epoll_pwait		sys_epoll_pwait
+-282	64	signalfd		sys_signalfd
+-283	64	timerfd_create		sys_timerfd_create
+-284	64	eventfd			sys_eventfd
+-285	64	fallocate		sys_fallocate
+-286	64	timerfd_settime		sys_timerfd_settime
+-287	64	timerfd_gettime		sys_timerfd_gettime
+-288	64	accept4			sys_accept4
+-289	64	signalfd4		sys_signalfd4
+-290	64	eventfd2		sys_eventfd2
+-291	64	epoll_create1		sys_epoll_create1
+-292	64	dup3			sys_dup3
+-293	64	pipe2			sys_pipe2
+-294	64	inotify_init1		sys_inotify_init1
++280	common	utimensat		sys_utimensat
++281	common	epoll_pwait		sys_epoll_pwait
++282	common	signalfd		sys_signalfd
++283	common	timerfd_create		sys_timerfd_create
++284	common	eventfd			sys_eventfd
++285	common	fallocate		sys_fallocate
++286	common	timerfd_settime		sys_timerfd_settime
++287	common	timerfd_gettime		sys_timerfd_gettime
++288	common	accept4			sys_accept4
++289	common	signalfd4		sys_signalfd4
++290	common	eventfd2		sys_eventfd2
++291	common	epoll_create1		sys_epoll_create1
++292	common	dup3			sys_dup3
++293	common	pipe2			sys_pipe2
++294	common	inotify_init1		sys_inotify_init1
+ 295	64	preadv			sys_preadv
+ 296	64	pwritev			sys_pwritev
+ 297	64	rt_tgsigqueueinfo	sys_rt_tgsigqueueinfo
+-298	64	perf_event_open		sys_perf_event_open
++298	common	perf_event_open		sys_perf_event_open
+ 299	64	recvmmsg		sys_recvmmsg
+-300	64	fanotify_init		sys_fanotify_init
+-301	64	fanotify_mark		sys_fanotify_mark
+-302	64	prlimit64		sys_prlimit64
+-303	64	name_to_handle_at	sys_name_to_handle_at
+-304	64	open_by_handle_at	sys_open_by_handle_at
+-305	64	clock_adjtime		sys_clock_adjtime
+-306	64	syncfs			sys_syncfs
++300	common	fanotify_init		sys_fanotify_init
++301	common	fanotify_mark		sys_fanotify_mark
++302	common	prlimit64		sys_prlimit64
++303	common	name_to_handle_at	sys_name_to_handle_at
++304	common	open_by_handle_at	sys_open_by_handle_at
++305	common	clock_adjtime		sys_clock_adjtime
++306	common	syncfs			sys_syncfs
+ 307	64	sendmmsg		sys_sendmmsg
+-308	64	setns			sys_setns
+-309	64	getcpu			sys_getcpu
++308	common	setns			sys_setns
++309	common	getcpu			sys_getcpu
+ 310	64	process_vm_readv	sys_process_vm_readv
+ 311	64	process_vm_writev	sys_process_vm_writev
++#
++# x32-specific system call numbers start at 512 to avoid cache impact
++# for native 64-bit operation.
++#
++512	x32	rt_sigaction		sys32_rt_sigaction
++513	x32	rt_sigreturn		stub_x32_rt_sigreturn
++514	x32	ioctl			compat_sys_ioctl
++515	x32	readv			compat_sys_readv
++516	x32	writev			compat_sys_writev
++517	x32	recvfrom		compat_sys_recvfrom
++518	x32	sendmsg			compat_sys_sendmsg
++519	x32	recvmsg			compat_sys_recvmsg
++520	x32	execve			stub_x32_execve
++521	x32	ptrace			compat_sys_ptrace
++522	x32	rt_sigpending		sys32_rt_sigpending
++523	x32	rt_sigtimedwait		compat_sys_rt_sigtimedwait
++524	x32	rt_sigqueueinfo		sys32_rt_sigqueueinfo
++525	x32	sigaltstack		stub_x32_sigaltstack
++526	x32	timer_create		compat_sys_timer_create
++527	x32	mq_notify		compat_sys_mq_notify
++528	x32	kexec_load		compat_sys_kexec_load
++529	x32	waitid			compat_sys_waitid
++530	x32	set_robust_list		compat_sys_set_robust_list
++531	x32	get_robust_list		compat_sys_get_robust_list
++532	x32	vmsplice		compat_sys_vmsplice
++533	x32	move_pages		compat_sys_move_pages
++534	x32	preadv			compat_sys_preadv64
++535	x32	pwritev			compat_sys_pwritev64
++536	x32	rt_tgsigqueueinfo	compat_sys_rt_tgsigqueueinfo
++537	x32	recvmmsg		compat_sys_recvmmsg
++538	x32	sendmmsg		compat_sys_sendmmsg
++539	x32	process_vm_readv	compat_sys_process_vm_readv
++540	x32	process_vm_writev	compat_sys_process_vm_writev
