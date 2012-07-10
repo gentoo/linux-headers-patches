@@ -34,6 +34,12 @@ mkdir -p ${dst}/scripts/basic
 printf '#!/bin/sh\nexit 0' > ${dst}/scripts/basic/fixdep
 chmod a+rx ${dst}/scripts/basic/fixdep
 touch ${dst}/scripts/basic/Makefile
+
+mkdir ${dst}/tools
+cp -r \
+	${src}/tools/include \
+	${dst}/tools/
+
 mkdir ${dst}/arch
 arches=$(cd ${src}/arch ; ls)
 for a in ${arches} ; do
@@ -41,7 +47,7 @@ for a in ${arches} ; do
 		mkdir -p ${dst}/arch/${a}
 		cp ${src}/arch/${a}/Makefile* ${dst}/arch/${a}/
 		cp ${src}/arch/${a}/Kbuild* ${dst}/arch/${a}/ 2>/dev/null || :
-		for d in include syscalls ; do
+		for d in include syscalls tools ; do
 			if [[ -e ${src}/arch/${a}/${d} ]] ; then
 				cp -r ${src}/arch/${a}/${d} ${dst}/arch/${a}/
 			fi
