@@ -1,0 +1,35 @@
+From 18b46b8c25273d8a7ee3bc280ccc635b861664eb Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Fri, 25 May 2012 01:37:11 -0400
+Subject: [PATCH] alpha: fix fpu.h usage in userspace
+
+After commit ec2212088c42ff7d1362629ec26dda4f3e8bdad3, the fpu.h header
+which we install for userland started depending on special_insns.h which
+is not installed.  However, fpu.h only uses that for __KERNEL__ code, so
+protect the inclusion the same way to avoid build breakage in glibc:
+/usr/include/asm/fpu.h:4:31: fatal error: asm/special_insns.h: No such file or directory
+
+Cc: stable@vger.kernel.org
+Reported-by: Matt Turner <mattst88@gentoo.org>
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ arch/alpha/include/asm/fpu.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/alpha/include/asm/fpu.h b/arch/alpha/include/asm/fpu.h
+index db00f78..e477bcd 100644
+--- a/arch/alpha/include/asm/fpu.h
++++ b/arch/alpha/include/asm/fpu.h
+@@ -1,7 +1,9 @@
+ #ifndef __ASM_ALPHA_FPU_H
+ #define __ASM_ALPHA_FPU_H
+ 
++#ifdef __KERNEL__
+ #include <asm/special_insns.h>
++#endif
+ 
+ /*
+  * Alpha floating-point control register defines:
+-- 
+1.7.9.7
+
