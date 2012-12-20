@@ -23,7 +23,7 @@ mkdir ${dst}
 cp ${src}/Makefile ${dst}/
 mkdir ${dst}/include
 cp ${src}/include/Kbuild ${dst}/include/
-cp -r $(find ${src}/include -mindepth 2 -maxdepth 2 -name Kbuild -printf %h' ') ${dst}/include/
+cp -r $(find ${src}/include -mindepth 2 -maxdepth 2 -name 'Kbuild*' -printf %h' ') ${dst}/include/
 mkdir ${dst}/scripts
 cp -r \
 	${src}/scripts/{Makefile,Kbuild}* \
