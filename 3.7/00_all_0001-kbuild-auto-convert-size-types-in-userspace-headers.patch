@@ -1,0 +1,31 @@
+From f9d4ac2f6c961a8442a07395f33b2a1591934d22 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 06:07:47 -0500
+Subject: [PATCH 1/7] kbuild: auto-convert size types in userspace headers
+
+Rather than constantly fixing up size type breakage in userspace headers,
+auto convert the types u_intXX_t, uintXX_t, intXX_t, uXX, and sXX to the
+appropriate __uXX or __sXX type.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ scripts/headers_install.pl | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/scripts/headers_install.pl b/scripts/headers_install.pl
+index 6c353ae..ed4f042 100644
+--- a/scripts/headers_install.pl
++++ b/scripts/headers_install.pl
+@@ -42,6 +42,9 @@ foreach my $filename (@files) {
+ 		$line =~ s/(^|\s)(inline)\b/$1__$2__/g;
+ 		$line =~ s/(^|\s)(asm)\b(\s|[(]|$)/$1__$2__$3/g;
+ 		$line =~ s/(^|\s|[(])(volatile)\b(\s|[(]|$)/$1__$2__$3/g;
++		$line =~ s/\b([us](8|16|32|64))\b/__$1/g;
++		$line =~ s/\b(u_?int(8|16|32|64)_t)\b/__u$2/g;
++		$line =~ s/\b(int(8|16|32|64)_t)\b/__s$2/g;
+ 		$line =~ s/#ifndef _UAPI/#ifndef /;
+ 		$line =~ s/#define _UAPI/#define /;
+ 		$line =~ s!#endif /[*] _UAPI!#endif /* !;
+-- 
+1.8.0
+
