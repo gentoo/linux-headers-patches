@@ -11,7 +11,7 @@ smoke test:
 
 common packages that break:
 
-	pkgs=$(sed -n '/^%/,/^%/{s:%::;p}' testing)
+	pkgs=$(sed -n '/^%/,/^%/{s:%::;p}' testing.txt)
 	sudo emerge -1qav ${pkgs} --jobs 4
 
 %
