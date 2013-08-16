@@ -1,0 +1,28 @@
+From 8d2170870dd969945c46a2d4ec995ebd95cdb4ac Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Fri, 16 Aug 2013 14:05:40 -0400
+Subject: [PATCH] Omnikey Cardman 4000: pull in ioctl.h in user header
+
+This file uses the ioctl helpers (_IOR/_IOW/etc...), so include ioctl.h
+for the definitions.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/linux/cm4000_cs.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/cm4000_cs.h b/include/uapi/linux/cm4000_cs.h
+index bc51f77..1217f75 100644
+--- a/include/uapi/linux/cm4000_cs.h
++++ b/include/uapi/linux/cm4000_cs.h
+@@ -2,6 +2,7 @@
+ #define _UAPI_CM4000_H_
+ 
+ #include <linux/types.h>
++#include <linux/ioctl.h>
+ 
+ #define	MAX_ATR			33
+ 
+-- 
+1.8.3.2
+

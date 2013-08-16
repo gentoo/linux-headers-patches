@@ -1,0 +1,26 @@
+From afe7c7bb4bde83818967ae9933efa85a13e032d3 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Fri, 16 Aug 2013 14:02:10 -0400
+Subject: [PATCH] Btrfs: use __u64 in exported user headers
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/linux/btrfs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/btrfs.h b/include/uapi/linux/btrfs.h
+index 5ef0df5..7150b26 100644
+--- a/include/uapi/linux/btrfs.h
++++ b/include/uapi/linux/btrfs.h
+@@ -484,7 +484,7 @@ struct btrfs_ioctl_send_args {
+ 				   struct btrfs_ioctl_search_args)
+ #define BTRFS_IOC_INO_LOOKUP _IOWR(BTRFS_IOCTL_MAGIC, 18, \
+ 				   struct btrfs_ioctl_ino_lookup_args)
+-#define BTRFS_IOC_DEFAULT_SUBVOL _IOW(BTRFS_IOCTL_MAGIC, 19, u64)
++#define BTRFS_IOC_DEFAULT_SUBVOL _IOW(BTRFS_IOCTL_MAGIC, 19, __u64)
+ #define BTRFS_IOC_SPACE_INFO _IOWR(BTRFS_IOCTL_MAGIC, 20, \
+ 				    struct btrfs_ioctl_space_args)
+ #define BTRFS_IOC_START_SYNC _IOR(BTRFS_IOCTL_MAGIC, 24, __u64)
+-- 
+1.8.3.2
+

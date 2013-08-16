@@ -1,0 +1,31 @@
+From a795303856a608d14717fb1244e09ea4a91116e1 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 06:07:47 -0500
+Subject: [PATCH] kbuild: auto-convert size types in userspace headers
+
+Rather than constantly fixing up size type breakage in userspace headers,
+auto convert the types u_intXX_t, uintXX_t, intXX_t, uXX, and sXX to the
+appropriate __uXX or __sXX type.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ scripts/headers_install.sh | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/scripts/headers_install.sh b/scripts/headers_install.sh
+index 643764f..ea88683 100644
+--- a/scripts/headers_install.sh
++++ b/scripts/headers_install.sh
+@@ -34,6 +34,9 @@ do
+ 		-e 's/(^|[^a-zA-Z0-9])__packed([^a-zA-Z0-9_]|$)/\1__attribute__((packed))\2/g' \
+ 		-e 's/(^|[ \t(])(inline|asm|volatile)([ \t(]|$)/\1__\2__\3/g' \
+ 		-e 's@#(ifndef|define|endif[ \t]*/[*])[ \t]*_UAPI@#\1 @' \
++		-e 's/\b([us](8|16|32|64))\b/__\1/g' \
++		-e 's/\b(u_?int(8|16|32|64)_t)\b/__u\2/g' \
++		-e 's/\b(int(8|16|32|64)_t)\b/__s\2/g' \
+ 		"$i" > "$OUTDIR/$FILE.sed" || exit 1
+ 	scripts/unifdef -U__KERNEL__ -D__EXPORTED_HEADERS__ "$OUTDIR/$FILE.sed" \
+ 		> "$OUTDIR/$FILE"
+-- 
+1.8.3.2
+
