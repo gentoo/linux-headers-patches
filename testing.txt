@@ -12,7 +12,7 @@ smoke test:
 common packages that break:
 
 	pkgs=$(sed -n '/^%/,/^%/{s:%::;p}' testing.txt)
-	sudo emerge -1qav ${pkgs} --jobs 4
+	sudo env FEATURES=-digest emerge --keep-going -1qav ${pkgs} --jobs 4
 
 %
 app-cdr/cdrdao
