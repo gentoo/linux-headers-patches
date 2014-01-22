@@ -1,0 +1,29 @@
+From 8d0275ae7c9c043c62f6b7481480e782024c9dee Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 07:41:01 -0500
+Subject: [PATCH 02/10] uapi: dn: pull in ioctl.h header
+
+This header uses _IOW/_IOR defines but doesn't include ioctl.h for it.
+If you try to use this w/out including ioctl.h yourself, it can fail
+to build, so add the explicit include.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/linux/dn.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/dn.h b/include/uapi/linux/dn.h
+index 5fbdd3d..4295c74 100644
+--- a/include/uapi/linux/dn.h
++++ b/include/uapi/linux/dn.h
+@@ -1,6 +1,7 @@
+ #ifndef _LINUX_DN_H
+ #define _LINUX_DN_H
+ 
++#include <linux/ioctl.h>
+ #include <linux/types.h>
+ #include <linux/if_ether.h>
+ 
+-- 
+1.8.4.3
+

@@ -1,0 +1,32 @@
+From af0b5417dc16a45cb88e0046a61d28c0d89e9f73 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Tue, 21 Jan 2014 21:43:26 -0500
+Subject: [PATCH 10/10] uapi: ppp-ioctl.h: pull in ppp_defs.h
+
+This header uses enum NPmode but doesn't include ppp_defs.h.  If you try
+to use this header w/out including the defs header first, it leads to a
+build failure.  So add the explicit include to fix it.
+
+Don't know of any packages directly impacted, but noticed while building
+some ppp code by hand.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/linux/ppp-ioctl.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/ppp-ioctl.h b/include/uapi/linux/ppp-ioctl.h
+index 2d9a885..63a23a3 100644
+--- a/include/uapi/linux/ppp-ioctl.h
++++ b/include/uapi/linux/ppp-ioctl.h
+@@ -12,6 +12,7 @@
+ 
+ #include <linux/types.h>
+ #include <linux/compiler.h>
++#include <linux/ppp_defs.h>
+ 
+ /*
+  * Bit definitions for flags argument to PPPIOCGFLAGS/PPPIOCSFLAGS.
+-- 
+1.8.4.3
+
