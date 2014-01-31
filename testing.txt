@@ -1,3 +1,18 @@
+upgrade process:
+
+	- generate the gentoo-headers-base-<kernel version>.tar.xz tarball:
+	  $ ./rip-headers.sh 3.13
+	- create a new patchset dir:
+	  $ cp -a 3.13/ 3.14/
+	  $ rm -rf 3.14/CVS
+	  $ cvs add 3.14 && cvs add 3.14/*
+	- generate the patchset tarball:
+	  $ ./make-tarball.sh 3.14 1
+	- update the ebuild:
+	  $ cp linux-headers-3.13.ebuild linux-headers-3.14.ebuild
+	- test it (see sections below)
+	- upload tarballs & commit files to cvs
+
 smoke test:
 
 	for h in `find /usr/include/linux -type f -printf '%P '` ; do
@@ -22,6 +37,7 @@ app-text/a2ps
 dev-util/strace
 media-libs/libv4l
 media-tv/ivtv-utils
+media-video/vdr
 net-dialup/linux-atm
 net-dialup/ppp
 net-dialup/rp-pppoe
@@ -30,6 +46,9 @@ net-firewall/iptables
 net-misc/dahdi-tools
 net-misc/iputils
 net-misc/lksctp-tools
+net-wireless/iw
+net-wireless/wireless-tools
+net-wireless/wpa_supplicant
 sys-apps/acl
 sys-apps/attr
 sys-apps/busybox
@@ -43,7 +62,6 @@ sys-fs/fuse
 sys-fs/udev
 sys-libs/libcap
 sys-libs/gpm
-media-video/vdr
 %
 
 then make sure the big one:
