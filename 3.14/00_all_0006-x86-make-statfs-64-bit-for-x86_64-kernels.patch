@@ -1,0 +1,32 @@
+From 3ebcdbcd6348b5b3e6398a55ed0ebab2cf2b2d6e Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 25 Mar 2013 16:38:47 -0400
+Subject: [PATCH] x86: make statfs 64-bit for x86_64 kernels
+
+When including these headers in the x32 ABI, the structs get declared
+with 32bit sizes which is incorrect.  The stat.h change has been merged
+now, but statfs.h is still missing.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ arch/x86/include/uapi/asm/statfs.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/x86/include/uapi/asm/statfs.h b/arch/x86/include/uapi/asm/statfs.h
+index 2d0adbf..3cb5744 100644
+--- a/arch/x86/include/uapi/asm/statfs.h
++++ b/arch/x86/include/uapi/asm/statfs.h
+@@ -8,5 +8,10 @@
+  */
+ #define ARCH_PACK_COMPAT_STATFS64 __attribute__((packed,aligned(4)))
+ 
++/* For x86-64, both the 64bit and x32 ABIs have 64bit fields. */
++#ifdef __x86_64__
++#define __statfs_word __u64
++#endif
++
+ #include <asm-generic/statfs.h>
+ #endif /* _ASM_X86_STATFS_H */
+-- 
+1.9.1
+
