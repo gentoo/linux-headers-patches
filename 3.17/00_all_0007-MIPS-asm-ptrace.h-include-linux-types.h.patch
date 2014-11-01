@@ -1,0 +1,35 @@
+https://bugs.gentoo.org/527642
+
+From b4f21bcfa89c3a60746b751ec1bfe27d29a868e8 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Fri, 31 Oct 2014 21:57:46 -0400
+Subject: [PATCH] MIPS: asm/ptrace.h: include linux/types.h
+
+The header uses __u64 but doesn't include linux/types.h which breaks
+userspace apps that try to use asm/ptrace.h.  Like gdb:
+
+In file included from mips-linux-nat.c:37:0:
+/usr/include/asm/ptrace.h:32:2: error: unknown type name '__u64'
+  __u64 regs[32];
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ arch/mips/include/uapi/asm/ptrace.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/mips/include/uapi/asm/ptrace.h b/arch/mips/include/uapi/asm/ptrace.h
+index bbcfb8b..91a3d19 100644
+--- a/arch/mips/include/uapi/asm/ptrace.h
++++ b/arch/mips/include/uapi/asm/ptrace.h
+@@ -9,6 +9,8 @@
+ #ifndef _UAPI_ASM_PTRACE_H
+ #define _UAPI_ASM_PTRACE_H
+ 
++#include <linux/types.h>
++
+ /* 0 - 31 are integer registers, 32 - 63 are fp registers.  */
+ #define FPR_BASE	32
+ #define PC		64
+-- 
+2.1.2
+
