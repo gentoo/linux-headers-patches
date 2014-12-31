@@ -1,0 +1,74 @@
+From 9ca162697e0d7a353e3a137c1f489b7f3e3ec7de Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Tue, 30 Dec 2014 19:14:51 -0500
+Subject: [PATCH] timerfd: export defines to userspace
+
+Since userspace is expected to call timerfd syscalls directly with these
+flags/ioctls, make sure we export them so they don't have to duplicate
+the values themselves.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/linux/timerfd.h      | 20 +-------------------
+ include/uapi/linux/Kbuild    |  1 +
+ include/uapi/linux/timerfd.h | 36 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 38 insertions(+), 19 deletions(-)
+ create mode 100644 include/uapi/linux/timerfd.h
+
+diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
+index 8523f9b..62ac5e7 100644
+--- a/include/uapi/linux/Kbuild
++++ b/include/uapi/linux/Kbuild
+@@ -384,6 +384,7 @@ header-y += tcp_metrics.h
+ header-y += telephony.h
+ header-y += termios.h
+ header-y += time.h
++header-y += timerfd.h
+ header-y += times.h
+ header-y += timex.h
+ header-y += tiocl.h
+diff --git a/include/uapi/linux/timerfd.h b/include/uapi/linux/timerfd.h
+new file mode 100644
+index 0000000..6fcfaa8
+--- /dev/null
++++ b/include/uapi/linux/timerfd.h
+@@ -0,0 +1,36 @@
++/*
++ *  include/linux/timerfd.h
++ *
++ *  Copyright (C) 2007  Davide Libenzi <davidel@xmailserver.org>
++ *
++ */
++
++#ifndef _UAPI_LINUX_TIMERFD_H
++#define _UAPI_LINUX_TIMERFD_H
++
++#include <linux/types.h>
++
++/* For O_CLOEXEC and O_NONBLOCK */
++#include <linux/fcntl.h>
++
++/* For _IO helpers */
++#include <linux/ioctl.h>
++
++/*
++ * CAREFUL: Check include/asm-generic/fcntl.h when defining
++ * new flags, since they might collide with O_* ones. We want
++ * to re-use O_* flags that couldn't possibly have a meaning
++ * from eventfd, in order to leave a free define-space for
++ * shared O_* flags.
++ *
++ * Also make sure to update the masks in include/linux/timerfd.h
++ * when adding new flags.
++ */
++#define TFD_TIMER_ABSTIME (1 << 0)
++#define TFD_TIMER_CANCEL_ON_SET (1 << 1)
++#define TFD_CLOEXEC O_CLOEXEC
++#define TFD_NONBLOCK O_NONBLOCK
++
++#define TFD_IOC_SET_TICKS	_IOW('T', 0, __u64)
++
++#endif /* _UAPI_LINUX_TIMERFD_H */
+-- 
+2.1.3
+

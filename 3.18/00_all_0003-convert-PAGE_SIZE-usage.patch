@@ -1,0 +1,54 @@
+From 530d762665c414470db375018471be27e4b3c239 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sat, 13 Feb 2010 03:09:23 -0500
+Subject: [PATCH] convert PAGE_SIZE usage
+
+The size of a page may change at runtime or based on kernel settings, so
+a static value at compile time doesn't work.  More importantly, no one
+exports PAGE_SIZE to user space anymore.
+
+URL: http://bugs.gentoo.org/301431
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/linux/binfmts.h  | 3 ++-
+ include/uapi/linux/resource.h | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/include/uapi/linux/binfmts.h b/include/uapi/linux/binfmts.h
+index 4eb5972..516bfcf 100644
+--- a/include/uapi/linux/binfmts.h
++++ b/include/uapi/linux/binfmts.h
+@@ -1,6 +1,7 @@
+ #ifndef _UAPI_LINUX_BINFMTS_H
+ #define _UAPI_LINUX_BINFMTS_H
+ 
++#include <unistd.h>
+ #include <linux/capability.h>
+ 
+ struct pt_regs;
+@@ -11,7 +12,7 @@ struct pt_regs;
+  * prevent the kernel from being unduly impacted by misaddressed pointers.
+  * MAX_ARG_STRINGS is chosen to fit in a signed 32-bit integer.
+  */
+-#define MAX_ARG_STRLEN (PAGE_SIZE * 32)
++#define MAX_ARG_STRLEN (sysconf(_SC_PAGESIZE) * 32)
+ #define MAX_ARG_STRINGS 0x7FFFFFFF
+ 
+ /* sizeof(linux_binprm->buf) */
+diff --git a/include/uapi/linux/resource.h b/include/uapi/linux/resource.h
+index 36fb3b5..58efd07 100644
+--- a/include/uapi/linux/resource.h
++++ b/include/uapi/linux/resource.h
+@@ -68,7 +68,8 @@ struct rlimit64 {
+  * GPG2 wants 64kB of mlocked memory, to make sure pass phrases
+  * and other sensitive information are never written to disk.
+  */
+-#define MLOCK_LIMIT	((PAGE_SIZE > 64*1024) ? PAGE_SIZE : 64*1024)
++/* No one currently defines PAGE_SIZE bigger than 64kB */
++#define MLOCK_LIMIT	(64 * 1024)
+ 
+ /*
+  * Due to binary compatibility, the actual resource numbers
+-- 
+2.1.3
+
