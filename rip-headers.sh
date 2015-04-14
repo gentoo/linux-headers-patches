@@ -20,7 +20,7 @@ if [ ! -d ${src} ] ; then
 	done
 fi
 if [ ! -d ${src} ] ; then
-	wget https://www.kernel.org/pub/linux/kernel/v3.x/linux-${ver}.tar.xz -P /usr/portage/distfiles/
+	wget https://www.kernel.org/pub/linux/kernel/v${ver:0:1}.x/linux-${ver}.tar.xz -P /usr/portage/distfiles/
 	exec "$0" "$@"
 fi
 
