@@ -62,6 +62,7 @@ sys-fs/fuse
 sys-fs/udev
 sys-libs/libcap
 sys-libs/gpm
+sys-process/lsof
 %
 
 then make sure the big one:
