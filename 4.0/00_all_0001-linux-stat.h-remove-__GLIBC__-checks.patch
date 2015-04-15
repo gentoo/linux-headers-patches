@@ -1,0 +1,28 @@
+From 208873aa0d7069842471898dd0b867c79d58c71d Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 06:52:59 -0500
+Subject: [PATCH] linux/stat.h: remove __GLIBC__ checks
+
+Only check __KERNEL__ so we don't assume the C library is glibc.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/linux/stat.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+index 7fec7e3..256ad24 100644
+--- a/include/uapi/linux/stat.h
++++ b/include/uapi/linux/stat.h
+@@ -2,7 +2,7 @@
+ #define _UAPI_LINUX_STAT_H
+ 
+ 
+-#if defined(__KERNEL__) || !defined(__GLIBC__) || (__GLIBC__ < 2)
++#if defined(__KERNEL__)
+ 
+ #define S_IFMT  00170000
+ #define S_IFSOCK 0140000
+-- 
+2.3.5
+
