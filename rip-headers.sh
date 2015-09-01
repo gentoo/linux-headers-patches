@@ -60,6 +60,11 @@ for a in ${arches} ; do
 		done
 	fi
 done
+# handle x86 unique cruft
+if [[ -e ${src}/arch/x86/entry/syscalls ]] ; then
+	mkdir -p ${dst}/arch/x86/entry
+	cp -r ${src}/arch/x86/entry/syscalls ${dst}/arch/x86/entry/
+fi
 # mips has some stupid unique bs
 if [[ -e ${src}/arch/mips/Kbuild.platforms ]] ; then
 	for f in "${src}"/arch/mips/*/Platform ; do
