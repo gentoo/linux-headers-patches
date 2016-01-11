@@ -1,0 +1,28 @@
+From fa494cb7c9744cb7dc29580fec1c02d1a3da8647 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Sun, 10 Jan 2016 19:59:47 -0500
+Subject: [PATCH] uapi: update install list after nvme.h rename
+
+Commit 9d99a8dda154f38307d43d9c9aa504 renamed nvme.h to nvme_ioctl.h,
+but the uapi install list still refers to nvme.h.  People trying to
+install the headers hit a failure as the header no longer exists.
+---
+ include/uapi/linux/Kbuild | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
+index dc6172c..7bb6aeb 100644
+--- a/include/uapi/linux/Kbuild
++++ b/include/uapi/linux/Kbuild
+@@ -307,7 +307,7 @@ header-y += nfs_mount.h
+ header-y += nl80211.h
+ header-y += n_r3964.h
+ header-y += nubus.h
+-header-y += nvme.h
++header-y += nvme_ioctl.h
+ header-y += nvram.h
+ header-y += omap3isp.h
+ header-y += omapfb.h
+-- 
+2.6.2
+

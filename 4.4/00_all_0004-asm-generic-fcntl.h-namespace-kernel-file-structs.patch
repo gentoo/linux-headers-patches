@@ -1,0 +1,54 @@
+From a403a62a884e83d61c1e3b45553bae026ea78b26 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 29 Dec 2008 07:39:14 -0500
+Subject: [PATCH] asm-generic/fcntl.h: namespace kernel file structs
+
+No one should be using these structs, but just in case they are,
+keep them available in the __kernel_ namespace.
+
+Otherwise, trying to include something like:
+	#include <fcntl.h>
+	#include <linux/inotify.h>
+leads to horrible failure.
+
+URL: http://bugs.gentoo.org/244470
+URL: http://bugs.gentoo.org/388633
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/asm-generic/fcntl.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
+index e063eff..a98769e 100644
+--- a/include/uapi/asm-generic/fcntl.h
++++ b/include/uapi/asm-generic/fcntl.h
+@@ -152,7 +152,7 @@
+ #define F_OWNER_PID	1
+ #define F_OWNER_PGRP	2
+ 
+-struct f_owner_ex {
++struct __kernel_f_owner_ex {
+ 	int	type;
+ 	__kernel_pid_t	pid;
+ };
+@@ -192,7 +192,7 @@ struct f_owner_ex {
+ #define __ARCH_FLOCK_PAD
+ #endif
+ 
+-struct flock {
++struct __kernel_flock {
+ 	short	l_type;
+ 	short	l_whence;
+ 	__kernel_off_t	l_start;
+@@ -207,7 +207,7 @@ struct flock {
+ #define __ARCH_FLOCK64_PAD
+ #endif
+ 
+-struct flock64 {
++struct __kernel_flock64 {
+ 	short  l_type;
+ 	short  l_whence;
+ 	__kernel_loff_t l_start;
+-- 
+2.6.2
+
