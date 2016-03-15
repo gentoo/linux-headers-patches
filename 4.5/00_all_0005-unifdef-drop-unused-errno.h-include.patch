@@ -1,0 +1,32 @@
+From 8bf7b6fe5e9b14b2d3386398d459685313791556 Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Tue, 6 Dec 2011 17:22:42 -0500
+Subject: [PATCH 05/11] unifdef: drop unused errno.h include
+
+This is the only header on my system that ends up requiring kernel
+headers, so if the kernel headers aren't available, we end up being
+unable to install kernel headers :).
+
+Since this file doesn't actually use anything from errno.h, drop
+the include so it at least makes us a bit more robust on glibc.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ scripts/unifdef.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/scripts/unifdef.c b/scripts/unifdef.c
+index 7493c0e..c5dfae5 100644
+--- a/scripts/unifdef.c
++++ b/scripts/unifdef.c
+@@ -48,7 +48,6 @@
+ 
+ #include <ctype.h>
+ #include <err.h>
+-#include <errno.h>
+ #include <stdarg.h>
+ #include <stdbool.h>
+ #include <stdio.h>
+-- 
+2.6.2
+

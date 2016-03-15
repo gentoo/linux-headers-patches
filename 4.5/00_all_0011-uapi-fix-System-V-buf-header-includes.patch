@@ -1,0 +1,76 @@
+From cd50f6550c81fc16eaa26084e6685f22169c74bf Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Mon, 2 Nov 2015 13:30:12 -0500
+Subject: [PATCH 11/11] uapi: fix System V buf header includes
+
+These headers rely on kernel types but don't include the other headers
+that define them.  So when you try to include them directly, you often
+hit build failures due to unknown types.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/asm-generic/ipcbuf.h | 2 ++
+ include/uapi/asm-generic/msgbuf.h | 3 +++
+ include/uapi/asm-generic/sembuf.h | 2 ++
+ include/uapi/asm-generic/shmbuf.h | 2 ++
+ 4 files changed, 9 insertions(+)
+
+diff --git a/include/uapi/asm-generic/ipcbuf.h b/include/uapi/asm-generic/ipcbuf.h
+index 3dbcc1e..c37b32a 100644
+--- a/include/uapi/asm-generic/ipcbuf.h
++++ b/include/uapi/asm-generic/ipcbuf.h
+@@ -1,6 +1,8 @@
+ #ifndef __ASM_GENERIC_IPCBUF_H
+ #define __ASM_GENERIC_IPCBUF_H
+ 
++#include <linux/types.h>
++
+ /*
+  * The generic ipc64_perm structure:
+  * Note extra padding because this structure is passed back and forth
+diff --git a/include/uapi/asm-generic/msgbuf.h b/include/uapi/asm-generic/msgbuf.h
+index f55ecc4..473dcdc 100644
+--- a/include/uapi/asm-generic/msgbuf.h
++++ b/include/uapi/asm-generic/msgbuf.h
+@@ -1,7 +1,10 @@
+ #ifndef __ASM_GENERIC_MSGBUF_H
+ #define __ASM_GENERIC_MSGBUF_H
+ 
++#include <linux/types.h>
+ #include <asm/bitsperlong.h>
++#include <asm/ipcbuf.h>
++
+ /*
+  * generic msqid64_ds structure.
+  *
+diff --git a/include/uapi/asm-generic/sembuf.h b/include/uapi/asm-generic/sembuf.h
+index 4cb2c13..f57240f 100644
+--- a/include/uapi/asm-generic/sembuf.h
++++ b/include/uapi/asm-generic/sembuf.h
+@@ -1,7 +1,9 @@
+ #ifndef __ASM_GENERIC_SEMBUF_H
+ #define __ASM_GENERIC_SEMBUF_H
+ 
++#include <linux/types.h>
+ #include <asm/bitsperlong.h>
++#include <asm/ipcbuf.h>
+ 
+ /*
+  * The semid64_ds structure for x86 architecture.
+diff --git a/include/uapi/asm-generic/shmbuf.h b/include/uapi/asm-generic/shmbuf.h
+index 7e9fb2f..f9e28e4 100644
+--- a/include/uapi/asm-generic/shmbuf.h
++++ b/include/uapi/asm-generic/shmbuf.h
+@@ -1,7 +1,9 @@
+ #ifndef __ASM_GENERIC_SHMBUF_H
+ #define __ASM_GENERIC_SHMBUF_H
+ 
++#include <linux/types.h>
+ #include <asm/bitsperlong.h>
++#include <asm/ipcbuf.h>
+ 
+ /*
+  * The shmid64_ds structure for x86 architecture.
+-- 
+2.6.2
+
