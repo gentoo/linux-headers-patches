@@ -1,0 +1,98 @@
+From a6bad77d4d9120e785fac605c169486e6bfb12ca Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@chromium.org>
+Date: Tue, 21 Apr 2015 14:28:20 -0400
+Subject: [PATCH] Revert "MIPS: Provide correct siginfo_t.si_stime"
+
+This reverts commit 8cb48fe169dd682b6c29a3b7ef18333e4f577890.
+
+UAPI headers cannot use "uapi/" in their paths by design -- when they're
+installed, they do not have the uapi/ prefix.  Otherwise doing so breaks
+userland badly:
+$ printf '#include <stddef.h>\n#include <linux/signal.h>\n' > test.c
+$ mips64-unknown-linux-gnu-gcc -c test.c
+In file included from /usr/mips64-unknown-linux-gnu/usr/include/linux/signal.h:5:0,
+                 from test.c:2:
+/usr/mips64-unknown-linux-gnu/usr/include/asm/siginfo.h:31:38: fatal error: uapi/asm-generic/siginfo.h: No such file or directory
+compilation terminated.
+
+Signed-off-by: Mike Frysinger <vapier@chromium.org>
+---
+ arch/mips/include/asm/siginfo.h      | 29 +++++++++++++++++++++++++++++
+ arch/mips/include/uapi/asm/siginfo.h | 11 ++++++++---
+ 2 files changed, 37 insertions(+), 3 deletions(-)
+ create mode 100644 arch/mips/include/asm/siginfo.h
+
+diff --git a/arch/mips/include/asm/siginfo.h b/arch/mips/include/asm/siginfo.h
+new file mode 100644
+index 0000000..dd9a762
+--- /dev/null
++++ b/arch/mips/include/asm/siginfo.h
+@@ -0,0 +1,29 @@
++/*
++ * This file is subject to the terms and conditions of the GNU General Public
++ * License.  See the file "COPYING" in the main directory of this archive
++ * for more details.
++ *
++ * Copyright (C) 1998, 1999, 2001, 2003 Ralf Baechle
++ * Copyright (C) 2000, 2001 Silicon Graphics, Inc.
++ */
++#ifndef _ASM_SIGINFO_H
++#define _ASM_SIGINFO_H
++
++#include <uapi/asm/siginfo.h>
++
++
++/*
++ * Duplicated here because of <asm-generic/siginfo.h> braindamage ...
++ */
++#include <linux/string.h>
++
++static inline void copy_siginfo(struct siginfo *to, struct siginfo *from)
++{
++	if (from->si_code < 0)
++		memcpy(to, from, sizeof(*to));
++	else
++		/* _sigchld is currently the largest know union member */
++		memcpy(to, from, 3*sizeof(int) + sizeof(from->_sifields._sigchld));
++}
++
++#endif /* _ASM_SIGINFO_H */
+diff --git a/arch/mips/include/uapi/asm/siginfo.h b/arch/mips/include/uapi/asm/siginfo.h
+index cc49dc2..34de9bd 100644
+--- a/arch/mips/include/uapi/asm/siginfo.h
++++ b/arch/mips/include/uapi/asm/siginfo.h
+@@ -16,6 +16,13 @@
+ #define HAVE_ARCH_SIGINFO_T
+ 
+ /*
++ * We duplicate the generic versions - <asm-generic/siginfo.h> is just borked
++ * by design ...
++ */
++#define HAVE_ARCH_COPY_SIGINFO
++struct siginfo;
++
++/*
+  * Careful to keep union _sifields from shifting ...
+  */
+ #if _MIPS_SZLONG == 32
+@@ -28,9 +35,8 @@
+ 
+ #define __ARCH_SIGSYS
+ 
+-#include <uapi/asm-generic/siginfo.h>
++#include <asm-generic/siginfo.h>
+ 
+-/* We can't use generic siginfo_t, because our si_code and si_errno are swapped */
+ typedef struct siginfo {
+ 	int si_signo;
+ 	int si_code;
+@@ -123,6 +129,5 @@ typedef struct siginfo {
+ #define SI_TIMER __SI_CODE(__SI_TIMER, -3) /* sent by timer expiration */
+ #define SI_MESGQ __SI_CODE(__SI_MESGQ, -4) /* sent by real time mesq state change */
+ 
+-#include <asm-generic/siginfo.h>
+ 
+ #endif /* _UAPI_ASM_SIGINFO_H */
+-- 
+2.8.2
+
