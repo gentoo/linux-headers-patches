@@ -73,6 +73,11 @@ if [[ -e ${src}/arch/mips/Kbuild.platforms ]] ; then
 		cp ${src}/${f} ${dst}/${f}
 	done
 fi
+if [[ -d ${src}/arch/mips/boot/tools ]] ; then
+	mkdir -p ${dst}/arch/mips/boot
+	cp -r ${src}/arch/mips/boot/tools ${dst}/arch/mips/boot/
+fi
+find ${dst}/ -name .gitignore -delete
 
 cp README.ripped-headers rip-headers.sh ${dst}/
 
