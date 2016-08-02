@@ -33,6 +33,7 @@ common packages that break:
 app-cdr/cdrdao
 app-cdr/cdrtools
 app-cdr/dvd+rw-tools
+app-emulation/qemu
 app-text/a2ps
 dev-util/strace
 media-libs/libv4l
