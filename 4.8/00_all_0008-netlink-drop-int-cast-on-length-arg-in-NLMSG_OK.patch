@@ -1,0 +1,43 @@
+From 1c92839b48e932d6031302baeda3b9464970fd8c Mon Sep 17 00:00:00 2001
+From: Mike Frysinger <vapier@gentoo.org>
+Date: Thu, 5 Mar 2015 00:26:58 -0500
+Subject: [PATCH] netlink: drop (int) cast on length arg in NLMSG_OK
+
+The NLMSG_OK macro compares three things:
+ - the len arg from the user
+ - a size_t: sizeof(struct nlmsghdr)
+ - an int: sizeof(struct nlmsghdr) casted
+ - an u32: the nlmsghdr->nlmsg_len member
+
+When building with -Wsign-compare, this macro triggers a signed compare
+warning.  This is because it compares len to an int, and then compares
+it to a u32.  If len is signed, we get a warning due to the last test.
+If len is unsigned, we get a warning due to the first test.  Like in
+strace:
+socketutils.c:145:8: warning: comparison between signed and unsigned
+                              integer expressions [-Wsign-compare]
+
+Lets drop the int cast on the first sizeof.  This way, once the user
+casts len to an unsigned value, everything shakes out correctly.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ include/uapi/linux/netlink.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/netlink.h b/include/uapi/linux/netlink.h
+index 0dba4e4ed2be..56b79fbd84dc 100644
+--- a/include/uapi/linux/netlink.h
++++ b/include/uapi/linux/netlink.h
+@@ -85,7 +85,7 @@ struct nlmsghdr {
+ #define NLMSG_DATA(nlh)  ((void*)(((char*)nlh) + NLMSG_LENGTH(0)))
+ #define NLMSG_NEXT(nlh,len)	 ((len) -= NLMSG_ALIGN((nlh)->nlmsg_len), \
+ 				  (struct nlmsghdr*)(((char*)(nlh)) + NLMSG_ALIGN((nlh)->nlmsg_len)))
+-#define NLMSG_OK(nlh,len) ((len) >= (int)sizeof(struct nlmsghdr) && \
++#define NLMSG_OK(nlh,len) ((len) >= sizeof(struct nlmsghdr) && \
+ 			   (nlh)->nlmsg_len >= sizeof(struct nlmsghdr) && \
+ 			   (nlh)->nlmsg_len <= (len))
+ #define NLMSG_PAYLOAD(nlh,len) ((nlh)->nlmsg_len - NLMSG_SPACE((len)))
+-- 
+2.9.0
+
