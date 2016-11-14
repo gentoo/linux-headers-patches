@@ -63,6 +63,7 @@ sys-fs/fuse
 sys-fs/udev
 sys-libs/libcap
 sys-libs/gpm
+sys-process/audit
 sys-process/lsof
 %
 
