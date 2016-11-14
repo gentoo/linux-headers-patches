@@ -30,10 +30,12 @@ common packages that break:
 	sudo env FEATURES=-digest emerge --keep-going -1qav ${pkgs} --jobs 4
 
 %
+app-admin/collectd
 app-cdr/cdrdao
 app-cdr/cdrtools
 app-cdr/dvd+rw-tools
 app-emulation/qemu
+app-misc/inputlircd
 app-text/a2ps
 dev-util/strace
 media-libs/libv4l
@@ -44,9 +46,13 @@ net-dialup/ppp
 net-dialup/rp-pppoe
 net-firewall/ipsec-tools
 net-firewall/iptables
+net-misc/bridge-utils
 net-misc/dahdi-tools
+net-misc/dhcpcd
 net-misc/iputils
 net-misc/lksctp-tools
+net-misc/socat
+net-proxy/shadowsocks-libev
 net-wireless/iw
 net-wireless/wireless-tools
 net-wireless/wpa_supplicant
@@ -58,12 +64,18 @@ sys-apps/kbd
 sys-apps/net-tools
 sys-apps/sandbox
 sys-apps/setserial
+sys-block/fio
+sys-block/sedutil
+sys-boot/efibootmgr
+sys-boot/syslinux
 sys-devel/gdb
 sys-fs/fuse
 sys-fs/udev
+sys-libs/efivar
 sys-libs/libcap
 sys-libs/gpm
 sys-process/audit
+sys-process/criu
 sys-process/lsof
 %
 
