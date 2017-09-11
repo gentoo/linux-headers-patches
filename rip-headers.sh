@@ -28,8 +28,13 @@ rm -rf ${dst}
 mkdir ${dst}
 cp ${src}/Makefile ${dst}/
 mkdir ${dst}/include
-cp ${src}/include/Kbuild ${dst}/include/
-cp -r $(find ${src}/include -mindepth 2 -maxdepth 2 -name 'Kbuild*' -printf %h' ') ${dst}/include/
+[ -f ${src}/include/Kbuild ] && cp ${src}/include/Kbuild ${dst}/include/
+directories=$(find ${src}/include -mindepth 2 -maxdepth 2 -name 'Kbuild*' -printf %h' ')
+if [ -n "${directories}" ] ; then
+	cp -r ${directories} ${dst}/include/
+else
+	cp -r ${src}/include/* ${dst}/include
+fi
 mkdir ${dst}/scripts
 cp -r \
 	${src}/scripts/{Makefile,Kbuild}* \
