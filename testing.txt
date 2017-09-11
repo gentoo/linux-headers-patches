@@ -44,7 +44,6 @@ media-video/vdr
 net-dialup/linux-atm
 net-dialup/ppp
 net-dialup/rp-pppoe
-net-firewall/ipsec-tools
 net-firewall/iptables
 net-misc/bridge-utils
 net-misc/dahdi-tools
@@ -53,6 +52,7 @@ net-misc/iputils
 net-misc/lksctp-tools
 net-misc/socat
 net-proxy/shadowsocks-libev
+net-vpn/ipsec-tools
 net-wireless/iw
 net-wireless/wireless-tools
 net-wireless/wpa_supplicant
@@ -72,8 +72,8 @@ sys-devel/gdb
 sys-fs/fuse
 sys-fs/udev
 sys-libs/efivar
-sys-libs/libcap
 sys-libs/gpm
+sys-libs/libcap
 sys-process/audit
 sys-process/criu
 sys-process/lsof
