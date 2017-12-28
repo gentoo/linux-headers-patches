@@ -9,7 +9,7 @@ src=linux-${ver}
 dst=gentoo-headers-base-${ver}
 
 if [ ! -d ${src} ] ; then
-	for srcdir in . /usr/portage/distfiles ; do
+	for srcdir in . "$(portageq distdir)" /usr/portage/distfiles ; do
 		for ext in bz2 xz ; do
 			srctar=${srcdir}/${src}.tar.${ext}
 			if [ -e ${srctar} ] ; then
