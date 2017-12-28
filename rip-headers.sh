@@ -1,7 +1,10 @@
 #!/bin/bash -ex
 
 ver=$1
-[[ -z $ver ]] && exit 1
+if [[ -z $ver ]]; then
+	echo "Usage: $0 <kernel ver>"
+	exit 1
+fi
 [[ ${ver} == linux-* ]] && ver=${ver#linux-}
 ver=${ver%/}
 
