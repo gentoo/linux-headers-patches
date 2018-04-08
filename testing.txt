@@ -30,7 +30,7 @@ common packages that break:
 	sudo env FEATURES=-digest emerge --keep-going -1qav ${pkgs} --jobs 4
 
 %
-app-admin/collectd
+app-metrics/collectd
 app-cdr/cdrdao
 app-cdr/cdrtools
 app-cdr/dvd+rw-tools
