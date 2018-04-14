@@ -68,12 +68,12 @@ for a in ${arches} ; do
 		done
 	fi
 done
-# handle x86 unique cruft
+# handle x86 unique headers
 if [[ -e ${src}/arch/x86/entry/syscalls ]] ; then
 	mkdir -p ${dst}/arch/x86/entry
 	cp -r ${src}/arch/x86/entry/syscalls ${dst}/arch/x86/entry/
 fi
-# mips has some stupid unique bs
+# mips has some unique headers as well
 if [[ -e ${src}/arch/mips/Kbuild.platforms ]] ; then
 	for f in "${src}"/arch/mips/*/Platform ; do
 		f=${f#${src}}
@@ -84,6 +84,11 @@ fi
 if [[ -d ${src}/arch/mips/boot/tools ]] ; then
 	mkdir -p ${dst}/arch/mips/boot
 	cp -r ${src}/arch/mips/boot/tools ${dst}/arch/mips/boot/
+fi
+# s390 has special sauce starting from 4.16
+if [[ -d ${src}/arch/s390/kernel/syscalls ]] ; then
+	mkdir -p ${dst}/arch/s390/kernel
+	cp -r ${src}/arch/s390/kernel/syscalls ${dst}/arch/s390/kernel/
 fi
 find ${dst}/ -name .gitignore -delete
 
