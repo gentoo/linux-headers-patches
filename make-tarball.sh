@@ -29,7 +29,7 @@ else
 	popd >/dev/null
 fi
 
-tar -cf - --exclude=CVS $ch $kver | xz > ${tar}
+tar -cf - $ch $kver | xz > ${tar}
 
 rm -rf .tmp
 du -b *.xz

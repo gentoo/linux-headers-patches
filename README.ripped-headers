@@ -6,4 +6,4 @@ See the rip-headers.sh script for exact details on what files were copied.
 Self links:
 
 * https://wiki.gentoo.org/wiki/Project:Toolchain/sys-kernel/linux-headers
-* https://sources.gentoo.org/cgi-bin/viewvc.cgi/gentoo/src/patchsets/gentoo-headers/
+* https://gitweb.gentoo.org/proj/toolchain/linux-headers-patches.git/

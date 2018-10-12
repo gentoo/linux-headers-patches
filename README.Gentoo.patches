@@ -9,24 +9,15 @@ patches into a tarball and distribute it via our public mirroring system.
 If you want specific info about a patch (like wtf it does or whose great idea 
 it was to change the code), read the patch !  We try to fill out the top of 
 them with useful info such as what it does, why it's needed, bug reports, 
-original creators, etc...  For simple patches, we reserve the right to assume 
-your IQ is greater than absolute 0 and figure out what it does w/out an 
-explanation.  If, by some miracle of science, it falls below the absolute 0 
-mark, you should help mankind by finding some scientists and letting them 
-probe you with their ... erm ... probes.
+original creators, etc.
 
  =================
  === W[here]TF ===
  =================
 
-For those with CVS access, you want the 'src/patchsets' dir inside of the 
-'gentoo' cvs module.
-
-For those w/out CVS access, this URL should help you:
-http://sources.gentoo.org/gentoo/src/patchsets/
- (you can also find anon cvs access there too)
-
-It should be pretty easy to find your way around, you're a big boy after all.
+gitweb: https://gitweb.gentoo.org/proj/toolchain/linux-headers-patches.git/
+read-only git tree: https://anongit.gentoo.org/git/proj/toolchain/linux-headers-patches.git
+read-write git tree: git+ssh://git@git.gentoo.org/proj/toolchain/linux-headers-patches.git
 
  ===============
  === H[ow]TF ===
