@@ -10,9 +10,10 @@ ver=${ver%/}
 
 src=linux-${ver}
 dst=gentoo-headers-base-${ver}
+distdir=$(portageq distdir)
 
 if [ ! -d ${src} ] ; then
-	for srcdir in . "$(portageq distdir)" /usr/portage/distfiles ; do
+	for srcdir in . "${distdir}" /usr/portage/distfiles ; do
 		for ext in bz2 xz ; do
 			srctar=${srcdir}/${src}.tar.${ext}
 			if [ -e ${srctar} ] ; then
@@ -23,7 +24,7 @@ if [ ! -d ${src} ] ; then
 	done
 fi
 if [ ! -d ${src} ] ; then
-	wget https://www.kernel.org/pub/linux/kernel/v${ver:0:1}.x/linux-${ver}.tar.xz -P /usr/portage/distfiles/
+	wget https://www.kernel.org/pub/linux/kernel/v${ver:0:1}.x/linux-${ver}.tar.xz -P "${distdir}"
 	exec "$0" "$@"
 fi
 
