@@ -45,6 +45,9 @@ cp -r \
 	${src}/scripts/unifdef.c \
 	${src}/scripts/*.{sh,pl} \
 	${dst}/scripts/
+if [[ -f ${src}/scripts/subarch.include ]]; then
+	cp ${src}/scripts/subarch.include ${dst}/scripts/
+fi
 mkdir -p ${dst}/scripts/basic
 printf '#!/bin/sh\nexit 0' > ${dst}/scripts/basic/fixdep
 chmod a+rx ${dst}/scripts/basic/fixdep
