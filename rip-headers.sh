@@ -89,11 +89,16 @@ if [[ -d ${src}/arch/mips/boot/tools ]] ; then
 	mkdir -p ${dst}/arch/mips/boot
 	cp -r ${src}/arch/mips/boot/tools ${dst}/arch/mips/boot/
 fi
-# s390 has special sauce starting from 4.16
-if [[ -d ${src}/arch/s390/kernel/syscalls ]] ; then
-	mkdir -p ${dst}/arch/s390/kernel
-	cp -r ${src}/arch/s390/kernel/syscalls ${dst}/arch/s390/kernel/
-fi
+# linux-5.0 started generating syscall tables
+for tblgen in ${src}/arch/*/kernel/syscalls; do
+	tblgen_parent=${tblgen#${src}/}
+	tblgen_parent=${tblgen_parent%/syscalls}
+	# older kernels have none
+	if [[ -d ${tblgen} ]]; then
+		mkdir -p ${dst}/${tblgen_parent}
+		cp -r ${tblgen} ${dst}/${tblgen_parent}
+	fi
+done
 find ${dst}/ -name .gitignore -delete
 
 cp README.ripped-headers rip-headers.sh ${dst}/
