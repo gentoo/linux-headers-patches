@@ -49,7 +49,6 @@ net-dns/dnsmasq
 net-firewall/iptables
 net-libs/libtrace
 net-misc/bridge-utils
-net-misc/dahdi-tools
 net-misc/dhcpcd
 net-misc/iputils
 net-misc/lksctp-tools
