@@ -1,0 +1,96 @@
+From 3ddee7f88aaf2dee38f7016ac8fd48dd9fdb43e3 Mon Sep 17 00:00:00 2001
+From: Baolin Wang <baolin.wang@linaro.org>
+Date: Tue, 24 Apr 2018 20:06:11 +0800
+Subject: [PATCH] ALSA: Avoid using timespec for struct snd_pcm_status
+
+The struct snd_pcm_status will use 'timespec' type variables to record
+timestamp, which is not year 2038 safe on 32bits system.
+
+Userspace will use SNDRV_PCM_IOCTL_STATUS and SNDRV_PCM_IOCTL_STATUS_EXT
+as commands to issue ioctl() to fill the 'snd_pcm_status' structure in
+userspace. The command number is always defined through _IOR/_IOW/IORW,
+so when userspace changes the definition of 'struct timespec' to use
+64-bit types, the command number also changes.
+
+Thus in the kernel, we now need to define two versions of each such ioctl
+and corresponding ioctl commands to handle 32bit time_t and 64bit time_t
+in native mode:
+struct snd_pcm_status32 {
+	......
+
+	s32 trigger_tstamp_sec;
+	s32 trigger_tstamp_nsec;
+
+	......
+
+	s32 audio_tstamp_sec;
+	s32 audio_tstamp_nsec;
+
+	......
+};
+
+struct snd_pcm_status64 {
+	......
+
+	s32 trigger_tstamp_sec;
+	s32 trigger_tstamp_nsec;
+
+	......
+
+	s32 audio_tstamp_sec;
+	s32 audio_tstamp_nsec;
+
+	......
+};
+
+Moreover in compat file, we renamed or introduced new structures to handle
+32bit/64bit time_t in compatible mode. The 'struct snd_pcm_status32' and
+snd_pcm_status_user32() are used to handle 32bit time_t in compat mode.
+'struct compat_snd_pcm_status64' and snd_pcm_status_user_compat64() are used
+to handle 64bit time_t.
+
+The implicit padding before timespec is made explicit to avoid incompatible
+structure layout between 32-bit and 64-bit x86 due to the different
+alignment requirements, and the snd_pcm_status structure is now hidden
+from the kernel to avoid relying on the timespec definitio definitionn
+
+Finally we can replace SNDRV_PCM_IOCTL_STATUS and SNDRV_PCM_IOCTL_STATUS_EXT
+with new commands and introduce new functions to fill new 'struct snd_pcm_status64'
+instead of using unsafe 'struct snd_pcm_status'. Then in future, the new
+commands can be matched when userspace changes 'timespec' to 64bit type
+to make a size change of 'struct snd_pcm_status'. When glibc changes time_t
+to 64-bit, any recompiled program will issue ioctl commands that the kernel
+does not understand without this patch.
+
+Signed-off-by: Baolin Wang <baolin.wang@linaro.org>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ include/uapi/sound/asound.h |   6 ++
+
+--- a/include/uapi/sound/asound.h
++++ b/include/uapi/sound/asound.h
+@@ -456,8 +456,13 @@ enum {
+ 	SNDRV_PCM_AUDIO_TSTAMP_TYPE_LAST = SNDRV_PCM_AUDIO_TSTAMP_TYPE_LINK_SYNCHRONIZED
+ };
+ 
++#ifndef __KERNEL__
++/* explicit padding avoids incompatibility between i386 and x86-64 */
++typedef struct { unsigned char pad[sizeof(time_t) - sizeof(int)] __time_pad;
++
+ struct snd_pcm_status {
+ 	snd_pcm_state_t state;		/* stream state */
++	__time_pad pad1;		/* align to timespec */
+ 	struct timespec trigger_tstamp;	/* time when stream was started/stopped/paused */
+ 	struct timespec tstamp;		/* reference timestamp */
+ 	snd_pcm_uframes_t appl_ptr;	/* appl ptr */
+@@ -473,6 +478,7 @@ struct snd_pcm_status {
+ 	__u32 audio_tstamp_accuracy;	/* in ns units, only valid if indicated in audio_tstamp_data */
+ 	unsigned char reserved[52-2*sizeof(struct timespec)]; /* must be filled with zero */
+ };
++#endif
+ 
+ struct snd_pcm_mmap_status {
+ 	snd_pcm_state_t state;		/* RO: state - SNDRV_PCM_STATE_XXXX */
+-- 
+2.26.2
+

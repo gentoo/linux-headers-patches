@@ -1,0 +1,47 @@
+From d9e5582c4bb219f3459e39f65410f0e5128fbe91 Mon Sep 17 00:00:00 2001
+From: Baolin Wang <baolin.wang@linaro.org>
+Date: Tue, 24 Apr 2018 20:06:12 +0800
+Subject: [PATCH] ALSA: Avoid using timespec for struct snd_rawmidi_status
+
+The struct snd_rawmidi_status will use 'timespec' type variables to record
+timestamp, which is not year 2038 safe on 32bits system.
+
+Thus we introduced 'struct snd_rawmidi_status32' and 'struct snd_rawmidi_status64'
+to handle 32bit time_t and 64bit time_t in native mode, which replace
+timespec with s64 type.
+
+In compat mode, we renamed or introduced new structures to handle 32bit/64bit
+time_t in compatible mode. The 'struct snd_rawmidi_status32' and
+snd_rawmidi_ioctl_status32() are used to handle 32bit time_t in compat mode.
+'struct compat_snd_rawmidi_status64' is used to handle 64bit time_t.
+
+When glibc changes time_t to 64-bit, any recompiled program will issue ioctl
+commands that the kernel does not understand without this patch.
+
+Signed-off-by: Baolin Wang <baolin.wang@linaro.org>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ include/uapi/sound/asound.h |   3 +
+
+--- a/include/uapi/sound/asound.h
++++ b/include/uapi/sound/asound.h
+@@ -654,13 +654,16 @@ struct snd_rawmidi_params {
+ 	unsigned char reserved[16];	/* reserved for future use */
+ };
+ 
++#ifndef __KERNEL__
+ struct snd_rawmidi_status {
+ 	int stream;
++	__time_pad pad1;
+ 	struct timespec tstamp;		/* Timestamp */
+ 	size_t avail;			/* available bytes */
+ 	size_t xruns;			/* count of overruns since last status (in bytes) */
+ 	unsigned char reserved[16];	/* reserved for future use */
+ };
++#endif
+ 
+ #define SNDRV_RAWMIDI_IOCTL_PVERSION	_IOR('W', 0x00, int)
+ #define SNDRV_RAWMIDI_IOCTL_INFO	_IOR('W', 0x01, struct snd_rawmidi_info)
+-- 
+2.26.2
+

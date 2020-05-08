@@ -1,0 +1,73 @@
+From 07094ae6f9527279de6fd0c59e88f6d0423585b1 Mon Sep 17 00:00:00 2001
+From: Baolin Wang <baolin.wang@linaro.org>
+Date: Tue, 24 Apr 2018 20:06:13 +0800
+Subject: [PATCH] ALSA: Avoid using timespec for struct snd_timer_tread
+
+The struct snd_timer_tread will use 'timespec' type variables to record
+timestamp, which is not year 2038 safe on 32bits system.
+
+Since the struct snd_timer_tread is passed through read() rather than
+ioctl(), and the read syscall has no command number that lets us pick
+between the 32-bit or 64-bit version of this structure.
+
+Thus we introduced one new command SNDRV_TIMER_IOCTL_TREAD64 and new
+struct snd_timer_tread64 replacing timespec with s64 type to handle
+64bit time_t. That means we will set tu->tread = TREAD_FORMAT_64BIT
+when user space has a 64bit time_t, then we will copy to user with
+struct snd_timer_tread64. Otherwise we will use 32bit time_t variables
+when copying to user.
+
+Moreover this patch replaces timespec type with timespec64 type and
+related y2038 safe APIs.
+
+Signed-off-by: Baolin Wang <baolin.wang@linaro.org>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ include/uapi/sound/asound.h |  15 +++-
+
+--- a/include/uapi/sound/asound.h
++++ b/include/uapi/sound/asound.h
+@@ -783,7 +783,7 @@ struct snd_timer_status {
+ 
+ #define SNDRV_TIMER_IOCTL_PVERSION	_IOR('T', 0x00, int)
+ #define SNDRV_TIMER_IOCTL_NEXT_DEVICE	_IOWR('T', 0x01, struct snd_timer_id)
+-#define SNDRV_TIMER_IOCTL_TREAD		_IOW('T', 0x02, int)
++#define SNDRV_TIMER_IOCTL_TREAD_OLD	_IOW('T', 0x02, int)
+ #define SNDRV_TIMER_IOCTL_GINFO		_IOWR('T', 0x03, struct snd_timer_ginfo)
+ #define SNDRV_TIMER_IOCTL_GPARAMS	_IOW('T', 0x04, struct snd_timer_gparams)
+ #define SNDRV_TIMER_IOCTL_GSTATUS	_IOWR('T', 0x05, struct snd_timer_gstatus)
+@@ -796,6 +796,15 @@ struct snd_timer_status {
+ #define SNDRV_TIMER_IOCTL_STOP		_IO('T', 0xa1)
+ #define SNDRV_TIMER_IOCTL_CONTINUE	_IO('T', 0xa2)
+ #define SNDRV_TIMER_IOCTL_PAUSE		_IO('T', 0xa3)
++#define SNDRV_TIMER_IOCTL_TREAD64	_IOW('T', 0xa4, int)
++
++#if __BITS_PER_LONG == 64
++#define SNDRV_TIMER_IOCTL_TREAD SNDRV_TIMER_IOCTL_TREAD_OLD
++#else
++#define SNDRV_TIMER_IOCTL_TREAD ((sizeof(__kernel_long_t) >= sizeof(time_t)) ? \
++				 SNDRV_TIMER_IOCTL_TREAD_OLD : \
++				 SNDRV_TIMER_IOCTL_TREAD64)
++#endif
+ 
+ struct snd_timer_read {
+ 	unsigned int resolution;
+@@ -821,11 +830,15 @@ enum {
+ 	SNDRV_TIMER_EVENT_MRESUME = SNDRV_TIMER_EVENT_RESUME + 10,
+ };
+ 
++#ifndef __KERNEL__
+ struct snd_timer_tread {
+ 	int event;
++	__time_pad pad1;
+ 	struct timespec tstamp;
+ 	unsigned int val;
++	__time_pad pad2;
+ };
++#endif
+ 
+ /****************************************************************************
+  *                                                                          *
+-- 
+2.26.2
+
