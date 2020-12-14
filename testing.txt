@@ -52,7 +52,7 @@ net-misc/bridge-utils
 net-misc/dhcpcd
 net-misc/iputils
 net-misc/lksctp-tools
-net-misc/ntpclient
+net-misc/sntpd
 net-misc/socat
 net-proxy/shadowsocks-libev
 net-vpn/ipsec-tools
