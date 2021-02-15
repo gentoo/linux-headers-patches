@@ -56,7 +56,6 @@ net-misc/sntpd
 net-misc/socat
 net-proxy/shadowsocks-libev
 net-vpn/ipsec-tools
-net-wireless/irda-utils
 net-wireless/iw
 net-wireless/wireless-tools
 net-wireless/wpa_supplicant
