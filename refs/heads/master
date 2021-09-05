@@ -1,0 +1,19 @@
+certificate version 0.1
+pusher Sam James <sam@gentoo.org> 1630820871 +0100
+pushee git+ssh://git.gentoo.org/proj/toolchain/linux-headers-patches.git
+nonce 1630820871-4f64203453032509335c9b8942023e58cc9cd71c
+
+0d1209841b6d62b1a3af669453da142ef3b68f35 cedf632239727cd862af389b3b8ee671169dd801 refs/heads/master
+-----BEGIN PGP SIGNATURE-----
+
+iQGjBAABCgCNFiEEYOpPv/uDUzOcqtTy9JIoEO6gSDsFAmE0WgdfFIAAAAAALgAo
+aXNzdWVyLWZwckBub3RhdGlvbnMub3BlbnBncC5maWZ0aGhvcnNlbWFuLm5ldDYw
+RUE0RkJGRkI4MzUzMzM5Q0FBRDRGMkY0OTIyODEwRUVBMDQ4M0IPHHNhbUBnZW50
+b28ub3JnAAoJEPSSKBDuoEg7GIEH/RWl8KoEOH42cBwFgrZso8E9JTUv2t3vz9cy
++2I/NzvfBDQdavXBfbNbuXDiLPQvO0tRuVUVo/ux7T3PecQqopGu2wdc3fRyTo0y
+DKVWWK2RXnVwmb2XFrx3+1qa7uXigdjxL/6GiyEwSrQOG05pMsGKcPHL1MJIWooy
+A0aCWV3RfNF2bY6jbtPVjYzHskfZnBI0lO+ppw3i0voRd8hFqJJKimGo9CeLJv2m
+gtuIIfaENEEB3AshD+3u9eqwlAnCfFI7N0UkTE7kN94caqHk9RgE2TcA1q2JtQYL
+nQvP3eaOdzWXigdG7zySOreng0t/AeKlPkc48FqXoPElh8tHUME=
+=+4Xn
+-----END PGP SIGNATURE-----
