@@ -3,11 +3,11 @@
  ================
 
 Gentoo patchsets that have grown too large to keep on the rsync mirrors have 
-been moved to our cvs tree.  From there, we bundle up all the whee little 
+been moved to our git tree.  From there, we bundle up all the wee little 
 patches into a tarball and distribute it via our public mirroring system.
 
 If you want specific info about a patch (like wtf it does or whose great idea 
-it was to change the code), read the patch !  We try to fill out the top of 
+it was to change the code), read the patch!  We try to fill out the top of 
 them with useful info such as what it does, why it's needed, bug reports, 
 original creators, etc.
 
@@ -25,13 +25,9 @@ read-write git tree: git+ssh://git@git.gentoo.org/proj/toolchain/linux-headers-p
 
 The patch naming/applying convention might be a little confusing to the Gentoo
 outsider, so here's a quick rundown.  Patch tarballs are applied in Gentoo via
-a helper command called "epatch".  This command is pretty forgiving when it
-comes to applying patches.
+a helper command called "eapply". 
 
-For example, it will autodetect the required -p# by starting at 0 and counting
-up until things apply.  So do not expect a patch series to all be at the same -p
-level even if they all apply from the same source directory.  Typically however,
-people will use -p0 or -p1.
+Patches should use -p1.
 
 The epatch command will also use the -E option by default as the `patch` command
 can be pretty picky about removing files.  We just force the issue.  If you
