@@ -1,0 +1,61 @@
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=e5499dd7253c8382d03f687f19a854adcc688357
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=b1c8312c6bd70e2c41f96183936fdb6f4f07cc0e
+
+https://bugs.gentoo.org/847886
+
+From: Sean Young <sean@mess.org>
+Date: Wed, 25 May 2022 14:08:30 +0100
+Subject: media: lirc: revert removal of unused feature flags
+
+Commit b2a90f4fcb14 ("media: lirc: remove unused lirc features") removed
+feature flags which were never implemented, but they are still used by
+the lirc daemon went built from source.
+
+Reinstate these symbols in order not to break the lirc build.
+
+Fixes: b2a90f4fcb14 ("media: lirc: remove unused lirc features")
+Link: https://lore.kernel.org/all/a0470450-ecfd-2918-e04a-7b57c1fd7694@kernel.org/
+Reported-by: Jiri Slaby <jirislaby@kernel.org>
+Cc: Mauro Carvalho Chehab <mchehab@kernel.org>
+Signed-off-by: Sean Young <sean@mess.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+--- a/include/uapi/linux/lirc.h
++++ b/include/uapi/linux/lirc.h
+@@ -84,6 +84,13 @@
+ #define LIRC_CAN_SEND(x) ((x)&LIRC_CAN_SEND_MASK)
+ #define LIRC_CAN_REC(x) ((x)&LIRC_CAN_REC_MASK)
+ 
++/*
++ * Unused features. These features were never implemented, in tree or
++ * out of tree. These definitions are here so not to break the lircd build.
++ */
++#define LIRC_CAN_SET_REC_FILTER		0
++#define LIRC_CAN_NOTIFY_DECODE		0
++
+ /*** IOCTL commands for lirc driver ***/
+ 
+ #define LIRC_GET_FEATURES              _IOR('i', 0x00000000, __u32)
+cgit
+From: Sean Young <sean@mess.org>
+Date: Thu, 26 May 2022 08:59:40 +0100
+Subject: media: lirc: add missing exceptions for lirc uapi header file
+
+Commit e5499dd7253c ("media: lirc: revert removal of unused feature
+flags") reintroduced unused feature flags in the lirc uapi header, but
+failed to reintroduce the necessary exceptions for the docs.
+
+Fixes: e5499dd7253c ("media: lirc: revert removal of unused feature flags")
+Signed-off-by: Sean Young <sean@mess.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+--- a/Documentation/userspace-api/media/lirc.h.rst.exceptions
++++ b/Documentation/userspace-api/media/lirc.h.rst.exceptions
+@@ -30,6 +30,8 @@ ignore define LIRC_CAN_REC
+ 
+ ignore define LIRC_CAN_SEND_MASK
+ ignore define LIRC_CAN_REC_MASK
++ignore define LIRC_CAN_SET_REC_FILTER
++ignore define LIRC_CAN_NOTIFY_DECODE
+ 
+ # Obsolete ioctls
+ 
+cgit
