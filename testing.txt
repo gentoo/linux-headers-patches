@@ -1,19 +1,20 @@
-upgrade process:
+Upgrade process:
 
-	- generate the gentoo-headers-base-<kernel version>.tar.xz tarball:
-	  $ ./rip-headers.sh 3.13
-	- create a new patchset dir:
-	  $ cp -a 3.13/ 3.14/
-	  $ rm -rf 3.14/CVS
-	  $ cvs add 3.14 && cvs add 3.14/*
-	- generate the patchset tarball:
-	  $ ./make-tarball.sh 3.14 1
-	- update the ebuild:
-	  $ cp linux-headers-3.13.ebuild linux-headers-3.14.ebuild
-	- test it (see sections below)
-	- upload tarballs & commit files to cvs
+	- Familiarize yourself with https://wiki.gentoo.org/wiki/Project:Toolchain/sys-kernel/linux-headers
+	  and README*.
+	- Generate the gentoo-headers-base-<kernel version>.tar.xz tarball:
+	  $ ./rip-headers.sh 5.15
+	- Create a new patchset dir:
+	  $ cp -a 5.15/ 5.15/
+	  $ git add 5.15
+	- Generate the patchset tarball:
+	  $ ./make-tarball.sh 5.15 1
+	- Update the ebuild:
+	  $ cp linux-headers-5.14.ebuild linux-headers-5.15.ebuild
+	- Test it (see sections below)
+	- Upload tarballs & commit files
 
-smoke test:
+Smoke test:
 
 	for h in `find /usr/include/linux -type f -printf '%P '` ; do
 		h="linux/$h"; echo "$h"
@@ -24,7 +25,7 @@ smoke test:
 
 	find /usr/include/linux -type f -printf '%P '
 
-common packages that break:
+Common packages that break:
 
 	pkgs=$(sed -n '/^%/,/^%/{s:%::;p}' testing.txt)
 	emerge --keep-going -1v ${pkgs} --jobs 4
