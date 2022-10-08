@@ -66,13 +66,14 @@ sys-apps/kbd
 sys-apps/net-tools
 sys-apps/sandbox
 sys-apps/setserial
+sys-apps/systemd
+sys-apps/systemd-utils
 sys-block/fio
 sys-block/sedutil
 sys-boot/efibootmgr
 sys-boot/syslinux
 sys-devel/gdb
 sys-fs/fuse
-sys-fs/udev
 sys-libs/efivar
 sys-libs/gpm
 sys-libs/libcap
