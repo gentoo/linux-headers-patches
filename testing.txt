@@ -28,6 +28,7 @@ Smoke test:
 Check direct reverse dependencies of virtual/linux-headers:
 
 	pkgs=$(sed -n '/^%/,/^%/{s:%::;p}' testing.txt)
+	pkgs=$(echo ${pkgs} | tr ' ' '\n' | sed -e '/systemd-utils/d' | sed -e '/ps3pf_utils/d' | sed -e '/dahdi-tools/d' | sed -e '/geode/d' | sed -e '/xhkeys/d' | sed -e '/pulseaudio-daemon/d' | sed -e '/openssh-contrib/d' | sed -e '/libreswan/d' | sed -e '/ola/d' | tr '\n' ' ')
 	emerge --keep-going -1v ${pkgs} --jobs 4
 
 %
