@@ -58,7 +58,7 @@ dev-util/bpftool
 dev-util/oprofile
 dev-util/perf
 dev-util/rr
-dev-util/strace
+dev-debug/strace
 dev-util/sysprof
 dev-util/sysprof-capture
 dev-util/trace-cmd
