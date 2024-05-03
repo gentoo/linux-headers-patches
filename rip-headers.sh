@@ -13,7 +13,7 @@ dst=gentoo-headers-base-${ver}
 distdir=$(portageq distdir)
 
 if [ ! -d ${src} ] ; then
-	for srcdir in . "${distdir}" /usr/portage/distfiles ; do
+	for srcdir in . "${distdir}" /var/cache/distfiles /usr/portage/distfiles ; do
 		for ext in bz2 xz ; do
 			srctar=${srcdir}/${src}.tar.${ext}
 			if [ -e ${srctar} ] ; then
