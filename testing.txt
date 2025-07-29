@@ -58,7 +58,7 @@ dev-util/bootconfig
 dev-util/bpftool
 dev-util/oprofile
 dev-util/perf
-dev-util/rr
+dev-debug/rr
 dev-debug/strace
 dev-util/sysprof
 dev-util/sysprof-capture
