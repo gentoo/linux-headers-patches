@@ -1,8 +1,10 @@
-From fc2e8775d55f43e08eb79d326d6fdd89291898dd Mon Sep 17 00:00:00 2001
-Message-ID: <fc2e8775d55f43e08eb79d326d6fdd89291898dd.1759348574.git.sam@gentoo.org>
+From e567e380598a35683541853b0b38da9cc53098e4 Mon Sep 17 00:00:00 2001
+Message-ID: <e567e380598a35683541853b0b38da9cc53098e4.1759359739.git.sam@gentoo.org>
+In-Reply-To: <99f1a93cf8cd4f0ece8611be2860677084663aac.1759359739.git.sam@gentoo.org>
+References: <99f1a93cf8cd4f0ece8611be2860677084663aac.1759359739.git.sam@gentoo.org>
 From: Sam James <sam@gentoo.org>
 Date: Wed, 1 Oct 2025 20:34:53 +0100
-Subject: [PATCH 1/3] parisc: don't reference obsolete termio struct for TC*
+Subject: [PATCH 2/3] parisc: don't reference obsolete termio struct for TC*
  constants
 
 Similar in nature to ab107276607af90b13a5994997e19b7b9731e251. glibc-2.42
@@ -21,7 +23,7 @@ Signed-off-by: Sam James <sam@gentoo.org>
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/arch/parisc/include/uapi/asm/ioctls.h b/arch/parisc/include/uapi/asm/ioctls.h
-index 82d1148c6379a..b90253c8265ae 100644
+index 82d1148c6379a..74b4027a4e808 100644
 --- a/arch/parisc/include/uapi/asm/ioctls.h
 +++ b/arch/parisc/include/uapi/asm/ioctls.h
 @@ -10,10 +10,10 @@
@@ -32,10 +34,10 @@ index 82d1148c6379a..b90253c8265ae 100644
 -#define TCSETA		_IOW('T', 2, struct termio)
 -#define TCSETAW		_IOW('T', 3, struct termio)
 -#define TCSETAF		_IOW('T', 4, struct termio)
-+#define TCGETA          0x5405
-+#define TCSETA          0x5406
-+#define TCSETAW         0x5407
-+#define TCSETAF         0x5408
++#define TCGETA          0x40125401
++#define TCSETA          0x80125402
++#define TCSETAW         0x80125403
++#define TCSETAF         0x80125404
  #define TCSBRK		_IO('T', 5)
  #define TCXONC		_IO('T', 6)
  #define TCFLSH		_IO('T', 7)

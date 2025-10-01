@@ -1,7 +1,7 @@
-From 3ffe89f049619167c17e2359ce9d8ea9270b76eb Mon Sep 17 00:00:00 2001
-Message-ID: <3ffe89f049619167c17e2359ce9d8ea9270b76eb.1759348574.git.sam@gentoo.org>
-In-Reply-To: <fc2e8775d55f43e08eb79d326d6fdd89291898dd.1759348574.git.sam@gentoo.org>
-References: <fc2e8775d55f43e08eb79d326d6fdd89291898dd.1759348574.git.sam@gentoo.org>
+From e11ecaf723594bf01c66fc5c80c25bda0621f34f Mon Sep 17 00:00:00 2001
+Message-ID: <e11ecaf723594bf01c66fc5c80c25bda0621f34f.1759359739.git.sam@gentoo.org>
+In-Reply-To: <99f1a93cf8cd4f0ece8611be2860677084663aac.1759359739.git.sam@gentoo.org>
+References: <99f1a93cf8cd4f0ece8611be2860677084663aac.1759359739.git.sam@gentoo.org>
 From: Sam James <sam@gentoo.org>
 Date: Wed, 1 Oct 2025 20:38:16 +0100
 Subject: [PATCH 3/3] sparc: don't reference obsolete termio struct for TC*
@@ -23,7 +23,7 @@ Signed-off-by: Sam James <sam@gentoo.org>
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/arch/sparc/include/uapi/asm/ioctls.h b/arch/sparc/include/uapi/asm/ioctls.h
-index 7fd2f5873c9e7..b493dea7ca377 100644
+index 7fd2f5873c9e7..f26befbf690fb 100644
 --- a/arch/sparc/include/uapi/asm/ioctls.h
 +++ b/arch/sparc/include/uapi/asm/ioctls.h
 @@ -5,10 +5,10 @@
@@ -34,10 +34,10 @@ index 7fd2f5873c9e7..b493dea7ca377 100644
 -#define TCSETA		_IOW('T', 2, struct termio)
 -#define TCSETAW		_IOW('T', 3, struct termio)
 -#define TCSETAF		_IOW('T', 4, struct termio)
-+#define TCGETA          0x5405
-+#define TCSETA          0x5406
-+#define TCSETAW         0x5407
-+#define TCSETAF         0x5408
++#define TCGETA          0x40125401
++#define TCSETA          0x80125402
++#define TCSETAW         0x80125403
++#define TCSETAF         0x80125404
  #define TCSBRK		_IO('T', 5)
  #define TCXONC		_IO('T', 6)
  #define TCFLSH		_IO('T', 7)
