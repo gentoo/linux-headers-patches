@@ -1,0 +1,46 @@
+From 3ffe89f049619167c17e2359ce9d8ea9270b76eb Mon Sep 17 00:00:00 2001
+Message-ID: <3ffe89f049619167c17e2359ce9d8ea9270b76eb.1759348574.git.sam@gentoo.org>
+In-Reply-To: <fc2e8775d55f43e08eb79d326d6fdd89291898dd.1759348574.git.sam@gentoo.org>
+References: <fc2e8775d55f43e08eb79d326d6fdd89291898dd.1759348574.git.sam@gentoo.org>
+From: Sam James <sam@gentoo.org>
+Date: Wed, 1 Oct 2025 20:38:16 +0100
+Subject: [PATCH 3/3] sparc: don't reference obsolete termio struct for TC*
+ constants
+
+Similar in nature to ab107276607af90b13a5994997e19b7b9731e251. glibc-2.42
+drops the legacy termio struct, but the ioctls.h header still defines some
+TC* constants in terms of termio (via sizeof). Hardcode the values instead.
+
+This fixes building Python for example, which falls over like:
+  ./Modules/termios.c:1119:16: error: invalid application of 'sizeof' to incomplete type 'struct termio'
+
+Link: https://bugs.gentoo.org/961769
+Link: https://bugs.gentoo.org/962600
+Co-authored-by: Stian Halseth <stian@itx.no>
+Signed-off-by: Sam James <sam@gentoo.org>
+---
+ arch/sparc/include/uapi/asm/ioctls.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/arch/sparc/include/uapi/asm/ioctls.h b/arch/sparc/include/uapi/asm/ioctls.h
+index 7fd2f5873c9e7..b493dea7ca377 100644
+--- a/arch/sparc/include/uapi/asm/ioctls.h
++++ b/arch/sparc/include/uapi/asm/ioctls.h
+@@ -5,10 +5,10 @@
+ #include <asm/ioctl.h>
+ 
+ /* Big T */
+-#define TCGETA		_IOR('T', 1, struct termio)
+-#define TCSETA		_IOW('T', 2, struct termio)
+-#define TCSETAW		_IOW('T', 3, struct termio)
+-#define TCSETAF		_IOW('T', 4, struct termio)
++#define TCGETA          0x5405
++#define TCSETA          0x5406
++#define TCSETAW         0x5407
++#define TCSETAF         0x5408
+ #define TCSBRK		_IO('T', 5)
+ #define TCXONC		_IO('T', 6)
+ #define TCFLSH		_IO('T', 7)
+-- 
+2.51.0
+
