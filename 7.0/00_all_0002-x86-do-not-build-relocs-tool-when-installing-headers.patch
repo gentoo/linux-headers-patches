@@ -23,7 +23,7 @@ index 60135cbd905c..9b15b2daa77f 100644
  
 +ifneq ($(filter-out headers_install,$(MAKECMDGOALS)),)
  archscripts: scripts_basic
- 	$(Q)$(MAKE) $(build)=arch/x86/tools relocs
+ 	$(Q)$(MAKE) $(build)=arch/x86/tools relocs vdso2c
 +endif
  
  ###
